@@ -103,14 +103,27 @@ async function seed() {
         password: defaultPassword,
         dateOfBirth: new Date('1996-08-20'),
         city: 'Bangalore',
-        gender: 'Male',
-        relationshipIntent: 'Relationship',
         role: 'USER',
         isVerified: true,
       },
     });
 
-    console.log('Initial Admin and Demo accounts seeded.');
+    await prisma.user.create({
+      data: {
+        name: 'Event Organizer Host',
+        email: 'host@jabweemeet.com',
+        phone: '+919876543212',
+        password: defaultPassword,
+        dateOfBirth: new Date('1994-03-10'),
+        city: 'Mumbai',
+        gender: 'Female',
+        relationshipIntent: 'Social Connections',
+        role: 'HOST',
+        isVerified: true,
+      },
+    });
+
+    console.log('Initial Admin, Host, and Demo accounts seeded.');
   }
 
   console.log('Seeding complete.');
