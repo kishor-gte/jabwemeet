@@ -24,10 +24,25 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/events - Create new event (Admin or Host)
-router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST']), async (req, res) => {
+// GET /api/events/host - List events created by the logged-in host
+router.get('/host', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER']), async (req, res) => {
   try {
-    const { title, description, category, location, city, date, price, maxAttendees } = req.body;
+    const events = await prisma.event.findMany({
+      where: { hostId: req.user.id },
+      orderBy: { date: 'desc' },
+    });
+
+    return res.json({ success: true, events });
+  } catch (error) {
+    console.error('Error fetching host events:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch host events' });
+  }
+});
+
+// POST /api/events - Create new event (Admin or Host)
+router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER']), async (req, res) => {
+  try {
+    const { title, description, category, location, city, date, endDate, price, maxAttendees, ageRange, itinerary } = req.body;
     if (!title || !description || !category || !location || !city || !date) {
       return res.status(400).json({ success: false, message: 'Missing required event fields' });
     }
@@ -40,8 +55,12 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST']), async (req, 
         location,
         city,
         date: new Date(date),
+        endDate: endDate ? new Date(endDate) : null,
         price: price ? parseFloat(price) : 0,
         maxAttendees: maxAttendees ? parseInt(maxAttendees, 10) : 50,
+        ageRange,
+        itinerary,
+        hostId: req.user.id
       },
     });
 
