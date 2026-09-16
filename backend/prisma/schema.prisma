@@ -26,11 +26,88 @@ model User {
   relationshipIntent String?
   role               Role      @default(USER)
   isVerified         Boolean   @default(true)
+  isApproved         Boolean   @default(false)
+  govIdProof         String?
+  addressProof       String?
+  eduCertificate     String?
+  workExperience     String?
+  profileImage       String?
+  assignedManagerId  String?
+  assignedManager    User?    @relation("AssignedClients", fields: [assignedManagerId], references: [id])
+  assignedClients    User[]   @relation("AssignedClients")
+  
+  matchmakingRequests  MatchmakingRequest[]
+  suggestedMatches     MatchSuggestion[] @relation("ClientSuggestions")
+  madeSuggestions      MatchSuggestion[] @relation("MatchmakerSuggestions")
+  suggestedAsProfile   MatchSuggestion[] @relation("SuggestedProfile")
+  clientAppointments   Appointment[]     @relation("ClientAppointments")
+  matchmakerAppointments Appointment[]   @relation("MatchmakerAppointments")
+  clientConversations  Conversation[]    @relation("ClientConversations")
+  matchmakerConversations Conversation[] @relation("MatchmakerConversations")
+  sentMessages         Message[]
+
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   @@index([email])
   @@index([phone])
+}
+
+model MatchmakingRequest {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       User     @relation(fields: [clientId], references: [id])
+  lookingFor   String?
+  status       String   @default("New")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model MatchSuggestion {
+  id                   String   @id @default(cuid())
+  matchmakerId         String
+  matchmaker           User     @relation("MatchmakerSuggestions", fields: [matchmakerId], references: [id])
+  clientId             String
+  client               User     @relation("ClientSuggestions", fields: [clientId], references: [id])
+  suggestedProfileId   String
+  suggestedProfile     User     @relation("SuggestedProfile", fields: [suggestedProfileId], references: [id])
+  status               String   @default("Pending")
+  createdAt            DateTime @default(now())
+}
+
+model Appointment {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       User     @relation("ClientAppointments", fields: [clientId], references: [id])
+  matchmakerId String
+  matchmaker   User     @relation("MatchmakerAppointments", fields: [matchmakerId], references: [id])
+  date         DateTime
+  time         String
+  type         String
+  mode         String
+  status       String   @default("Scheduled")
+  createdAt    DateTime @default(now())
+}
+
+model Conversation {
+  id           String    @id @default(cuid())
+  clientId     String
+  client       User      @relation("ClientConversations", fields: [clientId], references: [id])
+  matchmakerId String
+  matchmaker   User      @relation("MatchmakerConversations", fields: [matchmakerId], references: [id])
+  messages     Message[]
+  updatedAt    DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  content        String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
 }
 
 model PasswordReset {

@@ -7,6 +7,8 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -24,6 +26,7 @@ export default function AdminDashboardPage() {
             return;
           }
           setUser(data.user);
+          fetchPendingUsers();
         } else {
           router.replace("/login");
         }
@@ -35,6 +38,40 @@ export default function AdminDashboardPage() {
     }
     checkAdmin();
   }, [router]);
+
+  async function fetchPendingUsers() {
+    try {
+      const res = await fetch("/api/admin/pending", { credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        setPendingUsers(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch pending users", error);
+    } finally {
+      setPendingLoading(false);
+    }
+  }
+
+  async function approveUser(id: string) {
+    if (!confirm("Are you sure you want to approve this Relationship Manager?")) return;
+    
+    try {
+      const res = await fetch(`/api/admin/approve/${id}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPendingUsers((prev) => prev.filter((u) => u.id !== id));
+        alert("Application approved successfully.");
+      } else {
+        alert(data.message || "Failed to approve application.");
+      }
+    } catch (e) {
+      alert("Error occurred while approving.");
+    }
+  }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -100,6 +137,59 @@ export default function AdminDashboardPage() {
             <p className="text-3xl font-extrabold text-emerald-400 mt-2">0</p>
             <p className="text-xs text-slate-400 mt-1">All clear</p>
           </div>
+        </div>
+
+        <div className="bg-[#182337] border border-white/10 rounded-2xl p-8 shadow">
+          <h2 className="text-xl font-bold text-white mb-6">Pending Approvals</h2>
+          
+          {pendingLoading ? (
+            <p className="text-slate-400 text-sm">Loading pending applications...</p>
+          ) : pendingUsers.length === 0 ? (
+            <p className="text-slate-400 text-sm italic">No pending applications at the moment.</p>
+          ) : (
+            <div className="space-y-6">
+              {pendingUsers.map((p) => (
+                <div key={p.id} className="bg-[#131d2e] border border-white/10 rounded-xl p-6 flex flex-col md:flex-row justify-between gap-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{p.name}</h3>
+                    <p className="text-sm text-slate-400 mb-1">{p.email} • {p.phone}</p>
+                    <p className="text-xs text-amber-400">Role: Relationship Manager</p>
+                    
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      {p.govIdProof && (
+                        <a href={`/uploads/${p.govIdProof}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+                          📄 Gov ID
+                        </a>
+                      )}
+                      {p.addressProof && (
+                        <a href={`/uploads/${p.addressProof}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+                          📄 Address Proof
+                        </a>
+                      )}
+                      {p.eduCertificate && (
+                        <a href={`/uploads/${p.eduCertificate}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+                          📄 Education Cert
+                        </a>
+                      )}
+                      {p.workExperience && (
+                        <a href={`/uploads/${p.workExperience}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+                          📄 Work Experience
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => approveUser(p.id)}
+                      className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-lg transition shadow-lg"
+                    >
+                      Approve Application
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="text-center pt-4">
