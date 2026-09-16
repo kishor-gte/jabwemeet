@@ -27,6 +27,12 @@ export default function HomePage() {
   const [regCity, setRegCity] = useState("");
   const [regGender, setRegGender] = useState("");
   const [regIntent, setRegIntent] = useState("Relationship");
+  
+  // Breakup Buddy extra state
+  const [regIdType, setRegIdType] = useState("");
+  const [regIdDocument, setRegIdDocument] = useState("");
+  const [regProfilePhoto, setRegProfilePhoto] = useState("");
+
   const [regTerms, setRegTerms] = useState(false);
   const [regPrivacy, setRegPrivacy] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
@@ -158,16 +164,18 @@ export default function HomePage() {
     }
   }, [regDob]);
 
-  const isRegValid =
+  const isBaseRegValid =
     regName.trim().length >= 2 &&
     emailFeedback.type === "valid" &&
     phoneFeedback.startsWith("✓") &&
     isPwAllMet &&
     regPassword === regConfirmPassword &&
-    dobFeedback.startsWith("✓") &&
-    regCity.trim().length >= 2 &&
     regTerms &&
     regPrivacy;
+
+  const isRegValid = regRole === 'BREAKUP_BUDDY' 
+    ? (isBaseRegValid && regIdType && regIdDocument && regProfilePhoto)
+    : (isBaseRegValid && dobFeedback.startsWith("✓") && regCity.trim().length >= 2);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -211,11 +219,14 @@ export default function HomePage() {
           phone: regPhone,
           password: regPassword,
           confirmPassword: regConfirmPassword,
-          dateOfBirth: regDob,
-          city: regCity,
+          dateOfBirth: regRole === 'BREAKUP_BUDDY' ? undefined : regDob,
+          city: regRole === 'BREAKUP_BUDDY' ? undefined : regCity,
           gender: regGender,
           relationshipIntent: regIntent,
           role: regRole,
+          idType: regRole === 'BREAKUP_BUDDY' ? regIdType : undefined,
+          idDocument: regRole === 'BREAKUP_BUDDY' ? regIdDocument : undefined,
+          profilePhoto: regRole === 'BREAKUP_BUDDY' ? regProfilePhoto : undefined,
         }),
       });
 
@@ -1011,65 +1022,124 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth *</label>
-                      <input
-                        type="date"
-                        required
-                        value={regDob}
-                        onChange={(e) => setRegDob(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      />
-                      {dobFeedback && (
-                        <div className={`text-xs mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
-                          {dobFeedback}
+                  {regRole !== 'BREAKUP_BUDDY' ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth *</label>
+                          <input
+                            type="date"
+                            required
+                            value={regDob}
+                            onChange={(e) => setRegDob(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          />
+                          {dobFeedback && (
+                            <div className={`text-xs mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
+                              {dobFeedback}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
-                      <input
-                        type="text"
-                        required
-                        value={regCity}
-                        onChange={(e) => setRegCity(e.target.value)}
-                        placeholder="e.g. Bangalore"
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      />
-                    </div>
-                  </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
+                          <input
+                            type="text"
+                            required
+                            value={regCity}
+                            onChange={(e) => setRegCity(e.target.value)}
+                            placeholder="e.g. Bangalore"
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
-                      <select
-                        value={regGender}
-                        onChange={(e) => setRegGender(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      >
-                        <option value="">Select gender</option>
-                        <option value="Female">Female</option>
-                        <option value="Male">Male</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
+                          <select
+                            value={regGender}
+                            onChange={(e) => setRegGender(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          >
+                            <option value="">Select gender</option>
+                            <option value="Female">Female</option>
+                            <option value="Male">Male</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
-                      <select
-                        value={regIntent}
-                        onChange={(e) => setRegIntent(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      >
-                        <option value="Relationship">Relationship</option>
-                        <option value="Marriage">Marriage</option>
-                        <option value="Friendship">Friendship</option>
-                        <option value="Social Connections">Social Connections</option>
-                      </select>
-                    </div>
-                  </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
+                          <select
+                            value={regIntent}
+                            onChange={(e) => setRegIntent(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          >
+                            <option value="Relationship">Relationship</option>
+                            <option value="Marriage">Marriage</option>
+                            <option value="Friendship">Friendship</option>
+                            <option value="Social Connections">Social Connections</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">ID Type *</label>
+                        <select
+                          required
+                          value={regIdType}
+                          onChange={(e) => setRegIdType(e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                        >
+                          <option value="">Select ▼</option>
+                          <option value="Aadhaar">Aadhaar</option>
+                          <option value="PAN">PAN</option>
+                          <option value="Passport">Passport</option>
+                          <option value="Driving License">Driving License</option>
+                        </select>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">ID Document *</label>
+                          <div className="relative">
+                            <input
+                              type="file"
+                              required
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  setRegIdDocument(e.target.files[0].name);
+                                }
+                              }}
+                              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
+                            />
+                            {regIdDocument && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓</span>}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Profile Photo *</label>
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              required
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  setRegProfilePhoto(e.target.files[0].name);
+                                }
+                              }}
+                              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
+                            />
+                            {regProfilePhoto && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓ Uploaded</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="space-y-2 pt-2 text-xs text-slate-400">
                     <label className="flex items-center gap-2 cursor-pointer">

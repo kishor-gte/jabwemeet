@@ -15,19 +15,32 @@ enum Role {
 }
 
 model User {
-  id                 String    @id @default(cuid())
+  id                 String   @id @default(cuid())
   name               String
-  email              String    @unique
-  phone              String    @unique
+  email              String   @unique
+  phone              String   @unique
   password           String
-  dateOfBirth        DateTime
-  city               String
+  dateOfBirth        DateTime?
+  city               String?
   gender             String?
   relationshipIntent String?
-  role               Role      @default(USER)
-  isVerified         Boolean   @default(true)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  role               Role     @default(USER)
+  isVerified         Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Breakup Buddy Fields
+  idType             String?
+  idDocument         String?
+  profilePhoto       String?
+  displayName        String?
+  shortBio           String?
+  languages          String[]  @default([])
+  areasOfExpertise   String[]  @default([])
+  sessionTypes       String[]  @default([])
+  availableDays      String[]  @default([])
+  availableTimeStart String?
+  availableTimeEnd   String?
 
   @@index([email])
   @@index([phone])

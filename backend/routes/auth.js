@@ -104,6 +104,10 @@ router.post('/register', async (req, res) => {
       city,
       gender,
       relationshipIntent,
+      role,
+      idType,
+      idDocument,
+      profilePhoto,
     } = req.body;
 
     // Full name validation
@@ -150,24 +154,26 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Date of birth & Age validation (18+)
-    if (!dateOfBirth) {
+    // Date of birth & Age validation (18+) - optional for Breakup Buddy
+    let dob = null;
+    if (dateOfBirth) {
+      dob = new Date(dateOfBirth);
+      if (isNaN(dob.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid date of birth.' });
+      }
+      if (dob > new Date()) {
+        return res.status(400).json({ success: false, message: 'Date of birth cannot be in the future.' });
+      }
+      const age = calculateAge(dob);
+      if (age < 18) {
+        return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
+      }
+    } else if (role !== 'BREAKUP_BUDDY') {
       return res.status(400).json({ success: false, message: 'Date of birth is required.' });
     }
-    const dob = new Date(dateOfBirth);
-    if (isNaN(dob.getTime())) {
-      return res.status(400).json({ success: false, message: 'Invalid date of birth.' });
-    }
-    if (dob > new Date()) {
-      return res.status(400).json({ success: false, message: 'Date of birth cannot be in the future.' });
-    }
-    const age = calculateAge(dob);
-    if (age < 18) {
-      return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
-    }
 
-    // City validation
-    if (!city || typeof city !== 'string' || city.trim().length < 2) {
+    // City validation - optional for Breakup Buddy
+    if (role !== 'BREAKUP_BUDDY' && (!city || typeof city !== 'string' || city.trim().length < 2)) {
       return res.status(400).json({ success: false, message: 'City is required.' });
     }
 
@@ -207,10 +213,13 @@ router.post('/register', async (req, res) => {
         phone: cleanPhone,
         password: passwordHash,
         dateOfBirth: dob,
-        city: city.trim(),
+        city: city ? city.trim() : null,
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
-        role: 'USER',
+        role: role === 'BREAKUP_BUDDY' || role === 'MATCHMAKER' ? role : 'USER',
+        idType: idType ? String(idType).trim() : null,
+        idDocument: idDocument ? String(idDocument).trim() : null,
+        profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
         isVerified: true,
       },
       select: {
@@ -364,6 +373,17 @@ router.get('/me', authenticateToken, async (req, res) => {
         role: true,
         dateOfBirth: true,
         createdAt: true,
+        idType: true,
+        idDocument: true,
+        profilePhoto: true,
+        displayName: true,
+        shortBio: true,
+        languages: true,
+        areasOfExpertise: true,
+        sessionTypes: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
       },
     });
 
@@ -488,6 +508,43 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Error in reset-password:', error);
     return res.status(500).json({ success: false, message: 'Failed to reset password.' });
+  }
+});
+
+// 8. PUT /api/auth/profile
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const {
+      displayName,
+      shortBio,
+      languages,
+      areasOfExpertise,
+      sessionTypes,
+      availableDays,
+      availableTimeStart,
+      availableTimeEnd,
+      profilePhoto
+    } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: {
+        ...(displayName && { displayName }),
+        ...(shortBio && { shortBio }),
+        ...(languages && { languages }),
+        ...(areasOfExpertise && { areasOfExpertise }),
+        ...(sessionTypes && { sessionTypes }),
+        ...(availableDays && { availableDays }),
+        ...(availableTimeStart && { availableTimeStart }),
+        ...(availableTimeEnd && { availableTimeEnd }),
+        ...(profilePhoto && { profilePhoto })
+      },
+    });
+
+    return res.json({ success: true, message: 'Profile updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update profile.' });
   }
 });
 
