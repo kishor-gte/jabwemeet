@@ -202,7 +202,11 @@ export default function DashboardSidebar({
             <Link
               href="/relationship-manager"
               onClick={onCloseMobile}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition group"
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition group ${
+                activeSection === "relationship-manager"
+                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
             >
               <div className="flex items-center gap-3">
                 <HeartHandshake className="w-4 h-4 text-rose-400 group-hover:scale-110 transition" />
@@ -216,7 +220,11 @@ export default function DashboardSidebar({
             <Link
               href="/breakup-buddy"
               onClick={onCloseMobile}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition group"
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition group ${
+                activeSection === "breakup-buddy"
+                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
             >
               <div className="flex items-center gap-3">
                 <Headphones className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />

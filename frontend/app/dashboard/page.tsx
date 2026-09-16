@@ -54,6 +54,19 @@ function DashboardContent() {
     relationshipManager: boolean;
     breakupBuddy: boolean;
   }>({ relationshipManager: false, breakupBuddy: false });
+  const [assignedManager, setAssignedManager] = useState<{
+    id: string;
+    name: string;
+    city: string | null;
+    email: string;
+    phone: string;
+  } | null>(null);
+  const [latestMatchmakingRequest, setLatestMatchmakingRequest] = useState<{
+    id: string;
+    goal: string;
+    managerName: string | null;
+    status: "New" | "Approved" | "Rejected";
+  } | null>(null);
   const [reservationToast, setReservationToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -111,6 +124,25 @@ function DashboardContent() {
               setServiceRequests(JSON.parse(savedServices));
             } catch (e) {}
           }
+
+          // Load real-time matchmaking status from backend
+          try {
+            const rmRes = await fetch("/api/services/my-matchmaking-requests", {
+              credentials: "include",
+            });
+            if (rmRes.ok) {
+              const rmData = await rmRes.json();
+              if (rmData?.success) {
+                setAssignedManager(rmData.assignedManager || null);
+                setLatestMatchmakingRequest(rmData.latestRequest || null);
+                if (rmData.assignedManager || rmData.latestRequest?.status === "New") {
+                  setServiceRequests((prev) => ({ ...prev, relationshipManager: true }));
+                } else if (rmData.latestRequest?.status === "Rejected") {
+                  setServiceRequests((prev) => ({ ...prev, relationshipManager: false }));
+                }
+              }
+            }
+          } catch (e) {}
         } else {
           router.replace("/login");
           return;
@@ -429,6 +461,8 @@ function DashboardContent() {
                 userCity={user.city}
                 userIntent={user.relationshipIntent}
                 serviceRequests={serviceRequests}
+                assignedManager={assignedManager}
+                latestMatchmakingRequest={latestMatchmakingRequest}
                 onRequestService={handleRequestService}
               />
 
