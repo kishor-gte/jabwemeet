@@ -170,6 +170,7 @@ export default function HomePage() {
     phoneFeedback.startsWith("✓") &&
     isPwAllMet &&
     regPassword === regConfirmPassword &&
+
     regTerms &&
     regPrivacy;
 
@@ -209,11 +210,31 @@ export default function HomePage() {
     setRegLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
+      let reqBody: BodyInit;
+      let reqHeaders: HeadersInit = {};
+
+      if (regRole === "MATCHMAKER") {
+        const formData = new FormData();
+        formData.append("name", regName);
+        formData.append("email", regEmail);
+        formData.append("phone", regPhone);
+        formData.append("password", regPassword);
+        formData.append("confirmPassword", regConfirmPassword);
+        formData.append("role", regRole);
+
+        const gov = document.getElementById('govIdProof') as HTMLInputElement;
+        if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
+        const addr = document.getElementById('addressProof') as HTMLInputElement;
+        if (addr?.files?.[0]) formData.append("addressProof", addr.files[0]);
+        const edu = document.getElementById('eduCertificate') as HTMLInputElement;
+        if (edu?.files?.[0]) formData.append("eduCertificate", edu.files[0]);
+        const work = document.getElementById('workExperience') as HTMLInputElement;
+        if (work?.files?.[0]) formData.append("workExperience", work.files[0]);
+
+        reqBody = formData;
+      } else {
+        reqHeaders = { "Content-Type": "application/json" };
+        reqBody = JSON.stringify({
           name: regName,
           email: regEmail,
           phone: regPhone,
@@ -227,13 +248,25 @@ export default function HomePage() {
           idType: regRole === 'BREAKUP_BUDDY' ? regIdType : undefined,
           idDocument: regRole === 'BREAKUP_BUDDY' ? regIdDocument : undefined,
           profilePhoto: regRole === 'BREAKUP_BUDDY' ? regProfilePhoto : undefined,
-        }),
+        });
+      }
+
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: reqHeaders,
+        credentials: 'include',
+        body: reqBody,
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setRedirectTarget(data.redirectUrl || "/dashboard");
-        setRegSuccess(true);
+        if (data.pendingApproval) {
+          setRegSuccess(true);
+          setRedirectTarget("pending");
+        } else {
+          setRedirectTarget(data.redirectUrl || "/dashboard");
+          setRegSuccess(true);
+        }
       } else {
         setRegError(data.message || "Registration failed. Please check inputs.");
       }
@@ -905,19 +938,23 @@ export default function HomePage() {
             </button>
 
             {regSuccess ? (
-              <div className="text-center py-8">
-                <div className="text-5xl mb-4">🎉</div>
-                <h2 className="text-2xl font-bold font-serif text-white mb-2">Welcome to JabWeMeet! 🎉</h2>
-                <p className="text-sm text-slate-300 mb-6">Your account has been created successfully.</p>
-                <button
-                  onClick={() => {
-                    setShowRegisterModal(false);
-                    router.push(redirectTarget);
-                  }}
-                  className="w-full py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-semibold text-sm transition"
-                >
-                  LOGIN TO JABWEMEET
-                </button>
+              <div className="text-center py-8 space-y-4">
+                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
+                {redirectTarget === "pending" ? (
+                  <>
+                    <h3 className="text-xl font-bold text-white">Application Submitted!</h3>
+                    <p className="text-sm text-slate-400">Your Relationship Manager registration has been sent for admin verification. You will be notified once approved.</p>
+                    <button onClick={() => setShowRegisterModal(false)} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-semibold transition">Close</button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-xl font-bold text-white">Welcome to JabWeMeet!</h3>
+                    <p className="text-sm text-slate-400">Your account is ready. Redirecting to your dashboard...</p>
+                    <div className="pt-4 flex justify-center">
+                      <div className="w-6 h-6 border-2 border-[#e06d53] border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <>
@@ -1005,6 +1042,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
+<<<<<<< HEAD
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Confirm Password *</label>
                     <input
@@ -1016,13 +1054,13 @@ export default function HomePage() {
                       className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                     />
                     {confirmPwFeedback && (
-                      <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
+                      <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
                         {confirmPwFeedback}
                       </div>
                     )}
                   </div>
 
-                  {regRole !== 'BREAKUP_BUDDY' ? (
+                  {(regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER') ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -1035,7 +1073,7 @@ export default function HomePage() {
                             className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                           />
                           {dobFeedback && (
-                            <div className={`text-xs mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
+                            <div className={`text-xs mt-1 ${dobFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
                               {dobFeedback}
                             </div>
                           )}
@@ -1139,6 +1177,67 @@ export default function HomePage() {
                         </div>
                       </div>
                     </>
+=======
+                          <input type="date" required={regRole !== "MATCHMAKER"} value={regDob} onChange={e => setRegDob(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition" />
+                          {dobFeedback && <div className={`text-[10px] mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{dobFeedback}</div>}
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
+                          <input type="text" required={regRole !== "MATCHMAKER"} value={regCity} onChange={e => setRegCity(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition" placeholder="e.g. Bangalore" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
+                          <select value={regGender} onChange={e => setRegGender(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition appearance-none">
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
+                          <select value={regIntent} onChange={e => setRegIntent(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition appearance-none">
+                            <option value="Relationship">Relationship</option>
+                            <option value="Casual Dating">Casual Dating</option>
+                            <option value="Social Connections">Social Connections (Mixers/Travel)</option>
+                            <option value="Support">Breakup Support</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {regRole === "MATCHMAKER" && (
+                    <div className="space-y-4 pt-4 border-t border-white/10">
+                      <h4 className="text-sm font-semibold text-white">Document Verification</h4>
+                      <p className="text-xs text-slate-400 mb-4">Please upload the required documents for admin approval.</p>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Govt ID Proof *</label>
+                          <input type="file" id="govIdProof" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Address Proof *</label>
+                          <input type="file" id="addressProof" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Educational Certificate *</label>
+                          <input type="file" id="eduCertificate" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Work Experience Proof *</label>
+                          <input type="file" id="workExperience" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
+                        </div>
+                      </div>
+                    </div>
+>>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
                   )}
 
                   <div className="space-y-2 pt-2 text-xs text-slate-400">

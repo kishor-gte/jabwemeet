@@ -6,6 +6,8 @@ const path = require('path');
 
 const authRouter = require('./routes/auth');
 const eventsRouter = require('./routes/events');
+const adminRouter = require('./routes/admin');
+const matchmakerRouter = require('./routes/matchmaker');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -53,9 +55,15 @@ app.use((req, res, next) => {
 const publicDir = path.join(__dirname, '..', 'frontend', 'public');
 app.use(express.static(publicDir));
 
+// Serve uploaded documents
+const uploadsDir = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsDir));
+
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/matchmaker', matchmakerRouter);
 
 // Friendly redirect for Next.js frontend routes when accessed on backend port 5001
 app.get(
