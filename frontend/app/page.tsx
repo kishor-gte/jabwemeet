@@ -27,12 +27,33 @@ export default function HomePage() {
   const [regCity, setRegCity] = useState("");
   const [regGender, setRegGender] = useState("");
   const [regIntent, setRegIntent] = useState("Relationship");
+  
+  // Breakup Buddy extra state
+  const [regIdType, setRegIdType] = useState("");
+  const [regIdDocument, setRegIdDocument] = useState("");
+  const [regProfilePhoto, setRegProfilePhoto] = useState("");
+
+  // Matchmaker document upload state
+  const [mmGovId, setMmGovId] = useState("");
+  const [mmAddressProof, setMmAddressProof] = useState("");
+  const [mmEduCert, setMmEduCert] = useState("");
+  const [mmWorkExp, setMmWorkExp] = useState("");
+
   const [regTerms, setRegTerms] = useState(false);
   const [regPrivacy, setRegPrivacy] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState("");
   const [regSuccess, setRegSuccess] = useState(false);
   const [redirectTarget, setRedirectTarget] = useState("/dashboard");
+
+  const [activeJoinDropdownId, setActiveJoinDropdownId] = useState<string | null>(null);
+  const [regRole, setRegRole] = useState("USER");
+
+  const openRegisterModalWithRole = (role: string) => {
+    setRegRole(role);
+    setShowRegisterModal(true);
+    setActiveJoinDropdownId(null);
+  };
 
   // Real-time validation feedback
   const [emailFeedback, setEmailFeedback] = useState<{ msg: string; type: "valid" | "invalid" | "checking" | "" }>({ msg: "", type: "" });
@@ -149,16 +170,22 @@ export default function HomePage() {
     }
   }, [regDob]);
 
-  const isRegValid =
+  const isBaseRegValid =
     regName.trim().length >= 2 &&
     emailFeedback.type === "valid" &&
     phoneFeedback.startsWith("✓") &&
     isPwAllMet &&
     regPassword === regConfirmPassword &&
-    dobFeedback.startsWith("✓") &&
-    regCity.trim().length >= 2 &&
+
     regTerms &&
     regPrivacy;
+
+  const isRegValid =
+    regRole === 'BREAKUP_BUDDY'
+      ? (isBaseRegValid && regIdType && regIdDocument && regProfilePhoto)
+      : regRole === 'MATCHMAKER'
+      ? isBaseRegValid
+      : (isBaseRegValid && dobFeedback.startsWith("✓") && regCity.trim().length >= 2);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -192,27 +219,64 @@ export default function HomePage() {
     setRegLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
+      let reqBody: BodyInit;
+      let reqHeaders: HeadersInit = {};
+
+      if (regRole === "MATCHMAKER") {
+        const formData = new FormData();
+        formData.append("name", regName);
+        formData.append("email", regEmail);
+        formData.append("phone", regPhone);
+        formData.append("password", regPassword);
+        formData.append("confirmPassword", regConfirmPassword);
+        formData.append("role", regRole);
+        if (regCity.trim()) formData.append("city", regCity.trim());
+
+        const gov = document.getElementById('govIdProof') as HTMLInputElement;
+        if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
+        const addr = document.getElementById('addressProof') as HTMLInputElement;
+        if (addr?.files?.[0]) formData.append("addressProof", addr.files[0]);
+        const edu = document.getElementById('eduCertificate') as HTMLInputElement;
+        if (edu?.files?.[0]) formData.append("eduCertificate", edu.files[0]);
+        const work = document.getElementById('workExperience') as HTMLInputElement;
+        if (work?.files?.[0]) formData.append("workExperience", work.files[0]);
+
+        reqBody = formData;
+      } else {
+        reqHeaders = { "Content-Type": "application/json" };
+        reqBody = JSON.stringify({
           name: regName,
           email: regEmail,
           phone: regPhone,
           password: regPassword,
           confirmPassword: regConfirmPassword,
-          dateOfBirth: regDob,
-          city: regCity,
+          dateOfBirth: regRole === 'BREAKUP_BUDDY' ? undefined : regDob,
+          city: regRole === 'BREAKUP_BUDDY' ? undefined : regCity,
           gender: regGender,
           relationshipIntent: regIntent,
-        }),
+          role: regRole,
+          idType: regRole === 'BREAKUP_BUDDY' ? regIdType : undefined,
+          idDocument: regRole === 'BREAKUP_BUDDY' ? regIdDocument : undefined,
+          profilePhoto: regRole === 'BREAKUP_BUDDY' ? regProfilePhoto : undefined,
+        });
+      }
+
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: reqHeaders,
+        credentials: 'include',
+        body: reqBody,
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setRedirectTarget(data.redirectUrl || "/dashboard");
-        setRegSuccess(true);
+        if (data.pendingApproval) {
+          setRegSuccess(true);
+          setRedirectTarget("pending");
+        } else {
+          setRedirectTarget(data.redirectUrl || "/dashboard");
+          setRegSuccess(true);
+        }
       } else {
         setRegError(data.message || "Registration failed. Please check inputs.");
       }
@@ -278,12 +342,21 @@ export default function HomePage() {
                 >
                   LOGIN
                 </button>
-                <button
-                  onClick={() => setShowRegisterModal(true)}
-                  className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-lg shadow-[#e06d53]/30 transition"
-                >
-                  JOIN JABWEMEET
-                </button>
+                <div className="relative inline-block">
+                  <button
+                    onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'nav' ? null : 'nav')}
+                    className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-lg shadow-[#e06d53]/30 transition"
+                  >
+                    JOIN JABWEMEET
+                  </button>
+                  {activeJoinDropdownId === 'nav' && (
+                    <div className="absolute right-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
+                      <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                      <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
+                      <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -320,12 +393,21 @@ export default function HomePage() {
             >
               Explore Experiences
             </a>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
-            >
-              Join JabWeMeet
-            </button>
+            <div className="relative inline-block text-left">
+              <button
+                onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'hero' ? null : 'hero')}
+                className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
+              >
+                Join JabWeMeet
+              </button>
+              {activeJoinDropdownId === 'hero' && (
+                <div className="absolute left-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
+                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
+                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                </div>
+              )}
+            </div>
           </div>
 
           <p className="text-sm text-slate-400 pt-2">
@@ -697,12 +779,21 @@ export default function HomePage() {
             Don't spend another night endlessly scrolling. Come meet people in the real world.
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
-            >
-              Join JabWeMeet
-            </button>
+            <div className="relative inline-block text-left">
+              <button
+                onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'cta' ? null : 'cta')}
+                className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
+              >
+                Join JabWeMeet
+              </button>
+              {activeJoinDropdownId === 'cta' && (
+                <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
+                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
+                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setShowLoginModal(true)}
               className="px-8 py-3.5 rounded-full text-base font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition"
@@ -857,25 +948,71 @@ export default function HomePage() {
             </button>
 
             {regSuccess ? (
-              <div className="text-center py-8">
-                <div className="text-5xl mb-4">🎉</div>
-                <h2 className="text-2xl font-bold font-serif text-white mb-2">Welcome to JabWeMeet! 🎉</h2>
-                <p className="text-sm text-slate-300 mb-6">Your account has been created successfully.</p>
-                <button
-                  onClick={() => {
-                    setShowRegisterModal(false);
-                    router.push(redirectTarget);
-                  }}
-                  className="w-full py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-semibold text-sm transition"
-                >
-                  LOGIN TO JABWEMEET
-                </button>
+              <div className="text-center py-8 space-y-4">
+                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
+                {redirectTarget === "pending" ? (
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-white">Application Submitted!</h3>
+                    <p className="text-sm text-slate-300">
+                      Your Relationship Manager application has been submitted for admin verification.
+                    </p>
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl text-amber-300 text-xs text-left leading-relaxed">
+                      <strong>Admin Portal:</strong> You can review and approve this Relationship Manager account at{" "}
+                      <Link href="/admin" className="underline font-bold text-amber-200">
+                        /admin
+                      </Link>. Once approved, you can log in directly at{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRegisterModal(false);
+                          setShowLoginModal(true);
+                        }}
+                        className="underline font-bold text-amber-200"
+                      >
+                        Login
+                      </button>.
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center pt-2">
+                      <Link
+                        href="/admin"
+                        onClick={() => setShowRegisterModal(false)}
+                        className="px-5 py-2.5 bg-[#e06d53] hover:bg-[#c95940] text-white rounded-full text-xs font-bold transition shadow-lg"
+                      >
+                        Open Admin Portal
+                      </Link>
+                      <button
+                        onClick={() => setShowRegisterModal(false)}
+                        className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-semibold transition"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-xl font-bold text-white">Welcome to JabWeMeet!</h3>
+                    <p className="text-sm text-slate-400">Your account is ready. Redirecting to your dashboard...</p>
+                    <div className="pt-4 flex justify-center">
+                      <div className="w-6 h-6 border-2 border-[#e06d53] border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <>
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold font-serif text-white">Join JabWeMeet</h2>
                   <p className="text-xs text-slate-400 mt-1">Real People. Real Places. Real Connections.</p>
+                  {regRole === "MATCHMAKER" && (
+                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">
+                      <span>Registering as: Relationship Manager</span>
+                    </div>
+                  )}
+                  {regRole === "BREAKUP_BUDDY" && (
+                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-xs font-semibold">
+                      <span>Registering as: Breakup Buddy</span>
+                    </div>
+                  )}
                 </div>
 
                 {regError && (
@@ -968,71 +1105,216 @@ export default function HomePage() {
                       className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                     />
                     {confirmPwFeedback && (
-                      <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
+                      <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
                         {confirmPwFeedback}
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth *</label>
-                      <input
-                        type="date"
-                        required
-                        value={regDob}
-                        onChange={(e) => setRegDob(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      />
-                      {dobFeedback && (
-                        <div className={`text-xs mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
-                          {dobFeedback}
+                  {regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER' && (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth *</label>
+                          <input
+                            type="date"
+                            required
+                            value={regDob}
+                            onChange={(e) => setRegDob(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          />
+                          {dobFeedback && (
+                            <div className={`text-xs mt-1 ${dobFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
+                              {dobFeedback}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
-                      <input
-                        type="text"
-                        required
-                        value={regCity}
-                        onChange={(e) => setRegCity(e.target.value)}
-                        placeholder="e.g. Bangalore"
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      />
-                    </div>
-                  </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
+                          <input
+                            type="text"
+                            required
+                            value={regCity}
+                            onChange={(e) => setRegCity(e.target.value)}
+                            placeholder="e.g. Bangalore"
+                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
-                      <select
-                        value={regGender}
-                        onChange={(e) => setRegGender(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      >
-                        <option value="">Select gender</option>
-                        <option value="Female">Female</option>
-                        <option value="Male">Male</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
+                          <select
+                            value={regGender}
+                            onChange={(e) => setRegGender(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          >
+                            <option value="">Select gender</option>
+                            <option value="Female">Female</option>
+                            <option value="Male">Male</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
-                      <select
-                        value={regIntent}
-                        onChange={(e) => setRegIntent(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      >
-                        <option value="Relationship">Relationship</option>
-                        <option value="Marriage">Marriage</option>
-                        <option value="Friendship">Friendship</option>
-                        <option value="Social Connections">Social Connections</option>
-                      </select>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
+                          <select
+                            value={regIntent}
+                            onChange={(e) => setRegIntent(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                          >
+                            <option value="Relationship">Relationship</option>
+                            <option value="Marriage">Marriage</option>
+                            <option value="Friendship">Friendship</option>
+                            <option value="Social Connections">Social Connections</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {regRole === 'BREAKUP_BUDDY' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">ID Type *</label>
+                        <select
+                          required
+                          value={regIdType}
+                          onChange={(e) => setRegIdType(e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                        >
+                          <option value="">Select ▼</option>
+                          <option value="Aadhaar">Aadhaar</option>
+                          <option value="PAN">PAN</option>
+                          <option value="Passport">Passport</option>
+                          <option value="Driving License">Driving License</option>
+                        </select>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">ID Document *</label>
+                          <div className="relative">
+                            <input
+                              type="file"
+                              required
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  setRegIdDocument(e.target.files[0].name);
+                                }
+                              }}
+                              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
+                            />
+                            {regIdDocument && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓</span>}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Profile Photo *</label>
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              required
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  setRegProfilePhoto(e.target.files[0].name);
+                                }
+                              }}
+                              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
+                            />
+                            {regProfilePhoto && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓ Uploaded</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {regRole === "MATCHMAKER" && (
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Operating City <span className="text-slate-400 font-normal">(Optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={regCity}
+                          onChange={(e) => setRegCity(e.target.value)}
+                          placeholder="e.g. Bangalore, Mumbai, Delhi"
+                          className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                        />
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t border-white/10">
+                        <div>
+                          <h4 className="text-sm font-semibold text-white">Document Verification</h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Upload verification documents for admin review. You can also upload or update these after account approval.
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Govt ID Proof</span>
+                              {mmGovId && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="govIdProof"
+                              onChange={(e) => setMmGovId(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Address Proof</span>
+                              {mmAddressProof && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="addressProof"
+                              onChange={(e) => setMmAddressProof(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Educational Certificate</span>
+                              {mmEduCert && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="eduCertificate"
+                              onChange={(e) => setMmEduCert(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Work Experience Proof</span>
+                              {mmWorkExp && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="workExperience"
+                              onChange={(e) => setMmWorkExp(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="space-y-2 pt-2 text-xs text-slate-400">
                     <label className="flex items-center gap-2 cursor-pointer">
