@@ -3,10 +3,30 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
 const prisma = require('../db');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
+
+const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Rate limiting for login (5 failed attempts per 15 minutes)
 const loginLimiter = rateLimit({
@@ -92,7 +112,12 @@ router.get('/check-email', async (req, res) => {
 });
 
 // 2. POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', upload.fields([
+  { name: 'govIdProof', maxCount: 1 },
+  { name: 'addressProof', maxCount: 1 },
+  { name: 'eduCertificate', maxCount: 1 },
+  { name: 'workExperience', maxCount: 1 }
+]), async (req, res) => {
   try {
     const {
       name,
@@ -104,6 +129,10 @@ router.post('/register', async (req, res) => {
       city,
       gender,
       relationshipIntent,
+      role,
+      idType,
+      idDocument,
+      profilePhoto,
     } = req.body;
 
     // Full name validation
@@ -150,25 +179,46 @@ router.post('/register', async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
+    // Date of birth & Age validation (18+) - optional for Breakup Buddy
+    let dob = null;
+    if (dateOfBirth) {
+=======
     // Date of birth & Age validation (18+)
-    if (!dateOfBirth) {
+    let dob = new Date('2000-01-01'); // Default for MATCHMAKER
+    if (role !== 'MATCHMAKER' || dateOfBirth) {
+      if (!dateOfBirth) {
+        return res.status(400).json({ success: false, message: 'Date of birth is required.' });
+      }
+>>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
+      dob = new Date(dateOfBirth);
+      if (isNaN(dob.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid date of birth.' });
+      }
+      if (dob > new Date()) {
+        return res.status(400).json({ success: false, message: 'Date of birth cannot be in the future.' });
+      }
+      const age = calculateAge(dob);
+      if (age < 18) {
+        return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
+      }
+<<<<<<< HEAD
+    } else if (role !== 'BREAKUP_BUDDY') {
       return res.status(400).json({ success: false, message: 'Date of birth is required.' });
     }
-    const dob = new Date(dateOfBirth);
-    if (isNaN(dob.getTime())) {
-      return res.status(400).json({ success: false, message: 'Invalid date of birth.' });
-    }
-    if (dob > new Date()) {
-      return res.status(400).json({ success: false, message: 'Date of birth cannot be in the future.' });
-    }
-    const age = calculateAge(dob);
-    if (age < 18) {
-      return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
+
+    // City validation - optional for Breakup Buddy
+    if (role !== 'BREAKUP_BUDDY' && (!city || typeof city !== 'string' || city.trim().length < 2)) {
+=======
     }
 
     // City validation
-    if (!city || typeof city !== 'string' || city.trim().length < 2) {
+    let validCity = city;
+    if (role !== 'MATCHMAKER' && (!city || typeof city !== 'string' || city.trim().length < 2)) {
+>>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
       return res.status(400).json({ success: false, message: 'City is required.' });
+    } else if (role === 'MATCHMAKER' && !city) {
+      validCity = 'N/A';
     }
 
     // Duplicate email check
@@ -199,6 +249,12 @@ router.post('/register', async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    // Extract uploaded files if any
+    const govIdProof = req.files?.govIdProof ? req.files.govIdProof[0].filename : null;
+    const addressProof = req.files?.addressProof ? req.files.addressProof[0].filename : null;
+    const eduCertificate = req.files?.eduCertificate ? req.files.eduCertificate[0].filename : null;
+    const workExperience = req.files?.workExperience ? req.files.workExperience[0].filename : null;
+
     // Create user in PostgreSQL database
     const newUser = await prisma.user.create({
       data: {
@@ -207,11 +263,27 @@ router.post('/register', async (req, res) => {
         phone: cleanPhone,
         password: passwordHash,
         dateOfBirth: dob,
-        city: city.trim(),
+<<<<<<< HEAD
+        city: city ? city.trim() : null,
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
-        role: 'USER',
+        role: role === 'BREAKUP_BUDDY' || role === 'MATCHMAKER' ? role : 'USER',
+        idType: idType ? String(idType).trim() : null,
+        idDocument: idDocument ? String(idDocument).trim() : null,
+        profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
         isVerified: true,
+=======
+        city: validCity.trim(),
+        gender: gender ? String(gender).trim() : null,
+        relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
+        role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' ? role : 'USER',
+        isVerified: role !== 'MATCHMAKER',
+        isApproved: false,
+        govIdProof,
+        addressProof,
+        eduCertificate,
+        workExperience,
+>>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
       },
       select: {
         id: true,
@@ -225,6 +297,17 @@ router.post('/register', async (req, res) => {
         createdAt: true,
       },
     });
+
+    // Automatically create a Matchmaking Request for standard users
+    if (newUser.role === 'USER') {
+      await prisma.matchmakingRequest.create({
+        data: {
+          clientId: newUser.id,
+          lookingFor: newUser.relationshipIntent || 'Partner',
+          status: 'New',
+        }
+      });
+    }
 
     // Create JWT token
     const token = jwt.sign(
@@ -241,6 +324,14 @@ router.post('/register', async (req, res) => {
     res.cookie('token', token, getCookieOptions());
 
     const redirectUrl = getRoleRedirect(newUser.role);
+
+    if (newUser.role === 'MATCHMAKER') {
+      return res.status(201).json({
+        success: true,
+        message: 'Registration successful! Your application has been sent for admin verification.',
+        pendingApproval: true,
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -307,6 +398,13 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    if (user.role === 'MATCHMAKER' && !user.isApproved) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending admin approval. You will be notified once approved.',
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -364,6 +462,17 @@ router.get('/me', authenticateToken, async (req, res) => {
         role: true,
         dateOfBirth: true,
         createdAt: true,
+        idType: true,
+        idDocument: true,
+        profilePhoto: true,
+        displayName: true,
+        shortBio: true,
+        languages: true,
+        areasOfExpertise: true,
+        sessionTypes: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
       },
     });
 
@@ -534,6 +643,43 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Error in reset-password:', error);
     return res.status(500).json({ success: false, message: 'Failed to reset password.' });
+  }
+});
+
+// 8. PUT /api/auth/profile
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const {
+      displayName,
+      shortBio,
+      languages,
+      areasOfExpertise,
+      sessionTypes,
+      availableDays,
+      availableTimeStart,
+      availableTimeEnd,
+      profilePhoto
+    } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: {
+        ...(displayName && { displayName }),
+        ...(shortBio && { shortBio }),
+        ...(languages && { languages }),
+        ...(areasOfExpertise && { areasOfExpertise }),
+        ...(sessionTypes && { sessionTypes }),
+        ...(availableDays && { availableDays }),
+        ...(availableTimeStart && { availableTimeStart }),
+        ...(availableTimeEnd && { availableTimeEnd }),
+        ...(profilePhoto && { profilePhoto })
+      },
+    });
+
+    return res.json({ success: true, message: 'Profile updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update profile.' });
   }
 });
 
