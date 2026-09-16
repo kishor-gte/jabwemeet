@@ -253,8 +253,8 @@ router.post('/register', upload.fields([
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
         role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' ? role : 'USER',
-        isVerified: role !== 'MATCHMAKER',
-        isApproved: role === 'MATCHMAKER' ? false : true,
+        isVerified: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY'),
+        isApproved: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY'),
         idType: idType ? String(idType).trim() : null,
         idDocument: idDocument ? String(idDocument).trim() : null,
         profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
@@ -303,7 +303,7 @@ router.post('/register', upload.fields([
 
     const redirectUrl = getRoleRedirect(newUser.role);
 
-    if (newUser.role === 'MATCHMAKER') {
+    if (newUser.role === 'MATCHMAKER' || newUser.role === 'BREAKUP_BUDDY') {
       return res.status(201).json({
         success: true,
         message: 'Registration successful! Your application has been sent for admin verification.',
@@ -376,7 +376,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    if (user.role === 'MATCHMAKER' && !user.isApproved) {
+    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY') && !user.isApproved) {
       return res.status(403).json({
         success: false,
         message: 'Your account is pending admin approval. You will be notified once approved.',

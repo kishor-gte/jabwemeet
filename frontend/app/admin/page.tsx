@@ -54,7 +54,7 @@ export default function AdminDashboardPage() {
   }
 
   async function approveUser(id: string) {
-    if (!confirm("Are you sure you want to approve this Relationship Manager?")) return;
+    if (!confirm("Are you sure you want to approve this application?")) return;
     
     try {
       const res = await fetch(`/api/admin/approve/${id}`, {
@@ -153,7 +153,9 @@ export default function AdminDashboardPage() {
                   <div>
                     <h3 className="text-lg font-bold text-white">{p.name}</h3>
                     <p className="text-sm text-slate-400 mb-1">{p.email} • {p.phone}</p>
-                    <p className="text-xs text-amber-400">Role: Relationship Manager</p>
+                    <p className="text-xs text-amber-400">
+                      Role: {p.role === 'BREAKUP_BUDDY' ? 'Breakup Buddy' : 'Relationship Manager'}
+                    </p>
                     
                     <div className="mt-4 flex flex-wrap gap-3">
                       {p.govIdProof && (
@@ -174,6 +176,16 @@ export default function AdminDashboardPage() {
                       {p.workExperience && (
                         <a href={`/uploads/${p.workExperience}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
                           📄 Work Experience
+                        </a>
+                      )}
+                      {p.idDocument && (
+                        <a href={`/uploads/${p.idDocument}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+                          📄 ID Document ({p.idType || 'Document'})
+                        </a>
+                      )}
+                      {p.profilePhoto && (
+                        <a href={`/uploads/${p.profilePhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+                          🖼️ Profile Photo
                         </a>
                       )}
                     </div>
