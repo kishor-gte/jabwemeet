@@ -27,7 +27,7 @@ export default function HomePage() {
   const [regCity, setRegCity] = useState("");
   const [regGender, setRegGender] = useState("");
   const [regIntent, setRegIntent] = useState("Relationship");
-  
+
   // Breakup Buddy extra state
   const [regIdType, setRegIdType] = useState("");
   const [regIdDocument, setRegIdDocument] = useState("");
@@ -40,7 +40,9 @@ export default function HomePage() {
   const [regSuccess, setRegSuccess] = useState(false);
   const [redirectTarget, setRedirectTarget] = useState("/dashboard");
 
-  const [activeJoinDropdownId, setActiveJoinDropdownId] = useState<string | null>(null);
+  const [activeJoinDropdownId, setActiveJoinDropdownId] = useState<
+    string | null
+  >(null);
   const [regRole, setRegRole] = useState("USER");
 
   const openRegisterModalWithRole = (role: string) => {
@@ -50,7 +52,10 @@ export default function HomePage() {
   };
 
   // Real-time validation feedback
-  const [emailFeedback, setEmailFeedback] = useState<{ msg: string; type: "valid" | "invalid" | "checking" | "" }>({ msg: "", type: "" });
+  const [emailFeedback, setEmailFeedback] = useState<{
+    msg: string;
+    type: "valid" | "invalid" | "checking" | "";
+  }>({ msg: "", type: "" });
   const [nameFeedback, setNameFeedback] = useState("");
   const [phoneFeedback, setPhoneFeedback] = useState("");
   const [pwFeedback, setPwFeedback] = useState("");
@@ -77,19 +82,27 @@ export default function HomePage() {
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(regEmail.trim())) {
-      setEmailFeedback({ msg: "Please enter a valid email address.", type: "invalid" });
+      setEmailFeedback({
+        msg: "Please enter a valid email address.",
+        type: "invalid",
+      });
       return;
     }
 
     setEmailFeedback({ msg: "Checking email...", type: "checking" });
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/check-email?email=${encodeURIComponent(regEmail.trim())}`);
+        const res = await fetch(
+          `/api/auth/check-email?email=${encodeURIComponent(regEmail.trim())}`,
+        );
         const data = await res.json();
         if (data.available) {
           setEmailFeedback({ msg: "✓ Email is available", type: "valid" });
         } else {
-          setEmailFeedback({ msg: `✕ ${data.message || "This email is already registered."}`, type: "invalid" });
+          setEmailFeedback({
+            msg: `✕ ${data.message || "This email is already registered."}`,
+            type: "invalid",
+          });
         }
       } catch (e) {
         setEmailFeedback({ msg: "✓ Valid email", type: "valid" });
@@ -156,7 +169,9 @@ export default function HomePage() {
       setDobFeedback("✕ Invalid date of birth.");
       return;
     }
-    const age = Math.floor((now.getTime() - bDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const age = Math.floor(
+      (now.getTime() - bDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+    );
     if (age < 18) {
       setDobFeedback("✕ Must be at least 18 years old.");
     } else {
@@ -170,13 +185,15 @@ export default function HomePage() {
     phoneFeedback.startsWith("✓") &&
     isPwAllMet &&
     regPassword === regConfirmPassword &&
-
     regTerms &&
     regPrivacy;
 
-  const isRegValid = regRole === 'BREAKUP_BUDDY' 
-    ? (isBaseRegValid && regIdType && regIdDocument && regProfilePhoto)
-    : (isBaseRegValid && dobFeedback.startsWith("✓") && regCity.trim().length >= 2);
+  const isRegValid =
+    regRole === "BREAKUP_BUDDY"
+      ? isBaseRegValid && regIdType && regIdDocument && regProfilePhoto
+      : isBaseRegValid &&
+        dobFeedback.startsWith("✓") &&
+        regCity.trim().length >= 2;
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -188,7 +205,10 @@ export default function HomePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ identifier: loginIdentifier, password: loginPassword }),
+        body: JSON.stringify({
+          identifier: loginIdentifier,
+          password: loginPassword,
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -198,7 +218,9 @@ export default function HomePage() {
         setLoginError(data.message || "Email/mobile or password is incorrect.");
       }
     } catch (e) {
-      setLoginError("We couldn't connect to JabWeMeet right now. Please try again.");
+      setLoginError(
+        "We couldn't connect to JabWeMeet right now. Please try again.",
+      );
     } finally {
       setLoginLoading(false);
     }
@@ -222,13 +244,19 @@ export default function HomePage() {
         formData.append("confirmPassword", regConfirmPassword);
         formData.append("role", regRole);
 
-        const gov = document.getElementById('govIdProof') as HTMLInputElement;
+        const gov = document.getElementById("govIdProof") as HTMLInputElement;
         if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
-        const addr = document.getElementById('addressProof') as HTMLInputElement;
+        const addr = document.getElementById(
+          "addressProof",
+        ) as HTMLInputElement;
         if (addr?.files?.[0]) formData.append("addressProof", addr.files[0]);
-        const edu = document.getElementById('eduCertificate') as HTMLInputElement;
+        const edu = document.getElementById(
+          "eduCertificate",
+        ) as HTMLInputElement;
         if (edu?.files?.[0]) formData.append("eduCertificate", edu.files[0]);
-        const work = document.getElementById('workExperience') as HTMLInputElement;
+        const work = document.getElementById(
+          "workExperience",
+        ) as HTMLInputElement;
         if (work?.files?.[0]) formData.append("workExperience", work.files[0]);
 
         reqBody = formData;
@@ -240,21 +268,22 @@ export default function HomePage() {
           phone: regPhone,
           password: regPassword,
           confirmPassword: regConfirmPassword,
-          dateOfBirth: regRole === 'BREAKUP_BUDDY' ? undefined : regDob,
-          city: regRole === 'BREAKUP_BUDDY' ? undefined : regCity,
+          dateOfBirth: regRole === "BREAKUP_BUDDY" ? undefined : regDob,
+          city: regRole === "BREAKUP_BUDDY" ? undefined : regCity,
           gender: regGender,
           relationshipIntent: regIntent,
           role: regRole,
-          idType: regRole === 'BREAKUP_BUDDY' ? regIdType : undefined,
-          idDocument: regRole === 'BREAKUP_BUDDY' ? regIdDocument : undefined,
-          profilePhoto: regRole === 'BREAKUP_BUDDY' ? regProfilePhoto : undefined,
+          idType: regRole === "BREAKUP_BUDDY" ? regIdType : undefined,
+          idDocument: regRole === "BREAKUP_BUDDY" ? regIdDocument : undefined,
+          profilePhoto:
+            regRole === "BREAKUP_BUDDY" ? regProfilePhoto : undefined,
         });
       }
 
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
         headers: reqHeaders,
-        credentials: 'include',
+        credentials: "include",
         body: reqBody,
       });
 
@@ -268,10 +297,14 @@ export default function HomePage() {
           setRegSuccess(true);
         }
       } else {
-        setRegError(data.message || "Registration failed. Please check inputs.");
+        setRegError(
+          data.message || "Registration failed. Please check inputs.",
+        );
       }
     } catch (e) {
-      setRegError("We couldn't connect to JabWeMeet right now. Please try again.");
+      setRegError(
+        "We couldn't connect to JabWeMeet right now. Please try again.",
+      );
     } finally {
       setRegLoading(false);
     }
@@ -298,11 +331,21 @@ export default function HomePage() {
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#events" className="hover:text-white transition">Events</a>
-            <a href="#experiences" className="hover:text-white transition">Experiences</a>
-            <a href="#how-it-works" className="hover:text-white transition">How It Works</a>
-            <a href="#safety" className="hover:text-white transition">Safety</a>
-            <a href="#about" className="hover:text-white transition">About</a>
+            <a href="#events" className="hover:text-white transition">
+              Events
+            </a>
+            <a href="#experiences" className="hover:text-white transition">
+              Experiences
+            </a>
+            <a href="#how-it-works" className="hover:text-white transition">
+              How It Works
+            </a>
+            <a href="#safety" className="hover:text-white transition">
+              Safety
+            </a>
+            <a href="#about" className="hover:text-white transition">
+              About
+            </a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -334,16 +377,37 @@ export default function HomePage() {
                 </button>
                 <div className="relative inline-block">
                   <button
-                    onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'nav' ? null : 'nav')}
+                    onClick={() =>
+                      setActiveJoinDropdownId(
+                        activeJoinDropdownId === "nav" ? null : "nav",
+                      )
+                    }
                     className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-lg shadow-[#e06d53]/30 transition"
                   >
                     JOIN JABWEMEET
                   </button>
-                  {activeJoinDropdownId === 'nav' && (
+                  {activeJoinDropdownId === "nav" && (
                     <div className="absolute right-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
-                      <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
-                      <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
-                      <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                      <button
+                        onClick={() => openRegisterModalWithRole("USER")}
+                        className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                      >
+                        User
+                      </button>
+                      <button
+                        onClick={() => openRegisterModalWithRole("MATCHMAKER")}
+                        className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                      >
+                        Relationship Manager
+                      </button>
+                      <button
+                        onClick={() =>
+                          openRegisterModalWithRole("BREAKUP_BUDDY")
+                        }
+                        className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                      >
+                        Breakup Buddy
+                      </button>
                     </div>
                   )}
                 </div>
@@ -361,7 +425,8 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight font-serif">
-            Not another dating app.<br />
+            Not another dating app.
+            <br />
             <span className="bg-gradient-to-r from-white via-slate-200 to-[#e06d53] bg-clip-text text-transparent">
               A reason to meet.
             </span>
@@ -372,8 +437,9 @@ export default function HomePage() {
           </p>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
-            Tired of endless swiping and conversations that never become real meetings?
-            JabWeMeet creates opportunities to meet people offline through curated events, experiences and genuine human connections.
+            Tired of endless swiping and conversations that never become real
+            meetings? JabWeMeet creates opportunities to meet people offline
+            through curated events, experiences and genuine human connections.
           </p>
 
           <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
@@ -385,16 +451,35 @@ export default function HomePage() {
             </a>
             <div className="relative inline-block text-left">
               <button
-                onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'hero' ? null : 'hero')}
+                onClick={() =>
+                  setActiveJoinDropdownId(
+                    activeJoinDropdownId === "hero" ? null : "hero",
+                  )
+                }
                 className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
               >
                 Join JabWeMeet
               </button>
-              {activeJoinDropdownId === 'hero' && (
+              {activeJoinDropdownId === "hero" && (
                 <div className="absolute left-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
-                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
-                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
-                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                  <button
+                    onClick={() => openRegisterModalWithRole("USER")}
+                    className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    User
+                  </button>
+                  <button
+                    onClick={() => openRegisterModalWithRole("MATCHMAKER")}
+                    className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    Relationship Manager
+                  </button>
+                  <button
+                    onClick={() => openRegisterModalWithRole("BREAKUP_BUDDY")}
+                    className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    Breakup Buddy
+                  </button>
                 </div>
               )}
             </div>
@@ -413,20 +498,36 @@ export default function HomePage() {
           {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-16 max-w-4xl mx-auto">
             <div className="p-6 rounded-2xl bg-[#131d2e]/80 border border-white/10 backdrop-blur-sm">
-              <div className="text-3xl font-extrabold text-white mb-1">10,000+</div>
-              <div className="text-xs text-slate-400 font-medium">Verified Members</div>
+              <div className="text-3xl font-extrabold text-white mb-1">
+                10,000+
+              </div>
+              <div className="text-xs text-slate-400 font-medium">
+                Verified Members
+              </div>
             </div>
             <div className="p-6 rounded-2xl bg-[#131d2e]/80 border border-white/10 backdrop-blur-sm">
-              <div className="text-3xl font-extrabold text-white mb-1">250+</div>
-              <div className="text-xs text-slate-400 font-medium">Curated Events</div>
+              <div className="text-3xl font-extrabold text-white mb-1">
+                250+
+              </div>
+              <div className="text-xs text-slate-400 font-medium">
+                Curated Events
+              </div>
             </div>
             <div className="p-6 rounded-2xl bg-[#131d2e]/80 border border-white/10 backdrop-blur-sm">
-              <div className="text-3xl font-extrabold text-white mb-1">100%</div>
-              <div className="text-xs text-slate-400 font-medium">Offline First</div>
+              <div className="text-3xl font-extrabold text-white mb-1">
+                100%
+              </div>
+              <div className="text-xs text-slate-400 font-medium">
+                Offline First
+              </div>
             </div>
             <div className="p-6 rounded-2xl bg-[#131d2e]/80 border border-white/10 backdrop-blur-sm">
-              <div className="text-3xl font-extrabold text-white mb-1">4.9 ★</div>
-              <div className="text-xs text-slate-400 font-medium">Community Trust</div>
+              <div className="text-3xl font-extrabold text-white mb-1">
+                4.9 ★
+              </div>
+              <div className="text-xs text-slate-400 font-medium">
+                Community Trust
+              </div>
             </div>
           </div>
         </div>
@@ -443,30 +544,46 @@ export default function HomePage() {
               Tired of endless chatting?
             </h2>
             <p className="text-slate-400 max-w-xl mx-auto mt-3">
-              Modern dating algorithms keep you swiping endlessly on screens rather than meeting in real life.
+              Modern dating algorithms keep you swiping endlessly on screens
+              rather than meeting in real life.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
             <div className="p-8 rounded-2xl bg-[#131d2e] border border-white/10 hover:border-[#e06d53]/40 transition">
               <div className="text-3xl mb-4">🔄</div>
-              <h3 className="text-lg font-bold text-white mb-2">Endless Swiping</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">Keep swiping, but never actually meet face to face.</p>
+              <h3 className="text-lg font-bold text-white mb-2">
+                Endless Swiping
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Keep swiping, but never actually meet face to face.
+              </p>
             </div>
             <div className="p-8 rounded-2xl bg-[#131d2e] border border-white/10 hover:border-[#e06d53]/40 transition">
               <div className="text-3xl mb-4">👻</div>
               <h3 className="text-lg font-bold text-white mb-2">Ghosting</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">Conversations disappear without warning or explanation.</p>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Conversations disappear without warning or explanation.
+              </p>
             </div>
             <div className="p-8 rounded-2xl bg-[#131d2e] border border-white/10 hover:border-[#e06d53]/40 transition">
               <div className="text-3xl mb-4">🎭</div>
-              <h3 className="text-lg font-bold text-white mb-2">Digital Deception</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">Online profiles don't always represent real people or true chemistry.</p>
+              <h3 className="text-lg font-bold text-white mb-2">
+                Digital Deception
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Online profiles don't always represent real people or true
+                chemistry.
+              </p>
             </div>
             <div className="p-8 rounded-2xl bg-[#131d2e] border border-white/10 hover:border-[#e06d53]/40 transition">
               <div className="text-3xl mb-4">⏳</div>
-              <h3 className="text-lg font-bold text-white mb-2">Conversations That Go Nowhere</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">Hours of texting that fizzle out before a date happens.</p>
+              <h3 className="text-lg font-bold text-white mb-2">
+                Conversations That Go Nowhere
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Hours of texting that fizzle out before a date happens.
+              </p>
             </div>
           </div>
 
@@ -492,30 +609,40 @@ export default function HomePage() {
               A place to meet people in the real world.
             </h2>
             <p className="text-slate-600 max-w-2xl mx-auto mt-3">
-              JabWeMeet is a real-world connection platform designed around shared experiences instead of endless online chatting.
+              JabWeMeet is a real-world connection platform designed around
+              shared experiences instead of endless online chatting.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif text-[#e06d53] font-bold mb-4">01</div>
+              <div className="text-3xl font-serif text-[#e06d53] font-bold mb-4">
+                01
+              </div>
               <h3 className="text-xl font-bold mb-2">REAL PEOPLE</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                A community built around genuine members who are verified and genuinely looking to connect offline.
+                A community built around genuine members who are verified and
+                genuinely looking to connect offline.
               </p>
             </div>
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif text-[#e06d53] font-bold mb-4">02</div>
+              <div className="text-3xl font-serif text-[#e06d53] font-bold mb-4">
+                02
+              </div>
               <h3 className="text-xl font-bold mb-2">REAL PLACES</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                Curated physical events hosted at premier cafes, rooftop restaurants, dance studios, and nature retreats.
+                Curated physical events hosted at premier cafes, rooftop
+                restaurants, dance studios, and nature retreats.
               </p>
             </div>
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif text-[#e06d53] font-bold mb-4">03</div>
+              <div className="text-3xl font-serif text-[#e06d53] font-bold mb-4">
+                03
+              </div>
               <h3 className="text-xl font-bold mb-2">REAL CONNECTIONS</h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                Face-to-face conversations where physical presence, genuine laughs, and natural chemistry lead the way.
+                Face-to-face conversations where physical presence, genuine
+                laughs, and natural chemistry lead the way.
               </p>
             </div>
           </div>
@@ -544,8 +671,13 @@ export default function HomePage() {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Singles Events</h3>
-                  <p className="text-sm text-slate-400 mb-6">Meet people through curated social mixers, board games, and relaxed gatherings.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Singles Events
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Meet people through curated social mixers, board games, and
+                    relaxed gatherings.
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowRegisterModal(true)}
@@ -562,8 +694,13 @@ export default function HomePage() {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Speed Dating</h3>
-                  <p className="text-sm text-slate-400 mb-6">Short conversations. Real chemistry without endless texting or awkward delays.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Speed Dating
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Short conversations. Real chemistry without endless texting
+                    or awkward delays.
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowRegisterModal(true)}
@@ -580,8 +717,13 @@ export default function HomePage() {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Blind Dates</h3>
-                  <p className="text-sm text-slate-400 mb-6">Let our matchmaking team hand-pick and introduce you at a cozy public bistro.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Blind Dates
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Let our matchmaking team hand-pick and introduce you at a
+                    cozy public bistro.
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowRegisterModal(true)}
@@ -598,8 +740,13 @@ export default function HomePage() {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Dance Dates</h3>
-                  <p className="text-sm text-slate-400 mb-6">Meet through music, movement and fun. Salsa & Bachata socials with beginner lessons.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Dance Dates
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Meet through music, movement and fun. Salsa & Bachata
+                    socials with beginner lessons.
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowRegisterModal(true)}
@@ -616,8 +763,13 @@ export default function HomePage() {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Singles Travel</h3>
-                  <p className="text-sm text-slate-400 mb-6">Travel with adventurous singles and create unforgettable shared memories.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Singles Travel
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Travel with adventurous singles and create unforgettable
+                    shared memories.
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowRegisterModal(true)}
@@ -634,8 +786,13 @@ export default function HomePage() {
               </div>
               <div className="p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Breakup Community</h3>
-                  <p className="text-sm text-slate-400 mb-6">Connect, share, laugh, and move forward in a compassionate, uplifting space.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Breakup Community
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Connect, share, laugh, and move forward in a compassionate,
+                    uplifting space.
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowRegisterModal(true)}
@@ -650,7 +807,10 @@ export default function HomePage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="py-24 px-6 bg-[#fbf9f5] text-slate-900" id="how-it-works">
+      <section
+        className="py-24 px-6 bg-[#fbf9f5] text-slate-900"
+        id="how-it-works"
+      >
         <div className="max-w-6xl mx-auto text-center space-y-12">
           <div>
             <span className="text-xs uppercase tracking-widest font-bold text-[#e06d53]">
@@ -660,30 +820,50 @@ export default function HomePage() {
               How JabWeMeet Works
             </h2>
             <p className="text-slate-600 max-w-xl mx-auto mt-3">
-              From your initial profile to meeting face-to-face in four straightforward steps.
+              From your initial profile to meeting face-to-face in four
+              straightforward steps.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">01</div>
+              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">
+                01
+              </div>
               <h3 className="text-lg font-bold mb-2">Join</h3>
-              <p className="text-sm text-slate-600">Create your verified JabWeMeet account in less than two minutes.</p>
+              <p className="text-sm text-slate-600">
+                Create your verified JabWeMeet account in less than two minutes.
+              </p>
             </div>
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">02</div>
+              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">
+                02
+              </div>
               <h3 className="text-lg font-bold mb-2">Tell Us About You</h3>
-              <p className="text-sm text-slate-600">Share your interests, city, and what kind of connection you are seeking.</p>
+              <p className="text-sm text-slate-600">
+                Share your interests, city, and what kind of connection you are
+                seeking.
+              </p>
             </div>
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">03</div>
+              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">
+                03
+              </div>
               <h3 className="text-lg font-bold mb-2">Choose Experience</h3>
-              <p className="text-sm text-slate-600">Events, speed dating, blind dates, dance socials, and group travel.</p>
+              <p className="text-sm text-slate-600">
+                Events, speed dating, blind dates, dance socials, and group
+                travel.
+              </p>
             </div>
             <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-md">
-              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">04</div>
+              <div className="text-3xl font-serif font-bold text-[#e06d53] mb-3">
+                04
+              </div>
               <h3 className="text-lg font-bold mb-2">Meet In Real Life</h3>
-              <p className="text-sm text-slate-600">Show up at the curated venue and see where the real-life spark goes.</p>
+              <p className="text-sm text-slate-600">
+                Show up at the curated venue and see where the real-life spark
+                goes.
+              </p>
             </div>
           </div>
         </div>
@@ -703,19 +883,56 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: "📍", title: "Offline-First Experiences", desc: "Every interaction is designed to lead directly to a face-to-face meeting." },
-              { icon: "🎟️", title: "Curated Events", desc: "Thoughtfully planned themes, balanced ratios, and friendly icebreakers." },
-              { icon: "🛡️", title: "Verified Community", desc: "Real members with mobile and identity verification for peace of mind." },
-              { icon: "🤝", title: "Human Matchmaking", desc: "Real human matchmakers assisting personal introductions." },
-              { icon: "☕", title: "Safe Public Venues", desc: "Handpicked premium cafes, rooftop lounges, and private studios." },
-              { icon: "🎙️", title: "Hosted Experiences", desc: "Warm on-ground hosts to guide conversations and ease social jitters." },
-              { icon: "✈️", title: "Singles Travel", desc: "Curated group getaways for spontaneous, adventurous singles." },
-              { icon: "❤️", title: "Social Communities", desc: "Supportive circles including our signature Breakup Recovery tribe." },
+              {
+                icon: "📍",
+                title: "Offline-First Experiences",
+                desc: "Every interaction is designed to lead directly to a face-to-face meeting.",
+              },
+              {
+                icon: "🎟️",
+                title: "Curated Events",
+                desc: "Thoughtfully planned themes, balanced ratios, and friendly icebreakers.",
+              },
+              {
+                icon: "🛡️",
+                title: "Verified Community",
+                desc: "Real members with mobile and identity verification for peace of mind.",
+              },
+              {
+                icon: "🤝",
+                title: "Human Matchmaking",
+                desc: "Real human matchmakers assisting personal introductions.",
+              },
+              {
+                icon: "☕",
+                title: "Safe Public Venues",
+                desc: "Handpicked premium cafes, rooftop lounges, and private studios.",
+              },
+              {
+                icon: "🎙️",
+                title: "Hosted Experiences",
+                desc: "Warm on-ground hosts to guide conversations and ease social jitters.",
+              },
+              {
+                icon: "✈️",
+                title: "Singles Travel",
+                desc: "Curated group getaways for spontaneous, adventurous singles.",
+              },
+              {
+                icon: "❤️",
+                title: "Social Communities",
+                desc: "Supportive circles including our signature Breakup Recovery tribe.",
+              },
             ].map((item, i) => (
-              <div key={i} className="p-6 rounded-2xl bg-[#131d2e] border border-white/10 space-y-2">
+              <div
+                key={i}
+                className="p-6 rounded-2xl bg-[#131d2e] border border-white/10 space-y-2"
+              >
                 <div className="text-3xl">{item.icon}</div>
                 <h3 className="text-base font-bold text-white">{item.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {item.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -742,7 +959,10 @@ export default function HomePage() {
               "Report & block",
               "Privacy protection",
             ].map((pt, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-slate-300">
+              <div
+                key={i}
+                className="flex items-center gap-2 text-sm text-slate-300"
+              >
                 <span className="text-emerald-400 font-bold">✓</span> {pt}
               </div>
             ))}
@@ -766,21 +986,41 @@ export default function HomePage() {
             Your next connection could be one event away.
           </h2>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Don't spend another night endlessly scrolling. Come meet people in the real world.
+            Don't spend another night endlessly scrolling. Come meet people in
+            the real world.
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
             <div className="relative inline-block text-left">
               <button
-                onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'cta' ? null : 'cta')}
+                onClick={() =>
+                  setActiveJoinDropdownId(
+                    activeJoinDropdownId === "cta" ? null : "cta",
+                  )
+                }
                 className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
               >
                 Join JabWeMeet
               </button>
-              {activeJoinDropdownId === 'cta' && (
+              {activeJoinDropdownId === "cta" && (
                 <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
-                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
-                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
-                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                  <button
+                    onClick={() => openRegisterModalWithRole("USER")}
+                    className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    User
+                  </button>
+                  <button
+                    onClick={() => openRegisterModalWithRole("MATCHMAKER")}
+                    className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    Relationship Manager
+                  </button>
+                  <button
+                    onClick={() => openRegisterModalWithRole("BREAKUP_BUDDY")}
+                    className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition"
+                  >
+                    Breakup Buddy
+                  </button>
                 </div>
               )}
             </div>
@@ -808,42 +1048,110 @@ export default function HomePage() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-bold text-white text-sm">
                 J
               </div>
-              <span className="font-extrabold text-xl text-white">Jab<span className="text-[#e06d53]">We</span>Meet</span>
+              <span className="font-extrabold text-xl text-white">
+                Jab<span className="text-[#e06d53]">We</span>Meet
+              </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              JabWeMeet brings people together through real-world experiences, singles events, speed dating, blind dates, dance experiences, social travel and genuine human connections.
+              JabWeMeet brings people together through real-world experiences,
+              singles events, speed dating, blind dates, dance experiences,
+              social travel and genuine human connections.
             </p>
           </div>
           <div>
             <h3 className="text-white font-semibold mb-3">Experiences</h3>
             <ul className="space-y-2 text-xs">
-              <li><a href="#experiences" className="hover:text-white">Singles Events</a></li>
-              <li><a href="#experiences" className="hover:text-white">Speed Dating</a></li>
-              <li><a href="#experiences" className="hover:text-white">Blind Dates</a></li>
-              <li><a href="#experiences" className="hover:text-white">Dance Dates</a></li>
-              <li><a href="#experiences" className="hover:text-white">Singles Travel</a></li>
+              <li>
+                <a href="#experiences" className="hover:text-white">
+                  Singles Events
+                </a>
+              </li>
+              <li>
+                <a href="#experiences" className="hover:text-white">
+                  Speed Dating
+                </a>
+              </li>
+              <li>
+                <a href="#experiences" className="hover:text-white">
+                  Blind Dates
+                </a>
+              </li>
+              <li>
+                <a href="#experiences" className="hover:text-white">
+                  Dance Dates
+                </a>
+              </li>
+              <li>
+                <a href="#experiences" className="hover:text-white">
+                  Singles Travel
+                </a>
+              </li>
             </ul>
           </div>
           <div>
             <h3 className="text-white font-semibold mb-3">Platform</h3>
             <ul className="space-y-2 text-xs">
-              <li><a href="#how-it-works" className="hover:text-white">How It Works</a></li>
-              <li><a href="#safety" className="hover:text-white">Safety Standards</a></li>
-              <li><Link href="/login" className="hover:text-white">Member Login</Link></li>
-              <li><Link href="/register" className="hover:text-white">Join Platform</Link></li>
+              <li>
+                <a href="#how-it-works" className="hover:text-white">
+                  How It Works
+                </a>
+              </li>
+              <li>
+                <a href="#safety" className="hover:text-white">
+                  Safety Standards
+                </a>
+              </li>
+              <li>
+                <Link href="/login" className="hover:text-white">
+                  Member Login
+                </Link>
+              </li>
+              <li>
+                <Link href="/register" className="hover:text-white">
+                  Join Platform
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
             <h3 className="text-white font-semibold mb-3">Trust & Support</h3>
             <ul className="space-y-2 text-xs">
-              <li><button onClick={() => alert("Terms: Community respect and offline event safety.")} className="hover:text-white">Terms of Service</button></li>
-              <li><button onClick={() => alert("Privacy: We protect your verified identity.")} className="hover:text-white">Privacy Policy</button></li>
-              <li><button onClick={() => setShowSafetyModal(true)} className="hover:text-white">Safety Pledge</button></li>
+              <li>
+                <button
+                  onClick={() =>
+                    alert("Terms: Community respect and offline event safety.")
+                  }
+                  className="hover:text-white"
+                >
+                  Terms of Service
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() =>
+                    alert("Privacy: We protect your verified identity.")
+                  }
+                  className="hover:text-white"
+                >
+                  Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setShowSafetyModal(true)}
+                  className="hover:text-white"
+                >
+                  Safety Pledge
+                </button>
+              </li>
             </ul>
           </div>
         </div>
         <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
-          <p>© 2026 JabWeMeet. Real People. Real Places. Real Connections. All rights reserved.</p>
+          <p>
+            © 2026 JabWeMeet. Real People. Real Places. Real Connections. All
+            rights reserved.
+          </p>
           <p>Not another dating app. A reason to meet.</p>
         </div>
       </footer>
@@ -862,8 +1170,12 @@ export default function HomePage() {
             </button>
 
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold font-serif text-white">Welcome back.</h2>
-              <p className="text-xs text-slate-400 mt-1">Ready to meet someone in the real world?</p>
+              <h2 className="text-2xl font-bold font-serif text-white">
+                Welcome back.
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Ready to meet someone in the real world?
+              </p>
             </div>
 
             {loginError && (
@@ -874,7 +1186,9 @@ export default function HomePage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Email or Mobile</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Email or Mobile
+                </label>
                 <input
                   type="text"
                   required
@@ -886,8 +1200,13 @@ export default function HomePage() {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-semibold text-slate-300">Password</label>
-                  <Link href="/forgot-password" className="text-xs text-[#e06d53] hover:underline">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Password
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-[#e06d53] hover:underline"
+                  >
                     Forgot password?
                   </Link>
                 </div>
@@ -939,17 +1258,33 @@ export default function HomePage() {
 
             {regSuccess ? (
               <div className="text-center py-8 space-y-4">
-                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
+                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                  ✓
+                </div>
                 {redirectTarget === "pending" ? (
                   <>
-                    <h3 className="text-xl font-bold text-white">Application Submitted!</h3>
-                    <p className="text-sm text-slate-400">Your Relationship Manager registration has been sent for admin verification. You will be notified once approved.</p>
-                    <button onClick={() => setShowRegisterModal(false)} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-semibold transition">Close</button>
+                    <h3 className="text-xl font-bold text-white">
+                      Application Submitted!
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      Your Relationship Manager registration has been sent for
+                      admin verification. You will be notified once approved.
+                    </p>
+                    <button
+                      onClick={() => setShowRegisterModal(false)}
+                      className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-semibold transition"
+                    >
+                      Close
+                    </button>
                   </>
                 ) : (
                   <>
-                    <h3 className="text-xl font-bold text-white">Welcome to JabWeMeet!</h3>
-                    <p className="text-sm text-slate-400">Your account is ready. Redirecting to your dashboard...</p>
+                    <h3 className="text-xl font-bold text-white">
+                      Welcome to JabWeMeet!
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      Your account is ready. Redirecting to your dashboard...
+                    </p>
                     <div className="pt-4 flex justify-center">
                       <div className="w-6 h-6 border-2 border-[#e06d53] border-t-transparent rounded-full animate-spin"></div>
                     </div>
@@ -959,8 +1294,12 @@ export default function HomePage() {
             ) : (
               <>
                 <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold font-serif text-white">Join JabWeMeet</h2>
-                  <p className="text-xs text-slate-400 mt-1">Real People. Real Places. Real Connections.</p>
+                  <h2 className="text-2xl font-bold font-serif text-white">
+                    Join JabWeMeet
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Real People. Real Places. Real Connections.
+                  </p>
                 </div>
 
                 {regError && (
@@ -971,7 +1310,9 @@ export default function HomePage() {
 
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name *</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Full Name *
+                    </label>
                     <input
                       type="text"
                       required
@@ -981,7 +1322,9 @@ export default function HomePage() {
                       className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                     />
                     {nameFeedback && (
-                      <div className={`text-xs mt-1 ${nameFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
+                      <div
+                        className={`text-xs mt-1 ${nameFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}
+                      >
                         {nameFeedback}
                       </div>
                     )}
@@ -989,7 +1332,9 @@ export default function HomePage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Email *</label>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Email *
+                      </label>
                       <input
                         type="email"
                         required
@@ -999,14 +1344,18 @@ export default function HomePage() {
                         className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                       />
                       {emailFeedback.msg && (
-                        <div className={`text-xs mt-1 ${emailFeedback.type === "valid" ? "text-emerald-400" : emailFeedback.type === "checking" ? "text-amber-400" : "text-red-400"}`}>
+                        <div
+                          className={`text-xs mt-1 ${emailFeedback.type === "valid" ? "text-emerald-400" : emailFeedback.type === "checking" ? "text-amber-400" : "text-red-400"}`}
+                        >
                           {emailFeedback.msg}
                         </div>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Mobile Number *</label>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Mobile Number *
+                      </label>
                       <input
                         type="tel"
                         required
@@ -1016,7 +1365,9 @@ export default function HomePage() {
                         className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                       />
                       {phoneFeedback && (
-                        <div className={`text-xs mt-1 ${phoneFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
+                        <div
+                          className={`text-xs mt-1 ${phoneFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}
+                        >
                           {phoneFeedback}
                         </div>
                       )}
@@ -1024,7 +1375,9 @@ export default function HomePage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Password *</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Password *
+                    </label>
                     <input
                       type="password"
                       required
@@ -1034,17 +1387,48 @@ export default function HomePage() {
                       className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                     />
                     <div className="mt-2 p-3 bg-white/5 rounded-lg border border-white/5 text-xs grid grid-cols-2 gap-1 text-slate-400">
-                      <span className={isPwLen ? "text-emerald-400 font-medium" : ""}>{isPwLen ? "✓" : "✕"} 8+ chars</span>
-                      <span className={isPwUpper ? "text-emerald-400 font-medium" : ""}>{isPwUpper ? "✓" : "✕"} Uppercase</span>
-                      <span className={isPwLower ? "text-emerald-400 font-medium" : ""}>{isPwLower ? "✓" : "✕"} Lowercase</span>
-                      <span className={isPwNum ? "text-emerald-400 font-medium" : ""}>{isPwNum ? "✓" : "✕"} Number</span>
-                      <span className={isPwSpec ? "text-emerald-400 font-medium" : ""}>{isPwSpec ? "✓" : "✕"} Special char</span>
+                      <span
+                        className={
+                          isPwLen ? "text-emerald-400 font-medium" : ""
+                        }
+                      >
+                        {isPwLen ? "✓" : "✕"} 8+ chars
+                      </span>
+                      <span
+                        className={
+                          isPwUpper ? "text-emerald-400 font-medium" : ""
+                        }
+                      >
+                        {isPwUpper ? "✓" : "✕"} Uppercase
+                      </span>
+                      <span
+                        className={
+                          isPwLower ? "text-emerald-400 font-medium" : ""
+                        }
+                      >
+                        {isPwLower ? "✓" : "✕"} Lowercase
+                      </span>
+                      <span
+                        className={
+                          isPwNum ? "text-emerald-400 font-medium" : ""
+                        }
+                      >
+                        {isPwNum ? "✓" : "✕"} Number
+                      </span>
+                      <span
+                        className={
+                          isPwSpec ? "text-emerald-400 font-medium" : ""
+                        }
+                      >
+                        {isPwSpec ? "✓" : "✕"} Special char
+                      </span>
                     </div>
                   </div>
 
-<<<<<<< HEAD
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Confirm Password *</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Confirm Password *
+                    </label>
                     <input
                       type="password"
                       required
@@ -1054,17 +1438,21 @@ export default function HomePage() {
                       className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                     />
                     {confirmPwFeedback && (
-                      <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
+                      <div
+                        className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}
+                      >
                         {confirmPwFeedback}
                       </div>
                     )}
                   </div>
 
-                  {(regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER') ? (
+                  {regRole !== "BREAKUP_BUDDY" && regRole !== "MATCHMAKER" ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth *</label>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            Date of Birth *
+                          </label>
                           <input
                             type="date"
                             required
@@ -1073,14 +1461,18 @@ export default function HomePage() {
                             className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
                           />
                           {dobFeedback && (
-                            <div className={`text-xs mt-1 ${dobFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
+                            <div
+                              className={`text-xs mt-1 ${dobFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}
+                            >
                               {dobFeedback}
                             </div>
                           )}
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            City *
+                          </label>
                           <input
                             type="text"
                             required
@@ -1094,7 +1486,9 @@ export default function HomePage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            Gender
+                          </label>
                           <select
                             value={regGender}
                             onChange={(e) => setRegGender(e.target.value)}
@@ -1108,7 +1502,9 @@ export default function HomePage() {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            Looking For
+                          </label>
                           <select
                             value={regIntent}
                             onChange={(e) => setRegIntent(e.target.value)}
@@ -1117,7 +1513,9 @@ export default function HomePage() {
                             <option value="Relationship">Relationship</option>
                             <option value="Marriage">Marriage</option>
                             <option value="Friendship">Friendship</option>
-                            <option value="Social Connections">Social Connections</option>
+                            <option value="Social Connections">
+                              Social Connections
+                            </option>
                           </select>
                         </div>
                       </div>
@@ -1125,7 +1523,9 @@ export default function HomePage() {
                   ) : (
                     <>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">ID Type *</label>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          ID Type *
+                        </label>
                         <select
                           required
                           value={regIdType}
@@ -1136,108 +1536,67 @@ export default function HomePage() {
                           <option value="Aadhaar">Aadhaar</option>
                           <option value="PAN">PAN</option>
                           <option value="Passport">Passport</option>
-                          <option value="Driving License">Driving License</option>
+                          <option value="Driving License">
+                            Driving License
+                          </option>
                         </select>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">ID Document *</label>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            ID Document *
+                          </label>
                           <div className="relative">
                             <input
                               type="file"
                               required
                               onChange={(e) => {
-                                if (e.target.files && e.target.files.length > 0) {
+                                if (
+                                  e.target.files &&
+                                  e.target.files.length > 0
+                                ) {
                                   setRegIdDocument(e.target.files[0].name);
                                 }
                               }}
                               className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
                             />
-                            {regIdDocument && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓</span>}
+                            {regIdDocument && (
+                              <span className="absolute right-3 top-3 text-xs text-emerald-400">
+                                ✓
+                              </span>
+                            )}
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Profile Photo *</label>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            Profile Photo *
+                          </label>
                           <div className="relative">
                             <input
                               type="file"
                               accept="image/*"
                               required
                               onChange={(e) => {
-                                if (e.target.files && e.target.files.length > 0) {
+                                if (
+                                  e.target.files &&
+                                  e.target.files.length > 0
+                                ) {
                                   setRegProfilePhoto(e.target.files[0].name);
                                 }
                               }}
                               className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
                             />
-                            {regProfilePhoto && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓ Uploaded</span>}
+                            {regProfilePhoto && (
+                              <span className="absolute right-3 top-3 text-xs text-emerald-400">
+                                ✓ Uploaded
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                     </>
-=======
-                          <input type="date" required={regRole !== "MATCHMAKER"} value={regDob} onChange={e => setRegDob(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition" />
-                          {dobFeedback && <div className={`text-[10px] mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{dobFeedback}</div>}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
-                          <input type="text" required={regRole !== "MATCHMAKER"} value={regCity} onChange={e => setRegCity(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition" placeholder="e.g. Bangalore" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
-                          <select value={regGender} onChange={e => setRegGender(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition appearance-none">
-                            <option value="">Select gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
-                          <select value={regIntent} onChange={e => setRegIntent(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition appearance-none">
-                            <option value="Relationship">Relationship</option>
-                            <option value="Casual Dating">Casual Dating</option>
-                            <option value="Social Connections">Social Connections (Mixers/Travel)</option>
-                            <option value="Support">Breakup Support</option>
-                          </select>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {regRole === "MATCHMAKER" && (
-                    <div className="space-y-4 pt-4 border-t border-white/10">
-                      <h4 className="text-sm font-semibold text-white">Document Verification</h4>
-                      <p className="text-xs text-slate-400 mb-4">Please upload the required documents for admin approval.</p>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Govt ID Proof *</label>
-                          <input type="file" id="govIdProof" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Address Proof *</label>
-                          <input type="file" id="addressProof" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Educational Certificate *</label>
-                          <input type="file" id="eduCertificate" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Work Experience Proof *</label>
-                          <input type="file" id="workExperience" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
-                        </div>
-                      </div>
-                    </div>
->>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
                   )}
 
                   <div className="space-y-2 pt-2 text-xs text-slate-400">
@@ -1300,13 +1659,30 @@ export default function HomePage() {
             >
               ✕
             </button>
-            <h2 className="text-2xl font-bold font-serif text-white mb-4">JabWeMeet Safety Pledge</h2>
+            <h2 className="text-2xl font-bold font-serif text-white mb-4">
+              JabWeMeet Safety Pledge
+            </h2>
             <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
-              <p><strong>1. Strict Verification:</strong> Every attendee must verify their mobile number and identity.</p>
-              <p><strong>2. Safe Public Venues:</strong> All events take place in vetted public cafes, restaurants, and lounges.</p>
-              <p><strong>3. On-Ground Event Hosts:</strong> Every experience is supervised by friendly on-ground coordinators.</p>
-              <p><strong>4. Consent-First Culture:</strong> Sharing phone numbers or personal contacts is always completely voluntary.</p>
-              <p><strong>5. Zero Tolerance:</strong> Any harassment or inappropriate conduct leads to an immediate permanent ban.</p>
+              <p>
+                <strong>1. Strict Verification:</strong> Every attendee must
+                verify their mobile number and identity.
+              </p>
+              <p>
+                <strong>2. Safe Public Venues:</strong> All events take place in
+                vetted public cafes, restaurants, and lounges.
+              </p>
+              <p>
+                <strong>3. On-Ground Event Hosts:</strong> Every experience is
+                supervised by friendly on-ground coordinators.
+              </p>
+              <p>
+                <strong>4. Consent-First Culture:</strong> Sharing phone numbers
+                or personal contacts is always completely voluntary.
+              </p>
+              <p>
+                <strong>5. Zero Tolerance:</strong> Any harassment or
+                inappropriate conduct leads to an immediate permanent ban.
+              </p>
             </div>
           </div>
         </div>

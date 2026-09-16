@@ -179,18 +179,9 @@ router.post('/register', upload.fields([
       });
     }
 
-<<<<<<< HEAD
-    // Date of birth & Age validation (18+) - optional for Breakup Buddy
+    // Date of birth & age validation (18+); breakup buddies and matchmakers may omit it.
     let dob = null;
     if (dateOfBirth) {
-=======
-    // Date of birth & Age validation (18+)
-    let dob = new Date('2000-01-01'); // Default for MATCHMAKER
-    if (role !== 'MATCHMAKER' || dateOfBirth) {
-      if (!dateOfBirth) {
-        return res.status(400).json({ success: false, message: 'Date of birth is required.' });
-      }
->>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
       dob = new Date(dateOfBirth);
       if (isNaN(dob.getTime())) {
         return res.status(400).json({ success: false, message: 'Invalid date of birth.' });
@@ -202,20 +193,13 @@ router.post('/register', upload.fields([
       if (age < 18) {
         return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
       }
-<<<<<<< HEAD
-    } else if (role !== 'BREAKUP_BUDDY') {
+    } else if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER') {
       return res.status(400).json({ success: false, message: 'Date of birth is required.' });
     }
 
-    // City validation - optional for Breakup Buddy
-    if (role !== 'BREAKUP_BUDDY' && (!city || typeof city !== 'string' || city.trim().length < 2)) {
-=======
-    }
-
-    // City validation
+    // City is optional for breakup buddies and matchmakers.
     let validCity = city;
-    if (role !== 'MATCHMAKER' && (!city || typeof city !== 'string' || city.trim().length < 2)) {
->>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
+    if (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY' && (!city || typeof city !== 'string' || city.trim().length < 2)) {
       return res.status(400).json({ success: false, message: 'City is required.' });
     } else if (role === 'MATCHMAKER' && !city) {
       validCity = 'N/A';
@@ -263,27 +247,19 @@ router.post('/register', upload.fields([
         phone: cleanPhone,
         password: passwordHash,
         dateOfBirth: dob,
-<<<<<<< HEAD
-        city: city ? city.trim() : null,
+        city: validCity ? validCity.trim() : null,
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
         role: role === 'BREAKUP_BUDDY' || role === 'MATCHMAKER' ? role : 'USER',
         idType: idType ? String(idType).trim() : null,
         idDocument: idDocument ? String(idDocument).trim() : null,
         profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
-        isVerified: true,
-=======
-        city: validCity.trim(),
-        gender: gender ? String(gender).trim() : null,
-        relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
-        role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' ? role : 'USER',
         isVerified: role !== 'MATCHMAKER',
         isApproved: false,
         govIdProof,
         addressProof,
         eduCertificate,
         workExperience,
->>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
       },
       select: {
         id: true,
