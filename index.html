@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleDate — Welcome</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              200: '#fecdd3',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.02); }
+    }
+    .hero-glow {
+      background: radial-gradient(circle at 50% 20%, rgba(244, 63, 94, 0.15) 0%, rgba(244, 63, 94, 0.02) 50%, transparent 80%);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between selection:bg-rose-500 selection:text-white">
+
+  <!-- Top Navigation -->
+  <header class="border-b border-slate-800/80 backdrop-blur-md bg-slate-950/60 sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/25">
+          <svg class="w-5 h-5 text-white fill-current" viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">SimpleDate</span>
+          <span class="text-[10px] uppercase tracking-wider font-semibold ml-2 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">Backend Core</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div id="statusBadge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium">
+          <span class="relative flex h-2.5 w-2.5">
+            <span id="pingPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="pingDot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span id="statusText" class="text-emerald-400">Server Online</span>
+        </div>
+        <a href="/api/health" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700">
+          API Health &rarr;
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="hero-glow flex-1 flex flex-col justify-center items-center px-6 py-12">
+    <div class="max-w-4xl w-full text-center space-y-6">
+      
+      <!-- Welcome Pill -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-slate-300 text-xs shadow-inner">
+        <span class="text-rose-400 font-semibold">✨ Successfully Started</span>
+        <span class="text-slate-600">•</span>
+        <span class="text-slate-400">Your SimpleDate backend server is active</span>
+      </div>
+
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+        Plan moments that matter with <br class="hidden sm:inline" />
+        <span class="bg-gradient-to-r from-rose-400 via-pink-400 to-rose-500 bg-clip-text text-transparent">SimpleDate</span>
+      </h1>
+
+      <p class="max-w-2xl mx-auto text-base sm:text-lg text-slate-400 leading-relaxed">
+        The backend API service is running smoothly. From here you can check server diagnostics, inspect Prisma database connectivity, and test live endpoints.
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="pt-2 flex flex-wrap items-center justify-center gap-4">
+        <button onclick="checkHealth()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-sm shadow-lg shadow-rose-600/20 transition duration-150 ease-in-out flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Test Live Health API
+        </button>
+        <a href="http://localhost:3000" target="_blank" class="px-6 py-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 font-medium text-sm border border-slate-800 transition flex items-center gap-2">
+          <span>Open Next.js Frontend</span>
+          <span class="text-xs text-slate-500">:3000</span>
+        </a>
+      </div>
+
+      <!-- Live Diagnostics Cards Grid -->
+      <div class="pt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+        <!-- Card 1 -->
+        <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700 transition">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span>Server Port</span>
+            <span class="p-1 rounded bg-slate-800 text-rose-400">PORT</span>
+          </div>
+          <div class="text-2xl font-bold text-white font-mono" id="serverPortDisplay">5001</div>
+          <div class="text-xs text-slate-500 mt-1">Listening on http://localhost:<span class="port-num">5001</span></div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700 transition">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span>Response Latency</span>
+            <span class="p-1 rounded bg-slate-800 text-emerald-400 font-mono" id="latencyTag">-- ms</span>
+          </div>
+          <div class="text-2xl font-bold text-emerald-400 font-mono" id="uptimeDisplay">Active</div>
+          <div class="text-xs text-slate-500 mt-1" id="lastCheckedText">Checked just now</div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700 transition">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span>Database</span>
+            <span class="p-1 rounded bg-slate-800 text-sky-400">PostgreSQL</span>
+          </div>
+          <div class="text-2xl font-bold text-white">Prisma ORM</div>
+          <div class="text-xs text-slate-500 mt-1">Schema configured & ready</div>
+        </div>
+      </div>
+
+      <!-- Live JSON API Output Box -->
+      <div class="pt-4 text-left">
+        <div class="rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden shadow-xl">
+          <div class="px-4 py-3 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+              <span class="text-xs text-slate-400 font-mono ml-2">GET /api/health</span>
+            </div>
+            <span class="text-xs text-slate-500 font-mono">Live API Response</span>
+          </div>
+          <pre id="jsonPreview" class="p-4 text-xs font-mono text-emerald-400 overflow-x-auto max-h-48">Checking server response...</pre>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>SimpleDate Full-Stack Application &bull; Node.js + Express + Prisma</p>
+      <p class="font-mono text-slate-500">http://localhost:5001</p>
+    </div>
+  </footer>
+
+  <script>
+    const currentPort = window.location.port || '5001';
+    document.querySelectorAll('.port-num').forEach(el => el.textContent = currentPort);
+    const serverPortDisplay = document.getElementById('serverPortDisplay');
+    if (serverPortDisplay) serverPortDisplay.textContent = currentPort;
+
+    async function checkHealth() {
+      const startTime = performance.now();
+      const preview = document.getElementById('jsonPreview');
+      const latencyTag = document.getElementById('latencyTag');
+      const lastCheckedText = document.getElementById('lastCheckedText');
+      const statusText = document.getElementById('statusText');
+      const pingPing = document.getElementById('pingPing');
+      const pingDot = document.getElementById('pingDot');
+
+      try {
+        preview.textContent = 'Fetching /api/health...';
+        const res = await fetch('/api/health');
+        const duration = Math.round(performance.now() - startTime);
+        const data = await res.json();
+
+        latencyTag.textContent = `${duration} ms`;
+        lastCheckedText.textContent = `Last ping: ${new Date().toLocaleTimeString()} (${duration}ms)`;
+        preview.textContent = JSON.stringify(data, null, 2);
+        
+        statusText.textContent = 'Server Online';
+        statusText.className = 'text-emerald-400';
+        pingDot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
+        pingPing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+      } catch (err) {
+        preview.textContent = `Error connecting to API:\n${err.message}`;
+        statusText.textContent = 'Offline / Error';
+        statusText.className = 'text-rose-400';
+        pingDot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500';
+        pingPing.className = 'hidden';
+      }
+    }
+
+    // Run initial health check on page load
+    checkHealth();
+
+    // Auto refresh every 10 seconds
+    setInterval(checkHealth, 10000);
+  </script>
+</body>
+</html>

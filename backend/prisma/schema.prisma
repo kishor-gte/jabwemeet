@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+  MATCHMAKER
+  BREAKUP_BUDDY
+  HOST
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String
+  email              String    @unique
+  phone              String    @unique
+  password           String
+  dateOfBirth        DateTime
+  city               String
+  gender             String?
+  relationshipIntent String?
+  role               Role      @default(USER)
+  isVerified         Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([email])
+  @@index([phone])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
+model Event {
+  id           String   @id @default(cuid())
+  title        String
+  description  String
+  category     String
+  location     String
+  city         String
+  date         DateTime
+  price        Float?   @default(0)
+  maxAttendees Int?     @default(50)
+  createdAt    DateTime @default(now())
+}
