@@ -467,6 +467,52 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// 4b. PUT /api/auth/profile - Update editable member profile fields
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const { city, gender, relationshipIntent, dateOfBirth } = req.body;
+    const updateData = {};
+
+    if (city !== undefined && typeof city === 'string') updateData.city = city.trim();
+    if (gender !== undefined && typeof gender === 'string') updateData.gender = gender.trim();
+    if (relationshipIntent !== undefined && typeof relationshipIntent === 'string') {
+      updateData.relationshipIntent = relationshipIntent.trim();
+    }
+    if (dateOfBirth) {
+      const parsedDate = new Date(dateOfBirth);
+      if (!isNaN(parsedDate.getTime())) {
+        updateData.dateOfBirth = parsedDate;
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        city: true,
+        gender: true,
+        relationshipIntent: true,
+        role: true,
+        dateOfBirth: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json({
+      success: true,
+      user: updatedUser,
+      message: 'Profile updated successfully.',
+    });
+  } catch (error) {
+    console.error('Error in PUT /profile:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update profile.' });
+  }
+});
+
 // 5. POST /api/auth/logout
 router.post('/logout', (req, res) => {
   const isProd = process.env.NODE_ENV === 'production';

@@ -339,24 +339,28 @@ export default function UpcomingEventsSection({
             <Calendar className="w-8 h-8" />
           </div>
           <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
-            No events match your current filter
+            {events.length === 0 ? "There are no events right now" : "No events match your current filter"}
           </h3>
           <p className="text-sm text-slate-400 mb-6 max-w-sm mx-auto leading-relaxed">
-            {onlyLocal
+            {events.length === 0
+              ? "New events will automatically appear here as soon as hosts or administrators schedule them. Check back soon for gatherings in your city."
+              : onlyLocal
               ? `We didn't find events specifically in ${userCity}. Try viewing events across all cities or exploring other categories.`
-              : "Discover an experience and meet people in the real world. Check back soon or reset filters."}
+              : "Try adjusting your search or category filter to discover other gatherings."}
           </p>
           <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => {
-                onSelectCategory("ALL");
-                setOnlyLocal(false);
-                setSearchQuery("");
-              }}
-              className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
-            >
-              Reset All Filters
-            </button>
+            {events.length > 0 && (
+              <button
+                onClick={() => {
+                  onSelectCategory("ALL");
+                  setOnlyLocal(false);
+                  setSearchQuery("");
+                }}
+                className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
+              >
+                Reset All Filters
+              </button>
+            )}
             <button
               onClick={onExploreClick}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-semibold shadow-lg transition"

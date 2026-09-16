@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Menu, LogOut, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
 
 import DashboardSidebar from "./components/DashboardSidebar";
@@ -13,6 +13,12 @@ import ExperiencesSection from "./components/ExperiencesSection";
 import PremiumServicesSection from "./components/PremiumServicesSection";
 import ConnectionsSection, { ConnectionItem } from "./components/ConnectionsSection";
 import ActivityFeed from "./components/ActivityFeed";
+import MyEventsView from "./components/MyEventsView";
+import ProfileView from "./components/ProfileView";
+import MessagesView from "./components/MessagesView";
+import NotificationsView from "./components/NotificationsView";
+import PaymentsView from "./components/PaymentsView";
+import SettingsView from "./components/SettingsView";
 
 interface UserProfile {
   id: string;
@@ -27,85 +33,9 @@ interface UserProfile {
   dateOfBirth?: string;
 }
 
-// Fallback seed catalog matching seed.js to ensure dashboard remains fully interactive
-// if the local database service is momentarily offline
-const FALLBACK_SEED_EVENTS: EventItem[] = [
-  {
-    id: "evt-1",
-    title: "Rooftop Singles Mixer & Cocktail Evening",
-    description:
-      "An evening of relaxed conversations, great music, and curated icebreakers atop the city skyline.",
-    category: "Singles Events",
-    location: "Sky Lounge, Indiranagar",
-    city: "Bangalore",
-    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    price: 1200,
-    maxAttendees: 40,
-  },
-  {
-    id: "evt-2",
-    title: "5-Minute Chemistry: Speed Dating Edition",
-    description:
-      "15 structured mini-conversations with verified members in an intimate café setting.",
-    category: "Speed Dating",
-    location: "Artisan Coffee Roasters, Bandra",
-    city: "Mumbai",
-    date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    price: 1500,
-    maxAttendees: 30,
-  },
-  {
-    id: "evt-3",
-    title: "Curated Blind Dinner Date",
-    description:
-      "Hand-picked pairing based on shared values and relationship goals, hosted at a premier bistro.",
-    category: "Blind Dates",
-    location: "Olive Bistro, Mehrauli",
-    city: "Delhi",
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    price: 2500,
-    maxAttendees: 10,
-  },
-  {
-    id: "evt-4",
-    title: "Beginner Bachata & Salsa Social Date",
-    description:
-      "No partner or dance experience needed! Connect through rhythm, laughter, and movement.",
-    category: "Dance Dates",
-    location: "Movement Studio, Koregaon Park",
-    city: "Pune",
-    date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString(),
-    price: 900,
-    maxAttendees: 35,
-  },
-  {
-    id: "evt-5",
-    title: "Weekend Mountain Escape & Bonfire",
-    description:
-      "A 2-day getaway with like-minded singles: stargazing, trail hiking, and acoustic bonfire sessions.",
-    category: "Singles Travel",
-    location: "Cedar Woods Retreat, Manali",
-    city: "Himachal",
-    date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    price: 7500,
-    maxAttendees: 20,
-  },
-  {
-    id: "evt-6",
-    title: "Fresh Start: Breakup Recovery Circle & Comedy",
-    description:
-      "A warm, uplifting space to share stories, laugh together, and embrace new beginnings.",
-    category: "Breakup Community",
-    location: "The Common Room, Cyber Hub",
-    city: "Gurugram",
-    date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
-    price: 500,
-    maxAttendees: 25,
-  },
-];
-
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Dynamic user & event state
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -114,7 +44,8 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   // Navigation & Interactive states
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const initialTab = searchParams.get("tab") || "dashboard";
+  const [activeSection, setActiveSection] = useState(initialTab);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
@@ -124,6 +55,13 @@ export default function DashboardPage() {
     breakupBuddy: boolean;
   }>({ relationshipManager: false, breakupBuddy: false });
   const [reservationToast, setReservationToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) {
+      setActiveSection(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -178,21 +116,21 @@ export default function DashboardPage() {
           return;
         }
 
-        // Fetch real database events
+        // Fetch real database events ONLY (no dummy events)
         try {
           const eventRes = await fetch("/api/events");
           if (eventRes.ok) {
             const eventData = await eventRes.json();
-            if (eventData.success && Array.isArray(eventData.events) && eventData.events.length > 0) {
+            if (eventData.success && Array.isArray(eventData.events)) {
               setEvents(eventData.events);
             } else {
-              setEvents(FALLBACK_SEED_EVENTS);
+              setEvents([]);
             }
           } else {
-            setEvents(FALLBACK_SEED_EVENTS);
+            setEvents([]);
           }
         } catch (e) {
-          setEvents(FALLBACK_SEED_EVENTS);
+          setEvents([]);
         }
       } catch (err) {
         console.error("Failed to load dashboard:", err);
@@ -306,49 +244,7 @@ export default function DashboardPage() {
 
   // SKELETON LOADING STATE
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0b111e] text-slate-100 flex flex-col font-sans">
-        {/* Skeleton Topbar */}
-        <div className="h-16 border-b border-white/10 bg-[#0d1526] px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/10 animate-pulse" />
-            <div className="w-28 h-5 rounded-md bg-white/10 animate-pulse" />
-          </div>
-          <div className="w-20 h-8 rounded-full bg-white/10 animate-pulse" />
-        </div>
-
-        <div className="flex-1 flex">
-          {/* Skeleton Sidebar (Desktop) */}
-          <div className="hidden lg:block w-72 border-r border-white/10 bg-[#0d1526] p-6 space-y-4">
-            <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-            <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-            <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-            <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-          </div>
-
-          {/* Skeleton Main Body */}
-          <div className="flex-1 p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
-            <div className="h-44 rounded-3xl bg-[#131d2e] border border-white/10 animate-pulse p-8 space-y-4">
-              <div className="w-32 h-6 rounded-full bg-white/10" />
-              <div className="w-64 h-8 rounded-lg bg-white/10" />
-              <div className="w-96 h-4 rounded-md bg-white/5" />
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-28 rounded-2xl bg-[#131d2e] border border-white/10 animate-pulse p-4" />
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-72 rounded-2xl bg-[#131d2e] border border-white/10 animate-pulse" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardLoadingSkeleton />;
   }
 
   // ERROR STATE
@@ -444,14 +340,14 @@ export default function DashboardPage() {
         eventsCount={events.length}
         myEventsCount={registeredEvents.length}
         connectionsCount={connections.length}
-        notificationsCount={registeredEvents.length + (serviceRequests.relationshipManager ? 1 : 0) + (serviceRequests.breakupBuddy ? 1 : 0)}
+        notificationsCount={
+          registeredEvents.length +
+          (serviceRequests.relationshipManager ? 1 : 0) +
+          (serviceRequests.breakupBuddy ? 1 : 0)
+        }
         onSelectSection={(sec) => {
           setActiveSection(sec);
-          if (sec === "events" || sec === "my-events") {
-            scrollToElement("events");
-          } else if (sec === "connections") {
-            scrollToElement("connections");
-          }
+          window.history.replaceState(null, "", `/dashboard?tab=${sec}`);
         }}
         onLogout={handleLogout}
         mobileOpen={mobileSidebarOpen}
@@ -461,89 +357,184 @@ export default function DashboardPage() {
       {/* Main Content Area (Offset for Desktop Sidebar) */}
       <div className="lg:pl-72 flex-1 flex flex-col min-w-0">
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10 flex-1">
-          {/* Dynamic Header Greeting */}
-          <DashboardHeader
-            user={user}
-            totalEventsCount={events.length}
-            localEventsCount={localEvents.length}
-            onExploreExperiences={() => scrollToElement("experiences")}
-            onBrowseEvents={() => scrollToElement("events")}
-          />
+          {/* TAB 1: MAIN DASHBOARD OVERVIEW */}
+          {activeSection === "dashboard" && (
+            <>
+              {/* Dynamic Header Greeting */}
+              <DashboardHeader
+                user={user}
+                totalEventsCount={events.length}
+                localEventsCount={localEvents.length}
+                onExploreExperiences={() => scrollToElement("experiences")}
+                onBrowseEvents={() => scrollToElement("events")}
+              />
 
-          {/* Dynamic Quick Stats Row */}
-          <QuickStats
-            totalEventsCount={events.length}
-            localEventsCount={localEvents.length}
-            userCity={user.city}
-            joinedEventsCount={registeredEvents.length}
-            connectionsCount={connections.length}
-            profileCompletionPercentage={completionPercentage}
-            onViewEvents={() => {
-              setSelectedCategory("ALL");
-              scrollToElement("events");
-            }}
-            onViewLocalEvents={() => {
-              scrollToElement("events");
-            }}
-            onViewConnections={() => scrollToElement("connections")}
-            onViewProfile={() => {}}
-          />
+              {/* Dynamic Quick Stats Row */}
+              <QuickStats
+                totalEventsCount={events.length}
+                localEventsCount={localEvents.length}
+                userCity={user.city}
+                joinedEventsCount={registeredEvents.length}
+                connectionsCount={connections.length}
+                profileCompletionPercentage={completionPercentage}
+                onViewEvents={() => {
+                  setActiveSection("events");
+                  window.history.replaceState(null, "", "/dashboard?tab=events");
+                }}
+                onViewLocalEvents={() => {
+                  setActiveSection("events");
+                  window.history.replaceState(null, "", "/dashboard?tab=events");
+                }}
+                onViewConnections={() => {
+                  setActiveSection("connections");
+                  window.history.replaceState(null, "", "/dashboard?tab=connections");
+                }}
+                onViewProfile={() => {
+                  setActiveSection("profile");
+                  window.history.replaceState(null, "", "/dashboard?tab=profile");
+                }}
+              />
 
-          {/* Dynamic Profile Completion Section */}
-          <ProfileCompletionCard
-            user={user}
-            onUpdateUser={handleUpdateUser}
-          />
+              {/* Dynamic Profile Completion Section */}
+              <ProfileCompletionCard
+                user={user}
+                onUpdateUser={handleUpdateUser}
+              />
 
-          {/* Dynamic Upcoming Events Section */}
-          <UpcomingEventsSection
-            events={events}
-            userCity={user.city}
-            userName={user.name}
-            registeredEventIds={registeredEventIds}
-            selectedCategory={selectedCategory}
-            onSelectCategory={(cat) => setSelectedCategory(cat)}
-            onRegisterEvent={handleRegisterEvent}
-            onCancelReservation={handleCancelReservation}
-            onExploreClick={() => scrollToElement("experiences")}
-          />
+              {/* Dynamic Upcoming Events Section */}
+              <UpcomingEventsSection
+                events={events}
+                userCity={user.city}
+                userName={user.name}
+                registeredEventIds={registeredEventIds}
+                selectedCategory={selectedCategory}
+                onSelectCategory={(cat) => setSelectedCategory(cat)}
+                onRegisterEvent={handleRegisterEvent}
+                onCancelReservation={handleCancelReservation}
+                onExploreClick={() => scrollToElement("experiences")}
+              />
 
-          {/* Dynamic Discover Experiences Section */}
-          <ExperiencesSection
-            events={events}
-            userCity={user.city}
-            onSelectCategory={(categoryKey) => {
-              setSelectedCategory(categoryKey);
-              scrollToElement("events");
-            }}
-          />
+              {/* Dynamic Discover Experiences Section */}
+              <ExperiencesSection
+                events={events}
+                userCity={user.city}
+                onSelectCategory={(categoryKey) => {
+                  setSelectedCategory(categoryKey);
+                  scrollToElement("events");
+                }}
+              />
 
-          {/* Dynamic Premium Services Section */}
-          <PremiumServicesSection
-            userCity={user.city}
-            userIntent={user.relationshipIntent}
-            serviceRequests={serviceRequests}
-            onRequestService={handleRequestService}
-          />
+              {/* Dynamic Premium Services Section */}
+              <PremiumServicesSection
+                userCity={user.city}
+                userIntent={user.relationshipIntent}
+                serviceRequests={serviceRequests}
+                onRequestService={handleRequestService}
+              />
 
-          {/* Dynamic Connections Section */}
-          <ConnectionsSection
-            connections={connections}
-            userCity={user.city}
-            registeredEventsCount={registeredEvents.length}
-            onExploreEvents={() => scrollToElement("events")}
-            onAddConnection={handleAddConnection}
-          />
+              {/* Dynamic Connections Section */}
+              <ConnectionsSection
+                connections={connections}
+                userCity={user.city}
+                registeredEventsCount={registeredEvents.length}
+                onExploreEvents={() => scrollToElement("events")}
+                onAddConnection={handleAddConnection}
+              />
 
-          {/* Dynamic Activity & Notifications */}
-          <ActivityFeed
-            userCreatedAt={user.createdAt}
-            userName={user.name}
-            profilePercentage={completionPercentage}
-            registeredEvents={registeredEvents}
-            serviceRequests={serviceRequests}
-            connectionRequestsCount={connections.length}
-          />
+              {/* Dynamic Activity & Notifications */}
+              <ActivityFeed
+                userCreatedAt={user.createdAt}
+                userName={user.name}
+                profilePercentage={completionPercentage}
+                registeredEvents={registeredEvents}
+                serviceRequests={serviceRequests}
+                connectionRequestsCount={connections.length}
+              />
+            </>
+          )}
+
+          {/* TAB 2: DISCOVER EVENTS */}
+          {activeSection === "events" && (
+            <UpcomingEventsSection
+              events={events}
+              userCity={user.city}
+              userName={user.name}
+              registeredEventIds={registeredEventIds}
+              selectedCategory={selectedCategory}
+              onSelectCategory={(cat) => setSelectedCategory(cat)}
+              onRegisterEvent={handleRegisterEvent}
+              onCancelReservation={handleCancelReservation}
+              onExploreClick={() => {
+                setActiveSection("dashboard");
+                window.history.replaceState(null, "", "/dashboard");
+              }}
+            />
+          )}
+
+          {/* TAB 3: MY EVENTS */}
+          {activeSection === "my-events" && (
+            <MyEventsView
+              registeredEvents={registeredEvents}
+              userName={user.name}
+              onCancelReservation={handleCancelReservation}
+              onExploreEvents={() => {
+                setActiveSection("events");
+                window.history.replaceState(null, "", "/dashboard?tab=events");
+              }}
+            />
+          )}
+
+          {/* TAB 4: MY CONNECTIONS */}
+          {activeSection === "connections" && (
+            <ConnectionsSection
+              connections={connections}
+              userCity={user.city}
+              registeredEventsCount={registeredEvents.length}
+              onExploreEvents={() => {
+                setActiveSection("events");
+                window.history.replaceState(null, "", "/dashboard?tab=events");
+              }}
+              onAddConnection={handleAddConnection}
+            />
+          )}
+
+          {/* TAB 5: PROFILE */}
+          {activeSection === "profile" && (
+            <ProfileView
+              user={user}
+              onUpdateUser={handleUpdateUser}
+            />
+          )}
+
+          {/* TAB 6: MESSAGES */}
+          {activeSection === "messages" && (
+            <MessagesView userName={user.name} />
+          )}
+
+          {/* TAB 7: NOTIFICATIONS */}
+          {activeSection === "notifications" && (
+            <NotificationsView
+              registeredEvents={registeredEvents}
+              hasRelationshipManagerReq={serviceRequests.relationshipManager}
+              hasBreakupBuddyReq={serviceRequests.breakupBuddy}
+            />
+          )}
+
+          {/* TAB 8: PAYMENTS */}
+          {activeSection === "payments" && (
+            <PaymentsView
+              registeredEvents={registeredEvents}
+              userName={user.name}
+            />
+          )}
+
+          {/* TAB 9: SETTINGS */}
+          {activeSection === "settings" && (
+            <SettingsView
+              userEmail={user.email}
+              onLogout={handleLogout}
+            />
+          )}
         </main>
 
         {/* Dynamic Footer */}
@@ -554,5 +545,56 @@ export default function DashboardPage() {
         </footer>
       </div>
     </div>
+  );
+}
+
+function DashboardLoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#0b111e] text-slate-100 flex flex-col font-sans">
+      <div className="h-16 border-b border-white/10 bg-[#0d1526] px-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white/10 animate-pulse" />
+          <div className="w-28 h-5 rounded-md bg-white/10 animate-pulse" />
+        </div>
+        <div className="w-20 h-8 rounded-full bg-white/10 animate-pulse" />
+      </div>
+
+      <div className="flex-1 flex">
+        <div className="hidden lg:block w-72 border-r border-white/10 bg-[#0d1526] p-6 space-y-4">
+          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
+          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
+          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
+          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
+        </div>
+
+        <div className="flex-1 p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
+          <div className="h-44 rounded-3xl bg-[#131d2e] border border-white/10 animate-pulse p-8 space-y-4">
+            <div className="w-32 h-6 rounded-full bg-white/10" />
+            <div className="w-64 h-8 rounded-lg bg-white/10" />
+            <div className="w-96 h-4 rounded-md bg-white/5" />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 rounded-2xl bg-[#131d2e] border border-white/10 animate-pulse p-4" />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-72 rounded-2xl bg-[#131d2e] border border-white/10 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoadingSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
