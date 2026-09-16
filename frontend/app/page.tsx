@@ -34,6 +34,15 @@ export default function HomePage() {
   const [regSuccess, setRegSuccess] = useState(false);
   const [redirectTarget, setRedirectTarget] = useState("/dashboard");
 
+  const [activeJoinDropdownId, setActiveJoinDropdownId] = useState<string | null>(null);
+  const [regRole, setRegRole] = useState("USER");
+
+  const openRegisterModalWithRole = (role: string) => {
+    setRegRole(role);
+    setShowRegisterModal(true);
+    setActiveJoinDropdownId(null);
+  };
+
   // Real-time validation feedback
   const [emailFeedback, setEmailFeedback] = useState<{ msg: string; type: "valid" | "invalid" | "checking" | "" }>({ msg: "", type: "" });
   const [nameFeedback, setNameFeedback] = useState("");
@@ -206,6 +215,7 @@ export default function HomePage() {
           city: regCity,
           gender: regGender,
           relationshipIntent: regIntent,
+          role: regRole,
         }),
       });
 
@@ -278,12 +288,21 @@ export default function HomePage() {
                 >
                   LOGIN
                 </button>
-                <button
-                  onClick={() => setShowRegisterModal(true)}
-                  className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-lg shadow-[#e06d53]/30 transition"
-                >
-                  JOIN JABWEMEET
-                </button>
+                <div className="relative inline-block">
+                  <button
+                    onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'nav' ? null : 'nav')}
+                    className="px-6 py-2.5 rounded-full text-sm font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-lg shadow-[#e06d53]/30 transition"
+                  >
+                    JOIN JABWEMEET
+                  </button>
+                  {activeJoinDropdownId === 'nav' && (
+                    <div className="absolute right-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
+                      <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                      <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
+                      <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -320,12 +339,21 @@ export default function HomePage() {
             >
               Explore Experiences
             </a>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
-            >
-              Join JabWeMeet
-            </button>
+            <div className="relative inline-block text-left">
+              <button
+                onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'hero' ? null : 'hero')}
+                className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
+              >
+                Join JabWeMeet
+              </button>
+              {activeJoinDropdownId === 'hero' && (
+                <div className="absolute left-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
+                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
+                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                </div>
+              )}
+            </div>
           </div>
 
           <p className="text-sm text-slate-400 pt-2">
@@ -697,12 +725,21 @@ export default function HomePage() {
             Don't spend another night endlessly scrolling. Come meet people in the real world.
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
-            >
-              Join JabWeMeet
-            </button>
+            <div className="relative inline-block text-left">
+              <button
+                onClick={() => setActiveJoinDropdownId(activeJoinDropdownId === 'cta' ? null : 'cta')}
+                className="px-8 py-3.5 rounded-full text-base font-semibold bg-[#e06d53] hover:bg-[#c95940] text-white shadow-xl shadow-[#e06d53]/40 transition"
+              >
+                Join JabWeMeet
+              </button>
+              {activeJoinDropdownId === 'cta' && (
+                <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
+                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
+                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setShowLoginModal(true)}
               className="px-8 py-3.5 rounded-full text-base font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition"
