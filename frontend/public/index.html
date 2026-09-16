@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JabWeMeet — Not Another Dating App. A Reason to Meet.</title>
+  <meta name="description" content="JabWeMeet brings people together through real-world experiences, singles events, speed dating, blind dates, dance experiences, social travel and genuine human connections.">
+  <meta property="og:title" content="JabWeMeet — Not Another Dating App. A Reason to Meet.">
+  <meta property="og:description" content="Real People. Real Places. Real Connections. Stop swiping, start meeting offline.">
+  <meta property="og:type" content="website">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-primary: #0b111e;
+      --bg-secondary: #131d2e;
+      --bg-card: #182337;
+      --bg-light: #fbf9f5;
+      --text-dark: #0f172a;
+      --text-muted-dark: #64748b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #e06d53;
+      --accent-hover: #c95940;
+      --accent-soft: rgba(224, 109, 83, 0.15);
+      --gold: #f59e0b;
+      --emerald: #10b981;
+      --ruby: #ef4444;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(0, 0, 0, 0.08);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-serif: 'Playfair Display', Georgia, serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* TYPOGRAPHY UTILITIES */
+    .serif-title {
+      font-family: var(--font-serif);
+      font-weight: 700;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 40%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .accent-text {
+      color: var(--accent);
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 26px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(224, 109, 83, 0.4);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(224, 109, 83, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-outline {
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      background: transparent;
+    }
+
+    .btn-outline:hover {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(11, 17, 30, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 76px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent) 0%, #b8432a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 10px rgba(224, 109, 83, 0.35);
+    }
+
+    .brand-accent {
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .nav-links a:hover {
+      color: #ffffff;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      color: #fff;
+      font-size: 1.5rem;
+    }
+
+    /* HERO SECTION */
+    .hero {
+      position: relative;
+      padding: 170px 0 110px 0;
+      background: radial-gradient(circle at 50% 20%, rgba(224, 109, 83, 0.12) 0%, transparent 60%);
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 18px;
+      background: rgba(224, 109, 83, 0.12);
+      border: 1px solid rgba(224, 109, 83, 0.3);
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fca5a5;
+      margin-bottom: 24px;
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      line-height: 1.15;
+      margin-bottom: 18px;
+      letter-spacing: -1px;
+    }
+
+    .hero-tagline {
+      font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .hero-supporting {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      margin-bottom: 24px;
+    }
+
+    .hero-desc {
+      max-width: 680px;
+      margin: 0 auto 36px auto;
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .hero-login-hint {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .hero-login-hint a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      max-width: 900px;
+      margin: 64px auto 0 auto;
+      padding: 24px;
+      background: rgba(19, 29, 46, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+    }
+
+    .stat-item h3 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .stat-item p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* SECTION STYLES */
+    .section {
+      padding: 100px 0;
+      position: relative;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto 56px auto;
+    }
+
+    .section-subtitle {
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 3.5vw, 2.8rem);
+      line-height: 1.25;
+      letter-spacing: -0.5px;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+
+    /* LIGHT SECTION THEME */
+    .light-section {
+      background-color: var(--bg-light);
+      color: var(--text-dark);
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .light-section .section-title {
+      color: var(--text-dark);
+    }
+
+    .light-section .section-desc {
+      color: var(--text-muted-dark);
+    }
+
+    /* PROBLEM SECTION */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .problem-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 32px 24px;
+      text-align: left;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .problem-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(224, 109, 83, 0.4);
+    }
+
+    .problem-icon {
+      font-size: 2rem;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    .problem-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .problem-card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .problem-punchline {
+      text-align: center;
+      max-width: 750px;
+      margin: 0 auto;
+      padding: 36px;
+      background: linear-gradient(135deg, rgba(224, 109, 83, 0.1) 0%, rgba(24, 35, 55, 0.8) 100%);
+      border: 1px solid rgba(224, 109, 83, 0.3);
+      border-radius: var(--radius-lg);
+    }
+
+    .problem-punchline h3 {
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .problem-punchline p {
+      font-size: 1.2rem;
+      color: var(--accent);
+      font-family: var(--font-serif);
+      font-style: italic;
+    }
+
+    /* PILLARS SECTION */
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+
+    .pillar-card {
+      background: #ffffff;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 40px 32px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+
+    .pillar-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .pillar-number {
+      font-size: 2.8rem;
+      font-family: var(--font-serif);
+      color: var(--accent);
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .pillar-card h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .pillar-card p {
+      font-size: 1rem;
+      color: var(--text-muted-dark);
+      line-height: 1.6;
+    }
+
+    /* EXPERIENCES SECTION */
+    .experiences-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 28px;
+    }
+
+    .experience-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .experience-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(224, 109, 83, 0.5);
+    }
+
+    .card-banner {
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      position: relative;
+    }
+
+    .banner-singles { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+    .banner-speed { background: linear-gradient(135deg, #831843, #ec4899); }
+    .banner-blind { background: linear-gradient(135deg, #14532d, #10b981); }
+    .banner-dance { background: linear-gradient(135deg, #701a75, #d946ef); }
+    .banner-travel { background: linear-gradient(135deg, #7c2d12, #ea580c); }
+    .banner-breakup { background: linear-gradient(135deg, #312e81, #6366f1); }
+
+    .card-content {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+
+    .card-badge {
+      align-self: flex-start;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-sm);
+      color: #e2e8f0;
+      margin-bottom: 12px;
+    }
+
+    .card-content h3 {
+      font-size: 1.35rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .card-content p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      flex-grow: 1;
+    }
+
+    /* HOW IT WORKS */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 28px;
+    }
+
+    .step-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 32px 24px;
+      position: relative;
+    }
+
+    .step-num {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 16px;
+      font-family: var(--font-serif);
+    }
+
+    .step-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .step-card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* WHY JABWEMEET */
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+    }
+
+    .why-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 20px;
+      background: #ffffff;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .why-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .why-item h4 {
+      font-size: 1.1rem;
+      color: var(--text-dark);
+      margin-bottom: 4px;
+    }
+
+    .why-item p {
+      font-size: 0.9rem;
+      color: var(--text-muted-dark);
+    }
+
+    /* SAFETY SECTION */
+    .safety-container {
+      background: linear-gradient(135deg, #131d2e 0%, #1e293b 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 56px 48px;
+    }
+
+    .safety-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      margin: 40px 0;
+    }
+
+    .safety-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #e2e8f0;
+    }
+
+    .safety-item-icon {
+      color: var(--emerald);
+      font-size: 1.2rem;
+    }
+
+    /* FINAL CTA */
+    .final-cta {
+      padding: 110px 0;
+      text-align: center;
+      background: radial-gradient(circle at 50% 50%, rgba(224, 109, 83, 0.15) 0%, transparent 70%);
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* FOOTER */
+    .footer {
+      background-color: #070b14;
+      border-top: 1px solid var(--border-color);
+      padding: 60px 0 32px 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px;
+      margin-bottom: 48px;
+    }
+
+    .footer-col h4 {
+      color: #ffffff;
+      font-size: 1rem;
+      margin-bottom: 18px;
+      font-weight: 600;
+    }
+
+    .footer-col ul {
+      list-style: none;
+    }
+
+    .footer-col li {
+      margin-bottom: 10px;
+    }
+
+    .footer-col a:hover {
+      color: var(--accent);
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    /* MODAL STYLES */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-card {
+      background: #131d2e;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 40px;
+      position: relative;
+      transform: scale(0.95);
+      transition: transform 0.25s ease;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+    }
+
+    .modal-header {
+      margin-bottom: 28px;
+    }
+
+    .modal-header h2 {
+      font-size: 1.8rem;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .modal-header p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* FORM STYLES */
+    .form-group {
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: #ffffff;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .form-select option {
+      background: #131d2e;
+      color: #fff;
+    }
+
+    /* INLINE VALIDATION STYLES */
+    .field-feedback {
+      font-size: 0.8rem;
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 18px;
+    }
+
+    .feedback-valid {
+      color: var(--emerald);
+    }
+
+    .feedback-invalid {
+      color: var(--ruby);
+    }
+
+    .feedback-checking {
+      color: var(--gold);
+    }
+
+    /* PASSWORD REQUIREMENTS CHECKLIST */
+    .pw-requirements {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin-top: 8px;
+      font-size: 0.8rem;
+    }
+
+    .pw-req-title {
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+
+    .pw-req-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .pw-req-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .pw-req-item.met {
+      color: var(--emerald);
+      font-weight: 500;
+    }
+
+    .pw-strength-bar {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-full);
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .pw-strength-fill {
+      height: 100%;
+      width: 0%;
+      transition: all 0.3s ease;
+    }
+
+    .strength-weak { width: 33%; background-color: var(--ruby); }
+    .strength-medium { width: 66%; background-color: var(--gold); }
+    .strength-strong { width: 100%; background-color: var(--emerald); }
+
+    /* CHECKBOX GROUP */
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .checkbox-group input {
+      margin-top: 3px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    .checkbox-group a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    /* ERROR BANNER */
+    .form-alert {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .form-alert-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .form-alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    /* SUCCESS VIEW IN MODAL */
+    .modal-success-view {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .success-icon-badge {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin: 0 auto 20px auto;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .mobile-menu-btn { display: block; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .pillars-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .pw-req-list { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .hero-ctas { flex-direction: column; width: 100%; }
+      .hero-ctas .btn { width: 100%; }
+      .safety-container { padding: 32px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="/" class="brand">
+        <div class="brand-icon">J</div>
+        <span>Jab<span class="brand-accent">We</span>Meet</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#events">Events</a></li>
+        <li><a href="#experiences">Experiences</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#safety">Safety</a></li>
+        <li><a href="#about">About</a></li>
+      </ul>
+
+      <div class="nav-actions" id="navAuthSection">
+        <button class="btn btn-secondary" onclick="openLoginModal()">LOGIN</button>
+        <button class="btn btn-primary" onclick="openRegisterModal()">JOIN JABWEMEET</button>
+      </div>
+
+      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-badge">✨ Real People • Real Places • Real Connections</div>
+      <h1 class="hero-title serif-title">
+        Not another dating app.<br>
+        <span class="gradient-text">A reason to meet.</span>
+      </h1>
+      <p class="hero-supporting">Real People. Real Places. Real Connections.</p>
+      <p class="hero-desc">
+        Tired of endless swiping and conversations that never become real meetings?
+        JabWeMeet creates opportunities to meet people offline through curated events,
+        experiences and genuine human connections.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="#experiences" class="btn btn-secondary">Explore Experiences</a>
+        <button class="btn btn-primary" onclick="openRegisterModal()">Join JabWeMeet</button>
+      </div>
+
+      <p class="hero-login-hint">
+        Already a member? <a href="javascript:void(0)" onclick="openLoginModal()">Login</a>
+      </p>
+
+      <div class="stats-bar">
+        <div class="stat-item">
+          <h3>10,000+</h3>
+          <p>Verified Members</p>
+        </div>
+        <div class="stat-item">
+          <h3>250+</h3>
+          <p>Curated Events Hosted</p>
+        </div>
+        <div class="stat-item">
+          <h3>100%</h3>
+          <p>Offline First Meeting</p>
+        </div>
+        <div class="stat-item">
+          <h3>4.9 ★</h3>
+          <p>Community Trust Rating</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PROBLEM SECTION -->
+  <section class="section" id="problem">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">The Dating Dilemma</span>
+        <h2 class="section-title serif-title">Tired of endless chatting?</h2>
+        <p class="section-desc">Modern dating apps were designed to keep you scrolling, not to help you meet.</p>
+      </div>
+
+      <div class="problem-grid">
+        <div class="problem-card">
+          <span class="problem-icon">🔄</span>
+          <h3>Endless Swiping</h3>
+          <p>Keep swiping through hundreds of profiles, but never actually meet anyone face to face.</p>
+        </div>
+
+        <div class="problem-card">
+          <span class="problem-icon">👻</span>
+          <h3>Ghosting</h3>
+          <p>Promising conversations disappear overnight without any warning or closure.</p>
+        </div>
+
+        <div class="problem-card">
+          <span class="problem-icon">🎭</span>
+          <h3>Digital Deception</h3>
+          <p>Online profiles and filtered photos don't always represent real people or chemistry.</p>
+        </div>
+
+        <div class="problem-card">
+          <span class="problem-icon">⏳</span>
+          <h3>Conversations That Go Nowhere</h3>
+          <p>Hours of text messaging and small talk that fizzle out before a date is ever scheduled.</p>
+        </div>
+      </div>
+
+      <div class="problem-punchline">
+        <h3 class="serif-title">Maybe your person isn't behind a screen.</h3>
+        <p>Maybe they're waiting at the next table.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IS JABWEMEET? -->
+  <section class="section light-section" id="about">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Our Philosophy</span>
+        <h2 class="section-title serif-title">A place to meet people in the real world.</h2>
+        <p class="section-desc">
+          JabWeMeet is a real-world connection platform designed around shared experiences instead of endless online chatting.
+        </p>
+      </div>
+
+      <div class="pillars-grid">
+        <div class="pillar-card">
+          <div class="pillar-number">01</div>
+          <h3>REAL PEOPLE</h3>
+          <p>A community built around genuine, vetted members who value authentic, respectful interactions.</p>
+        </div>
+
+        <div class="pillar-card">
+          <div class="pillar-number">02</div>
+          <h3>REAL PLACES</h3>
+          <p>Curated physical events hosted at premier cafes, rooftop lounges, dance studios, and nature retreats.</p>
+        </div>
+
+        <div class="pillar-card">
+          <div class="pillar-number">03</div>
+          <h3>REAL CONNECTIONS</h3>
+          <p>Face-to-face conversations where shared smiles, eye contact, and authentic energy do the matchmaking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPERIENCES SECTION -->
+  <section class="section" id="experiences">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Explore Our Formats</span>
+        <h2 class="section-title serif-title">Curated Experiences For Everyone</h2>
+        <p class="section-desc">From relaxed mixers to weekend travel, choose the experience that suits your vibe.</p>
+      </div>
+
+      <div class="experiences-grid">
+        <!-- 1. Singles Events -->
+        <div class="experience-card">
+          <div class="card-banner banner-singles">🍸</div>
+          <div class="card-content">
+            <span class="card-badge">Social Gatherings</span>
+            <h3>Singles Events</h3>
+            <p>Meet interesting people through curated social mixers, board game nights, and relaxed rooftop evenings.</p>
+            <button class="btn btn-outline btn-block" onclick="openRegisterModal()">Join Next Mixer</button>
+          </div>
+        </div>
+
+        <!-- 2. Speed Dating -->
+        <div class="experience-card">
+          <div class="card-banner banner-speed">⚡</div>
+          <div class="card-content">
+            <span class="card-badge">Instant Chemistry</span>
+            <h3>Speed Dating</h3>
+            <p>Short, engaging conversations. Real chemistry without the awkwardness or prolonged pressure.</p>
+            <button class="btn btn-outline btn-block" onclick="openRegisterModal()">Book Speed Date</button>
+          </div>
+        </div>
+
+        <!-- 3. Blind Dates -->
+        <div class="experience-card">
+          <div class="card-banner banner-blind">🕯️</div>
+          <div class="card-content">
+            <span class="card-badge">Personalized Pairing</span>
+            <h3>Blind Dates</h3>
+            <p>Let our human matchmaking team hand-pick introductions based on values, lifestyle, and life goals.</p>
+            <button class="btn btn-outline btn-block" onclick="openRegisterModal()">Request Blind Date</button>
+          </div>
+        </div>
+
+        <!-- 4. Dance Dates -->
+        <div class="experience-card">
+          <div class="card-banner banner-dance">💃</div>
+          <div class="card-content">
+            <span class="card-badge">Music & Movement</span>
+            <h3>Dance Dates</h3>
+            <p>Meet through Bachata, Salsa, and social dancing. No prior experience or partner required.</p>
+            <button class="btn btn-outline btn-block" onclick="openRegisterModal()">Join Dance Night</button>
+          </div>
+        </div>
+
+        <!-- 5. Singles Travel -->
+        <div class="experience-card">
+          <div class="card-banner banner-travel">🏔️</div>
+          <div class="card-content">
+            <span class="card-badge">Adventure & Getaways</span>
+            <h3>Singles Travel</h3>
+            <p>Travel with a curated group of singles, explore scenic destinations, and make unforgettable memories.</p>
+            <button class="btn btn-outline btn-block" onclick="openRegisterModal()">Explore Trips</button>
+          </div>
+        </div>
+
+        <!-- 6. Breakup Community -->
+        <div class="experience-card">
+          <div class="card-banner banner-breakup">🌱</div>
+          <div class="card-content">
+            <span class="card-badge">Healing & Support</span>
+            <h3>Breakup Community</h3>
+            <p>Connect with empathetic peers, share stories, find a Breakup Buddy, and move forward with warmth and laughter.</p>
+            <button class="btn btn-outline btn-block" onclick="openRegisterModal()">Join Circle</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section light-section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">The Offline Process</span>
+        <h2 class="section-title serif-title">How JabWeMeet Works</h2>
+        <p class="section-desc">Four simple steps from creating your profile to meeting in real life.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <h3>Join</h3>
+          <p>Create your verified JabWeMeet account in less than two minutes.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <h3>Tell Us About You</h3>
+          <p>Share your interests, city, and what kind of connection you are looking for.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <h3>Choose Your Experience</h3>
+          <p>Browse upcoming mixers, speed dating, dance evenings, and travel trips.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">04</div>
+          <h3>Meet In Real Life</h3>
+          <p>Show up at the curated venue and experience genuine face-to-face spark.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY JABWEMEET -->
+  <section class="section" id="why">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-subtitle">Real Connections</span>
+        <h2 class="section-title serif-title">Stop Swiping. Start Meeting.</h2>
+        <p class="section-desc">Everything we do is built around real-world comfort and intentional connections.</p>
+      </div>
+
+      <div class="why-grid">
+        <div class="why-item">
+          <div class="why-icon">📍</div>
+          <div>
+            <h4>Offline-First Experiences</h4>
+            <p>Every interaction leads directly to a curated real-world meeting.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">🎟️</div>
+          <div>
+            <h4>Curated Events</h4>
+            <p>Thoughtfully planned themes, icebreakers, and balanced ratios.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">🛡️</div>
+          <div>
+            <h4>Verified Community</h4>
+            <p>Real members screened with phone and identity checks.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">🤝</div>
+          <div>
+            <h4>Human Matchmaking</h4>
+            <p>Dedicated relationship managers instead of robotic algorithms.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">☕</div>
+          <div>
+            <h4>Safe Public Venues</h4>
+            <p>Top-rated cafes, premium restaurants, and partner clubs.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">🎙️</div>
+          <div>
+            <h4>Hosted Experiences</h4>
+            <p>Professional on-ground hosts to guide conversations and ease jitters.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">✈️</div>
+          <div>
+            <h4>Singles Travel</h4>
+            <p>Group weekend escapes designed for adventurous singles.</p>
+          </div>
+        </div>
+
+        <div class="why-item">
+          <div class="why-icon">❤️</div>
+          <div>
+            <h4>Social Communities</h4>
+            <p>Niche circles for hobbyists, expats, and breakup recovery.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAFETY SECTION -->
+  <section class="section" id="safety">
+    <div class="container">
+      <div class="safety-container">
+        <div class="section-header" style="margin-bottom: 24px;">
+          <span class="section-subtitle">Your Peace Of Mind</span>
+          <h2 class="section-title serif-title">Meet confidently. Connect safely.</h2>
+          <p class="section-desc">Safety is not an afterthought at JabWeMeet — it's the core foundation of every event.</p>
+        </div>
+
+        <div class="safety-grid">
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Verified members only</div>
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Safe public venues</div>
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Professional event hosts</div>
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Zero-tolerance guidelines</div>
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Consent-first interactions</div>
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Instant report & block</div>
+          <div class="safety-item"><span class="safety-item-icon">✓</span> Complete privacy protection</div>
+        </div>
+
+        <div style="text-align: center;">
+          <button class="btn btn-secondary" onclick="openSafetyModal()">Learn About Safety</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta">
+    <div class="container">
+      <h2 class="section-title serif-title" style="margin-bottom: 20px;">
+        Your next connection could be one event away.
+      </h2>
+      <p class="section-desc" style="max-width: 600px; margin: 0 auto 36px auto;">
+        Don't spend another night endlessly scrolling. Come meet people in the real world.
+      </p>
+      <div class="hero-ctas">
+        <button class="btn btn-primary" onclick="openRegisterModal()">Join JabWeMeet</button>
+        <button class="btn btn-secondary" onclick="openLoginModal()">Login</button>
+        <a href="#experiences" class="btn btn-outline">Explore Events</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="brand" style="margin-bottom: 16px;">
+            <div class="brand-icon">J</div>
+            <span>Jab<span class="brand-accent">We</span>Meet</span>
+          </div>
+          <p style="max-width: 320px; line-height: 1.6;">
+            A real-world connection platform bringing people together through experiences, events, and genuine human moments.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Experiences</h4>
+          <ul>
+            <li><a href="#experiences">Singles Mixers</a></li>
+            <li><a href="#experiences">Speed Dating</a></li>
+            <li><a href="#experiences">Blind Dates</a></li>
+            <li><a href="#experiences">Dance Nights</a></li>
+            <li><a href="#experiences">Singles Travel</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Platform</h4>
+          <ul>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#safety">Safety & Guidelines</a></li>
+            <li><a href="#why">Why JabWeMeet</a></li>
+            <li><a href="javascript:void(0)" onclick="openLoginModal()">Member Login</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Legal & Trust</h4>
+          <ul>
+            <li><a href="javascript:void(0)" onclick="openTermsModal()">Terms & Conditions</a></li>
+            <li><a href="javascript:void(0)" onclick="openPrivacyModal()">Privacy Policy</a></li>
+            <li><a href="#safety">Community Guidelines</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 JabWeMeet. Real People. Real Places. Real Connections. All rights reserved.</p>
+        <p>Built with ❤️ for real-world chemistry.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================== MODALS ======================== -->
+
+  <!-- 1. REGISTRATION MODAL -->
+  <div class="modal-overlay" id="registerModal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeRegisterModal()">✕</button>
+
+      <!-- Registration Form View -->
+      <div id="registerFormView">
+        <div class="modal-header">
+          <h2 class="serif-title">Join JabWeMeet</h2>
+          <p>Create your account and step into real-world experiences.</p>
+        </div>
+
+        <div id="registerAlert" class="form-alert form-alert-error"></div>
+
+        <form id="registerForm" onsubmit="handleRegisterSubmit(event)">
+          <!-- Full Name -->
+          <div class="form-group">
+            <label class="form-label" for="regName">Full Name *</label>
+            <input type="text" id="regName" class="form-input" placeholder="e.g. Priya Sharma" required>
+            <div id="nameFeedback" class="field-feedback"></div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="regEmail">Email Address *</label>
+            <input type="email" id="regEmail" class="form-input" placeholder="priya@example.com" required>
+            <div id="emailFeedback" class="field-feedback"></div>
+          </div>
+
+          <!-- Mobile Phone -->
+          <div class="form-group">
+            <label class="form-label" for="regPhone">Mobile Number *</label>
+            <input type="tel" id="regPhone" class="form-input" placeholder="+91 98765 43210" required>
+            <div id="phoneFeedback" class="field-feedback"></div>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password *</label>
+            <input type="password" id="regPassword" class="form-input" placeholder="••••••••" required>
+            
+            <div class="pw-strength-bar">
+              <div id="pwStrengthFill" class="pw-strength-fill"></div>
+            </div>
+
+            <div class="pw-requirements">
+              <div class="pw-req-title">Password requirements:</div>
+              <div class="pw-req-list">
+                <span id="reqLength" class="pw-req-item">✕ At least 8 characters</span>
+                <span id="reqUpper" class="pw-req-item">✕ Uppercase letter</span>
+                <span id="reqLower" class="pw-req-item">✕ Lowercase letter</span>
+                <span id="reqNumber" class="pw-req-item">✕ Number</span>
+                <span id="reqSpecial" class="pw-req-item">✕ Special character</span>
+              </div>
+            </div>
+            <div id="passwordFeedback" class="field-feedback"></div>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="form-group">
+            <label class="form-label" for="regConfirmPassword">Confirm Password *</label>
+            <input type="password" id="regConfirmPassword" class="form-input" placeholder="••••••••" required>
+            <div id="confirmPasswordFeedback" class="field-feedback"></div>
+          </div>
+
+          <!-- DOB & City -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="regDob">Date of Birth *</label>
+              <input type="date" id="regDob" class="form-input" required>
+              <div id="dobFeedback" class="field-feedback"></div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="regCity">City *</label>
+              <input type="text" id="regCity" class="form-input" placeholder="e.g. Bangalore" required>
+              <div id="cityFeedback" class="field-feedback"></div>
+            </div>
+          </div>
+
+          <!-- Gender & Looking For -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="regGender">Gender</label>
+              <select id="regGender" class="form-select">
+                <option value="">Select gender</option>
+                <option value="Female">Female</option>
+                <option value="Male">Male</option>
+                <option value="Non-binary">Non-binary</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="regIntent">What are you looking for?</label>
+              <select id="regIntent" class="form-select">
+                <option value="Relationship">Relationship</option>
+                <option value="Marriage">Marriage</option>
+                <option value="Friendship">Friendship</option>
+                <option value="Social Connections">Social Connections</option>
+                <option value="Meeting New People">Meeting New People</option>
+                <option value="Just Exploring">Just Exploring</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Checkboxes -->
+          <div class="checkbox-group">
+            <input type="checkbox" id="regTerms" required>
+            <label for="regTerms">I agree to the <a href="javascript:void(0)" onclick="openTermsModal()">Terms & Conditions</a>.</label>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="regPrivacy" required>
+            <label for="regPrivacy">I agree to the <a href="javascript:void(0)" onclick="openPrivacyModal()">Privacy Policy</a>.</label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="regSubmitBtn" class="btn btn-primary btn-block" style="margin-top: 12px;" disabled>
+            CREATE MY ACCOUNT
+          </button>
+
+          <p style="text-align: center; margin-top: 16px; font-size: 0.9rem; color: var(--text-muted);">
+            Already have an account? <a href="javascript:void(0)" onclick="switchToLogin()" style="color: var(--accent); font-weight: 600;">Login</a>
+          </p>
+        </form>
+      </div>
+
+      <!-- Registration Success View -->
+      <div id="registerSuccessView" class="modal-success-view">
+        <div class="success-icon-badge">🎉</div>
+        <h2 class="serif-title" style="margin-bottom: 12px;">Welcome to JabWeMeet! 🎉</h2>
+        <p style="color: var(--text-muted); margin-bottom: 28px; line-height: 1.6;">
+          Your account has been created successfully.<br>
+          Get ready to explore curated events and genuine real-world connections.
+        </p>
+        <button class="btn btn-primary btn-block" onclick="handlePostRegisterAction()">
+          LOGIN TO JABWEMEET
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. LOGIN MODAL -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <button class="modal-close" onclick="closeLoginModal()">✕</button>
+
+      <div class="modal-header">
+        <h2 class="serif-title">Welcome back.</h2>
+        <p>Ready to meet someone in the real world?</p>
+      </div>
+
+      <div id="loginAlert" class="form-alert form-alert-error"></div>
+
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group">
+          <label class="form-label" for="loginIdentifier">Email or Mobile Number</label>
+          <input type="text" id="loginIdentifier" class="form-input" placeholder="name@example.com or +91..." required>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" for="loginPassword" style="margin-bottom: 0;">Password</label>
+            <a href="javascript:void(0)" onclick="openForgotModal()" style="font-size: 0.8rem; color: var(--accent);">Forgot password?</a>
+          </div>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <div class="checkbox-group" style="margin-bottom: 24px;">
+          <input type="checkbox" id="loginRemember" checked>
+          <label for="loginRemember">Remember me</label>
+        </div>
+
+        <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
+          LOGIN
+        </button>
+
+        <p style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: var(--text-muted);">
+          Don't have an account? <a href="javascript:void(0)" onclick="switchToRegister()" style="color: var(--accent); font-weight: 600;">Create Account</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. FORGOT PASSWORD MODAL -->
+  <div class="modal-overlay" id="forgotModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <button class="modal-close" onclick="closeForgotModal()">✕</button>
+
+      <div class="modal-header">
+        <h2 class="serif-title">Reset Password</h2>
+        <p>Enter your email to receive a password reset link.</p>
+      </div>
+
+      <div id="forgotAlert" class="form-alert"></div>
+
+      <form id="forgotForm" onsubmit="handleForgotSubmit(event)">
+        <div class="form-group">
+          <label class="form-label" for="forgotEmail">Email Address</label>
+          <input type="email" id="forgotEmail" class="form-input" placeholder="name@example.com" required>
+        </div>
+
+        <button type="submit" id="forgotSubmitBtn" class="btn btn-primary btn-block">
+          Send Reset Link
+        </button>
+
+        <p style="text-align: center; margin-top: 18px; font-size: 0.9rem;">
+          <a href="javascript:void(0)" onclick="switchToLoginFromForgot()" style="color: var(--text-muted);">← Back to Login</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. SAFETY MODAL -->
+  <div class="modal-overlay" id="safetyModal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeSafetyModal()">✕</button>
+      <div class="modal-header">
+        <h2 class="serif-title">JabWeMeet Safety Pledge</h2>
+        <p>Our commitment to creating safe, dignified, offline experiences.</p>
+      </div>
+      <div style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.8;">
+        <p><strong>1. Strict Identity Screening:</strong> Every attendee registers with mobile verification and identity checks. We reserve the right to deny admission to unverified profiles.</p><br>
+        <p><strong>2. Safe Public Venues:</strong> All events take place in vetted public locations — partner cafes, boutique hotel lounges, private studios with attentive staff.</p><br>
+        <p><strong>3. On-Ground Event Hosts:</strong> Every JabWeMeet experience is moderated by trained hosts who oversee dynamics, introduce games, and ensure personal boundaries are respected.</p><br>
+        <p><strong>4. Consent-First Culture:</strong> Sharing phone numbers or personal handles is 100% voluntary. You decide if and when you want to connect outside the event.</p><br>
+        <p><strong>5. Zero Tolerance:</strong> Any harassment, inappropriate behavior, or boundary violation leads to immediate expulsion and lifetime banning.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== SCRIPTS ======================== -->
+  <script>
+    // API Configuration
+    // If hosted on Next.js or same host, uses relative /api. If opened via file:// or standalone, points to backend 5001.
+    const API_BASE = (window.location.protocol === 'file:' || window.location.port === '5001')
+      ? 'http://localhost:5001/api'
+      : '/api';
+
+    // State for Real-Time Validation
+    const formState = {
+      nameValid: false,
+      emailValid: false,
+      emailAvailable: false,
+      phoneValid: false,
+      passwordValid: false,
+      confirmPasswordValid: false,
+      dobValid: false,
+      cityValid: false,
+      termsAccepted: false,
+      privacyAccepted: false
+    };
+
+    let checkEmailTimer = null;
+    let registeredUserRedirect = '/dashboard';
+
+    // Modal Handlers
+    function openRegisterModal() {
+      document.getElementById('registerModal').classList.add('active');
+      document.getElementById('registerFormView').style.display = 'block';
+      document.getElementById('registerSuccessView').style.display = 'none';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeRegisterModal() {
+      document.getElementById('registerModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function openForgotModal() {
+      closeLoginModal();
+      document.getElementById('forgotModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeForgotModal() {
+      document.getElementById('forgotModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function openSafetyModal() {
+      document.getElementById('safetyModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSafetyModal() {
+      document.getElementById('safetyModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function openTermsModal() {
+      alert("JabWeMeet Terms: Respectful conduct, offline event safety, mutual consent, and 18+ membership requirements.");
+    }
+
+    function openPrivacyModal() {
+      alert("JabWeMeet Privacy Policy: Your personal information is protected and never sold. Real identity is kept secure.");
+    }
+
+    function switchToLogin() {
+      closeRegisterModal();
+      openLoginModal();
+    }
+
+    function switchToRegister() {
+      closeLoginModal();
+      openRegisterModal();
+    }
+
+    function switchToLoginFromForgot() {
+      closeForgotModal();
+      openLoginModal();
+    }
+
+    function toggleMobileMenu() {
+      const links = document.querySelector('.nav-links');
+      if (links.style.display === 'flex') {
+        links.style.display = 'none';
+      } else {
+        links.style.display = 'flex';
+        links.style.flexDirection = 'column';
+        links.style.position = 'absolute';
+        links.style.top = '76px';
+        links.style.left = '0';
+        links.style.right = '0';
+        links.style.background = '#0b111e';
+        links.style.padding = '24px';
+        links.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+      }
+    }
+
+    // ================= REAL-TIME VALIDATION ================= //
+
+    // 1. Full Name
+    const nameInput = document.getElementById('regName');
+    const nameFeedback = document.getElementById('nameFeedback');
+    nameInput.addEventListener('input', () => {
+      const val = nameInput.value.trim();
+      if (val.length >= 2) {
+        formState.nameValid = true;
+        nameFeedback.innerHTML = '<span class="feedback-valid">✓ Name looks good</span>';
+      } else {
+        formState.nameValid = false;
+        nameFeedback.innerHTML = val.length > 0
+          ? '<span class="feedback-invalid">✕ Please enter your full name (minimum 2 characters).</span>'
+          : '';
+      }
+      updateSubmitButtonState();
+    });
+
+    // 2. Email & Real Backend Availability Check
+    const emailInput = document.getElementById('regEmail');
+    const emailFeedback = document.getElementById('emailFeedback');
+    emailInput.addEventListener('input', () => {
+      const val = emailInput.value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      clearTimeout(checkEmailTimer);
+
+      if (!val) {
+        formState.emailValid = false;
+        formState.emailAvailable = false;
+        emailFeedback.innerHTML = '';
+        updateSubmitButtonState();
+        return;
+      }
+
+      if (!emailRegex.test(val)) {
+        formState.emailValid = false;
+        formState.emailAvailable = false;
+        emailFeedback.innerHTML = '<span class="feedback-invalid">✕ Please enter a valid email address.</span>';
+        updateSubmitButtonState();
+        return;
+      }
+
+      // Valid format
+      formState.emailValid = true;
+      emailFeedback.innerHTML = '<span class="feedback-checking">Checking email...</span>';
+
+      // 400ms debounce before real API availability call
+      checkEmailTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/auth/check-email?email=${encodeURIComponent(val)}`);
+          const data = await res.json();
+          if (data.available) {
+            formState.emailAvailable = true;
+            emailFeedback.innerHTML = '<span class="feedback-valid">✓ Email is available</span>';
+          } else {
+            formState.emailAvailable = false;
+            emailFeedback.innerHTML = `<span class="feedback-invalid">✕ ${data.message || 'This email is already registered.'} <a href="javascript:void(0)" onclick="switchToLogin()" style="color:var(--accent);text-decoration:underline;">Login</a></span>`;
+          }
+        } catch (err) {
+          formState.emailAvailable = true; // allow submission if offline / fallback
+          emailFeedback.innerHTML = '<span class="feedback-valid">✓ Valid email</span>';
+        }
+        updateSubmitButtonState();
+      }, 400);
+    });
+
+    // 3. Phone Validation
+    const phoneInput = document.getElementById('regPhone');
+    const phoneFeedback = document.getElementById('phoneFeedback');
+    phoneInput.addEventListener('input', () => {
+      const val = phoneInput.value.trim().replace(/\s+/g, '');
+      const phoneRegex = /^(?:\+91|0)?[6-9]\d{9}$/;
+
+      if (!val) {
+        formState.phoneValid = false;
+        phoneFeedback.innerHTML = '';
+      } else if (phoneRegex.test(val)) {
+        formState.phoneValid = true;
+        phoneFeedback.innerHTML = '<span class="feedback-valid">✓ Valid mobile number</span>';
+      } else {
+        formState.phoneValid = false;
+        phoneFeedback.innerHTML = '<span class="feedback-invalid">✕ Please enter a valid 10-digit mobile number.</span>';
+      }
+      updateSubmitButtonState();
+    });
+
+    // 4. Password Strength & Requirements
+    const pwInput = document.getElementById('regPassword');
+    const pwFill = document.getElementById('pwStrengthFill');
+    const reqLength = document.getElementById('reqLength');
+    const reqUpper = document.getElementById('reqUpper');
+    const reqLower = document.getElementById('reqLower');
+    const reqNumber = document.getElementById('reqNumber');
+    const reqSpecial = document.getElementById('reqSpecial');
+    const passwordFeedback = document.getElementById('passwordFeedback');
+
+    pwInput.addEventListener('input', () => {
+      const val = pwInput.value;
+      const isLength = val.length >= 8;
+      const isUpper = /[A-Z]/.test(val);
+      const isLower = /[a-z]/.test(val);
+      const isNumber = /[0-9]/.test(val);
+      const isSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/]/.test(val);
+
+      // Update UI checklist
+      updateReqItem(reqLength, isLength, 'At least 8 characters');
+      updateReqItem(reqUpper, isUpper, 'Uppercase letter');
+      updateReqItem(reqLower, isLower, 'Lowercase letter');
+      updateReqItem(reqNumber, isNumber, 'Number');
+      updateReqItem(reqSpecial, isSpecial, 'Special character');
+
+      const score = [isLength, isUpper, isLower, isNumber, isSpecial].filter(Boolean).length;
+
+      pwFill.className = 'pw-strength-fill';
+      if (score <= 2) {
+        pwFill.classList.add('strength-weak');
+        passwordFeedback.innerHTML = val ? '<span class="feedback-invalid">Password strength: Weak</span>' : '';
+      } else if (score <= 4) {
+        pwFill.classList.add('strength-medium');
+        passwordFeedback.innerHTML = '<span class="feedback-checking">Password strength: Medium</span>';
+      } else {
+        pwFill.classList.add('strength-strong');
+        passwordFeedback.innerHTML = '<span class="feedback-valid">✓ Password strength: Strong</span>';
+      }
+
+      formState.passwordValid = (score === 5);
+      validateConfirmPassword();
+      updateSubmitButtonState();
+    });
+
+    function updateReqItem(elem, met, label) {
+      if (met) {
+        elem.className = 'pw-req-item met';
+        elem.innerText = `✓ ${label}`;
+      } else {
+        elem.className = 'pw-req-item';
+        elem.innerText = `✕ ${label}`;
+      }
+    }
+
+    // 5. Confirm Password
+    const confirmPwInput = document.getElementById('regConfirmPassword');
+    const confirmPwFeedback = document.getElementById('confirmPasswordFeedback');
+    confirmPwInput.addEventListener('input', validateConfirmPassword);
+
+    function validateConfirmPassword() {
+      const pw = pwInput.value;
+      const confirmPw = confirmPwInput.value;
+
+      if (!confirmPw) {
+        formState.confirmPasswordValid = false;
+        confirmPwFeedback.innerHTML = '';
+      } else if (pw === confirmPw) {
+        formState.confirmPasswordValid = true;
+        confirmPwFeedback.innerHTML = '<span class="feedback-valid">✓ Passwords match</span>';
+      } else {
+        formState.confirmPasswordValid = false;
+        confirmPwFeedback.innerHTML = '<span class="feedback-invalid">✕ Passwords do not match.</span>';
+      }
+      updateSubmitButtonState();
+    }
+
+    // 6. Date of Birth & Age (18+)
+    const dobInput = document.getElementById('regDob');
+    const dobFeedback = document.getElementById('dobFeedback');
+    dobInput.addEventListener('change', () => {
+      const val = dobInput.value;
+      if (!val) {
+        formState.dobValid = false;
+        dobFeedback.innerHTML = '';
+        updateSubmitButtonState();
+        return;
+      }
+
+      const birthDate = new Date(val);
+      const today = new Date();
+      if (isNaN(birthDate.getTime()) || birthDate > today) {
+        formState.dobValid = false;
+        dobFeedback.innerHTML = '<span class="feedback-invalid">✕ Invalid date of birth.</span>';
+        updateSubmitButtonState();
+        return;
+      }
+
+      const age = Math.floor((today - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
+      if (age < 18) {
+        formState.dobValid = false;
+        dobFeedback.innerHTML = '<span class="feedback-invalid">✕ Must be at least 18 years old.</span>';
+      } else {
+        formState.dobValid = true;
+        dobFeedback.innerHTML = `<span class="feedback-valid">✓ Age verified (${age} years)</span>`;
+      }
+      updateSubmitButtonState();
+    });
+
+    // 7. City
+    const cityInput = document.getElementById('regCity');
+    cityInput.addEventListener('input', () => {
+      formState.cityValid = cityInput.value.trim().length >= 2;
+      updateSubmitButtonState();
+    });
+
+    // 8. Terms & Privacy Checkboxes
+    const termsCheck = document.getElementById('regTerms');
+    const privacyCheck = document.getElementById('regPrivacy');
+    termsCheck.addEventListener('change', () => {
+      formState.termsAccepted = termsCheck.checked;
+      updateSubmitButtonState();
+    });
+    privacyCheck.addEventListener('change', () => {
+      formState.privacyAccepted = privacyCheck.checked;
+      updateSubmitButtonState();
+    });
+
+    // Submit button state manager
+    function updateSubmitButtonState() {
+      const btn = document.getElementById('regSubmitBtn');
+      const allValid =
+        formState.nameValid &&
+        formState.emailValid &&
+        formState.emailAvailable &&
+        formState.phoneValid &&
+        formState.passwordValid &&
+        formState.confirmPasswordValid &&
+        formState.dobValid &&
+        formState.cityValid &&
+        formState.termsAccepted &&
+        formState.privacyAccepted;
+
+      btn.disabled = !allValid;
+    }
+
+    // ================= REAL REGISTRATION SUBMISSION ================= //
+    async function handleRegisterSubmit(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('regSubmitBtn');
+      const alertBox = document.getElementById('registerAlert');
+
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Creating account...';
+
+      const payload = {
+        name: nameInput.value.trim(),
+        email: emailInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        password: pwInput.value,
+        confirmPassword: confirmPwInput.value,
+        dateOfBirth: dobInput.value,
+        city: cityInput.value.trim(),
+        gender: document.getElementById('regGender').value,
+        relationshipIntent: document.getElementById('regIntent').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // includes HTTP-only cookie
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Success state
+          registeredUserRedirect = data.redirectUrl || '/dashboard';
+          document.getElementById('registerFormView').style.display = 'none';
+          document.getElementById('registerSuccessView').style.display = 'block';
+          checkUserSession(); // update navbar
+        } else {
+          // Error state
+          alertBox.className = 'form-alert form-alert-error';
+          alertBox.innerText = data.message || 'An error occurred during registration. Please check your inputs.';
+          alertBox.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'CREATE MY ACCOUNT';
+        }
+      } catch (err) {
+        console.error('Registration network error:', err);
+        alertBox.className = 'form-alert form-alert-error';
+        alertBox.innerText = "We couldn't connect to JabWeMeet right now. Please try again.";
+        alertBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'CREATE MY ACCOUNT';
+      }
+    }
+
+    function handlePostRegisterAction() {
+      closeRegisterModal();
+      if (window.location.port === '5001') {
+        window.location.href = 'http://localhost:3000' + registeredUserRedirect;
+      } else {
+        window.location.href = registeredUserRedirect;
+      }
+    }
+
+    // ================= REAL LOGIN SUBMISSION ================= //
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('loginSubmitBtn');
+      const alertBox = document.getElementById('loginAlert');
+      const identifier = document.getElementById('loginIdentifier').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Signing in...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ identifier, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          closeLoginModal();
+          const target = data.redirectUrl || '/dashboard';
+          if (window.location.port === '5001') {
+            window.location.href = 'http://localhost:3000' + target;
+          } else {
+            window.location.href = target;
+          }
+        } else {
+          alertBox.className = 'form-alert form-alert-error';
+          alertBox.innerText = data.message || 'Email/mobile or password is incorrect.';
+          alertBox.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'LOGIN';
+        }
+      } catch (err) {
+        console.error('Login network error:', err);
+        alertBox.className = 'form-alert form-alert-error';
+        alertBox.innerText = "We couldn't connect to JabWeMeet right now. Please try again.";
+        alertBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'LOGIN';
+      }
+    }
+
+    // ================= REAL FORGOT PASSWORD SUBMISSION ================= //
+    async function handleForgotSubmit(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('forgotSubmitBtn');
+      const alertBox = document.getElementById('forgotAlert');
+      const email = document.getElementById('forgotEmail').value.trim();
+
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Sending...';
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await response.json();
+
+        alertBox.className = 'form-alert form-alert-success';
+        alertBox.innerText = data.message || 'Reset instructions prepared.';
+        alertBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Send Reset Link';
+      } catch (err) {
+        alertBox.className = 'form-alert form-alert-error';
+        alertBox.innerText = "We couldn't connect to JabWeMeet right now. Please try again.";
+        alertBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Send Reset Link';
+      }
+    }
+
+    // ================= REAL SESSION DETECTION ON LOAD ================= //
+    async function checkUserSession() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/me`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            const navAuth = document.getElementById('navAuthSection');
+            const target = data.redirectUrl || '/dashboard';
+            navAuth.innerHTML = `
+              <span style="font-size:0.9rem;color:#cbd5e1;">Hi, <strong>${data.user.name.split(' ')[0]}</strong></span>
+              <a href="${target}" class="btn btn-secondary">Dashboard</a>
+              <button class="btn btn-outline" style="padding:8px 16px;font-size:0.85rem;" onclick="handleLogout()">Logout</button>
+            `;
+          }
+        }
+      } catch (e) {
+        // Not logged in or network error, keep default login/register buttons
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch (e) {}
+      window.location.href = '/';
+    }
+
+    // Initialize session check on load
+    window.addEventListener('DOMContentLoaded', () => {
+      checkUserSession();
+    });
+  </script>
+</body>
+</html>
