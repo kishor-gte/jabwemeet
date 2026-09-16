@@ -30,28 +30,24 @@ if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_UR
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps, curl, or same-origin static files)
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true); // Allow during local dev
+      return callback(null, true); 
     },
     credentials: true,
   })
 );
 
-// Body parsing and cookie middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Request logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
 
-// Serve frontend public static files (including index.html) directly from backend if accessed
 const publicDir = path.join(__dirname, '..', 'frontend', 'public');
 app.use(express.static(publicDir));
 
@@ -60,12 +56,12 @@ const uploadsDir = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsDir));
 
 // API Routes
+
 app.use('/api/auth', authRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/matchmaker', matchmakerRouter);
 
-// Friendly redirect for Next.js frontend routes when accessed on backend port 5001
 app.get(
   [
     '/admin',
@@ -83,7 +79,6 @@ app.get(
   }
 );
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -94,7 +89,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Root API info endpoint (if not serving index.html)
 app.get('/api', (req, res) => {
   res.json({
     name: 'JabWeMeet API',
@@ -107,7 +101,6 @@ app.get('/api', (req, res) => {
   });
 });
 
-// 404 handler for API routes
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ success: false, error: 'API endpoint not found' });
@@ -115,7 +108,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
   res.status(500).json({
@@ -128,7 +120,6 @@ const server = app.listen(PORT, () => {
   console.log(`JabWeMeet Backend Server running at http://localhost:${PORT}`);
 });
 
-// Graceful shutdown handling
 process.on('SIGINT', () => {
   console.log('Shutting down server gracefully...');
   server.close(() => {

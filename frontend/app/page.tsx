@@ -973,16 +973,9 @@ export default function HomePage() {
                       </button>.
                     </div>
                     <div className="flex flex-wrap gap-2 justify-center pt-2">
-                      <Link
-                        href="/admin"
-                        onClick={() => setShowRegisterModal(false)}
-                        className="px-5 py-2.5 bg-[#e06d53] hover:bg-[#c95940] text-white rounded-full text-xs font-bold transition shadow-lg"
-                      >
-                        Open Admin Portal
-                      </Link>
                       <button
                         onClick={() => setShowRegisterModal(false)}
-                        className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-semibold transition"
+                        className="px-5 py-2.5 bg-[#e06d53] hover:bg-[#c95940] text-white rounded-full text-xs font-semibold transition shadow-lg"
                       >
                         Close
                       </button>

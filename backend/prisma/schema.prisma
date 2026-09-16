@@ -28,6 +28,7 @@ model User {
   isVerified         Boolean   @default(true)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  events             Event[]
 
   // Breakup Buddy Fields
   idType             String?
@@ -137,14 +138,19 @@ model PasswordReset {
 }
 
 model Event {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   title        String
   description  String
   category     String
   location     String
   city         String
   date         DateTime
-  price        Float?   @default(0)
-  maxAttendees Int?     @default(50)
-  createdAt    DateTime @default(now())
+  endDate      DateTime?
+  price        Float?    @default(0)
+  maxAttendees Int?      @default(50)
+  ageRange     String?
+  itinerary    String?
+  hostId       String?
+  host         User?     @relation(fields: [hostId], references: [id])
+  createdAt    DateTime  @default(now())
 }
