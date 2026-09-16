@@ -165,49 +165,52 @@ export default function BreakupBuddyPage() {
     )
   );
 
-  const handleBookSession = (e: React.FormEvent) => {
+  const handleBookSession = async (e: React.FormEvent) => {
     e.preventDefault();
     setBookingSending(true);
 
     if (currentUser?.id && selectedBuddy) {
       try {
-        const existingBookings = JSON.parse(
-          localStorage.getItem(`jwm_bb_bookings_${currentUser.id}`) || "[]"
-        );
-        existingBookings.push({
-          buddyId: selectedBuddy.id,
-          buddyName: selectedBuddy.displayName || selectedBuddy.name,
-          sessionFormat,
-          preferredMode,
-          notes: feelingDescription,
-          createdAt: new Date().toISOString(),
+        const res = await fetch('/api/services/buddy-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            buddyId: selectedBuddy.id,
+            sessionFormat,
+            preferredMode,
+            notes: feelingDescription,
+          }),
         });
-        localStorage.setItem(
-          `jwm_bb_bookings_${currentUser.id}`,
-          JSON.stringify(existingBookings)
-        );
 
-        // Update services flag
-        const services = JSON.parse(
-          localStorage.getItem(`jwm_services_${currentUser.id}`) || "{}"
-        );
-        services.breakupBuddy = true;
-        localStorage.setItem(
-          `jwm_services_${currentUser.id}`,
-          JSON.stringify(services)
-        );
-      } catch (e) {}
+        const data = await res.json();
+        
+        if (data.success) {
+          // Update services flag
+          const services = JSON.parse(
+            localStorage.getItem(`jwm_services_${currentUser.id}`) || "{}"
+          );
+          services.breakupBuddy = true;
+          localStorage.setItem(
+            `jwm_services_${currentUser.id}`,
+            JSON.stringify(services)
+          );
+
+          setBookingSuccess(true);
+          setTimeout(() => {
+            setBookingSuccess(false);
+            setSelectedBuddy(null);
+            setFeelingDescription("");
+          }, 3500);
+        } else {
+          alert("Error: " + data.message);
+        }
+      } catch (e) {
+        alert("Failed to submit request.");
+      }
     }
 
-    setTimeout(() => {
-      setBookingSending(false);
-      setBookingSuccess(true);
-      setTimeout(() => {
-        setBookingSuccess(false);
-        setSelectedBuddy(null);
-        setFeelingDescription("");
-      }, 2500);
-    }, 600);
+    setBookingSending(false);
   };
 
   const getPhotoUrl = (photo: string | null) => {

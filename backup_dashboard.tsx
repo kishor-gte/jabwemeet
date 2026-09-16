@@ -20,40 +20,6 @@ export default function BreakupBuddyDashboardPage() {
   const [availableTimeEnd, setAvailableTimeEnd] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Real Data States
-  const [dashboardData, setDashboardData] = useState({ newRequests: 0, upcomingSessions: 0, completedSessions: 0 });
-  const [requests, setRequests] = useState<any[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [earnings, setEarnings] = useState({ totalEarnings: 0, sessions: [] });
-
-  const fetchData = async () => {
-    try {
-      const [dashRes, reqRes, sessRes, histRes, revRes, earnRes] = await Promise.all([
-        fetch('/api/buddy/dashboard', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/requests', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/sessions', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/history', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/reviews', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/earnings', { credentials: 'include' }).then(r => r.json()),
-      ]);
-      if (dashRes.success) setDashboardData(dashRes.data);
-      if (reqRes.success) setRequests(reqRes.data);
-      if (sessRes.success) setSessions(sessRes.data);
-      if (histRes.success) setHistory(histRes.data);
-      if (revRes.success) setReviews(revRes.data);
-      if (earnRes.success) setEarnings(earnRes.data);
-    } catch(e) {}
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
-
-
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then((r) => r.json())
@@ -137,80 +103,107 @@ export default function BreakupBuddyDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">New Requests</p>
-          <p className="text-3xl font-bold text-teal-600">{dashboardData.newRequests}</p>
+          <p className="text-3xl font-bold text-teal-600">5</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Upcoming</p>
-          <p className="text-3xl font-bold text-sky-500">{dashboardData.upcomingSessions}</p>
+          <p className="text-3xl font-bold text-sky-500">3</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Completed</p>
-          <p className="text-3xl font-bold text-slate-800">{dashboardData.completedSessions}</p>
+          <p className="text-3xl font-bold text-slate-800">28</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Rating</p>
+          <p className="text-3xl font-bold text-amber-500">⭐ 4.8</p>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <h3 className="text-lg font-bold font-serif mb-4 border-b border-slate-200 pb-2 text-slate-800">Today's Sessions</h3>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm mb-4 hover:shadow-md transition">
+          <div>
+            <p className="font-semibold text-slate-800">Priya Sharma</p>
+            <p className="text-xs text-slate-500">Chat • 30 Minutes • 6:00 PM</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">View</button>
+            <button className="px-4 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold transition shadow-sm">Start Session</button>
+          </div>
         </div>
       </div>
     </div>
   );
-
 
   const renderRequests = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">New Requests</h2>
       <p className="text-slate-500 text-sm mb-6 border-b border-slate-200 pb-4">Manage incoming booking requests from users.</p>
       
-      {requests.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No pending requests at the moment.</div>
-      ) : (
-        requests.map((req: any) => (
-          <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-lg text-slate-800">{req.user?.name || 'User'}</h3>
-                <p className="text-sm text-slate-500">{req.sessionType || 'Chat'} Session • {req.topic || 'General'}</p>
-                <p className="text-sm text-teal-600 font-semibold mt-1">Requested on {new Date(req.createdAt).toLocaleDateString()}</p>
-              </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">PENDING</span>
-            </div>
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <button className="flex-1 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition shadow-sm">Accept</button>
-              <button className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-sm font-semibold transition">Reject</button>
-            </div>
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="font-bold text-lg text-slate-800">Priya Sharma</h3>
+            <p className="text-sm text-slate-500">Chat Session • 30 Minutes</p>
+            <p className="text-sm text-teal-600 font-semibold mt-1">Today • 6:00 PM</p>
           </div>
-        ))
-      )}
+          <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">PENDING</span>
+        </div>
+        <div className="flex gap-3 pt-4 border-t border-slate-100">
+          <button className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">View Details</button>
+          <button className="flex-1 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition shadow-sm">Accept</button>
+          <button className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-sm font-semibold transition">Reject</button>
+        </div>
+      </div>
     </div>
   );
-
 
   const [sessionTab, setSessionTab] = useState("Active");
   const renderSessions = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Sessions</h2>
-      
-      {sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No upcoming sessions.</div>
-      ) : (
-        sessions.map((sess: any) => (
-          <div key={sess.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between shadow-sm mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl overflow-hidden">
-                {sess.user?.profileImage ? <img src={sess.user.profileImage} alt="User" /> : '👤'}
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-800">{sess.user?.name || 'User'}</h4>
-                <p className="text-xs text-slate-500">{sess.sessionType || 'Video'} Call • {sess.durationMinutes} mins</p>
-                <p className="text-xs font-semibold text-teal-600 mt-0.5">{new Date(sess.scheduledAt).toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition">Reschedule</button>
-              <button className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-lg shadow-sm transition">Join</button>
-            </div>
+      <div className="flex gap-4 border-b border-slate-200 mb-6">
+        {['Active', 'Upcoming', 'Completed'].map(tab => (
+          <button 
+            key={tab} 
+            onClick={() => setSessionTab(tab)}
+            className={`pb-2 px-1 text-sm font-semibold transition-colors ${sessionTab === tab ? 'text-teal-600 border-b-2 border-teal-600' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {sessionTab === "Active" && (
+        <div className="bg-white border border-teal-200 rounded-xl p-6 shadow-md relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-2 h-full bg-teal-500 animate-pulse"></div>
+          <h3 className="font-bold text-lg text-slate-800 mb-1">Priya Sharma</h3>
+          <p className="text-sm text-slate-600">Chat Session</p>
+          <p className="text-xs text-teal-600 mt-2 font-mono bg-teal-50 inline-block px-2 py-1 rounded">Started: 06:02 PM (Duration: 30 min)</p>
+          <div className="flex gap-3 mt-6">
+            <button className="flex-1 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white shadow-sm text-sm font-semibold transition">Open Chat</button>
+            <button className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-sm text-sm font-semibold transition">End Session</button>
           </div>
-        ))
+        </div>
+      )}
+
+      {sessionTab === "Upcoming" && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <h3 className="font-bold text-lg text-slate-800 mb-1">Anjali</h3>
+          <p className="text-sm text-slate-600">Audio Call • 30 Minutes</p>
+          <p className="text-sm text-teal-600 font-semibold mt-2">Tomorrow • 10:00 AM</p>
+          <div className="flex gap-3 mt-6">
+            <button className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">View Details</button>
+            <button className="flex-1 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white shadow-sm text-sm font-semibold transition">Join Call</button>
+          </div>
+        </div>
+      )}
+
+      {sessionTab === "Completed" && (
+        <p className="text-sm text-slate-500">See the History tab for completed sessions.</p>
       )}
     </div>
   );
-
 
   const renderMessages = () => (
     <div className="h-full flex flex-col space-y-4">
@@ -344,98 +337,138 @@ export default function BreakupBuddyDashboardPage() {
   const renderReviews = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Reviews</h2>
-      {reviews.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No reviews yet.</div>
-      ) : (
-        reviews.map((rev: any) => (
-          <div key={rev.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              {[...Array(5)].map((_, i) => (
-                <span key={i} className={`text-lg ${i < rev.rating ? 'text-amber-400' : 'text-slate-200'}`}>★</span>
-              ))}
-              <span className="text-slate-400 text-xs ml-2">{new Date(rev.createdAt).toLocaleDateString()}</span>
-            </div>
-            <p className="text-slate-700 text-sm mb-4">"{rev.comment}"</p>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-slate-800">- {rev.user?.name || 'Anonymous'}</span>
-            </div>
-          </div>
-        ))
-      )}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6 text-center">
+        <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-2">Overall Rating</p>
+        <p className="text-4xl font-bold text-amber-500 mb-1">⭐ 4.8</p>
+        <p className="text-sm text-slate-500 font-medium">28 Reviews</p>
+      </div>
+      
+      <div className="flex gap-2 mb-4">
+        {['All', '5★', '4★', '3★', '2★', '1★'].map(f => (
+          <button key={f} className={`px-4 py-1 rounded-full text-xs font-bold transition-colors border ${f === 'All' ? 'bg-teal-500 text-white border-teal-500 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{f}</button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <p className="text-amber-500 text-sm mb-2">⭐⭐⭐⭐⭐</p>
+          <p className="font-bold text-slate-800 text-sm mb-2">Priya Sharma</p>
+          <p className="text-sm text-slate-600 italic mb-4">"Very friendly and patient listener. Really helped me clear my mind."</p>
+          <p className="text-xs text-slate-400 font-medium">Chat Session • 15 Sep 2026</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <p className="text-amber-500 text-sm mb-2">⭐⭐⭐⭐</p>
+          <p className="font-bold text-slate-800 text-sm mb-2">Rahul T.</p>
+          <p className="text-sm text-slate-600 italic mb-4">"Good conversation, empathetic."</p>
+          <p className="text-xs text-slate-400 font-medium">Video Call • 12 Sep 2026</p>
+        </div>
+      </div>
     </div>
   );
-
 
   const renderEarnings = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Earnings</h2>
-      <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-6 text-white shadow-sm mb-6 flex justify-between items-center">
-        <div>
-          <p className="text-teal-100 text-sm font-medium mb-1">Total Earnings</p>
-          <h3 className="text-4xl font-bold">₹{earnings.totalEarnings}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 shadow-sm">
+          <p className="text-teal-700 text-xs font-bold uppercase tracking-wider mb-2">Total Earnings</p>
+          <p className="text-3xl font-bold text-teal-600">₹28,500</p>
         </div>
-        <div className="text-right">
-          <p className="text-teal-100 text-sm font-medium mb-1">Sessions Completed</p>
-          <h3 className="text-2xl font-bold">{earnings.sessions.length}</h3>
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">This Month</p>
+          <p className="text-3xl font-bold text-slate-800">₹6,500</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Pending</p>
+          <p className="text-3xl font-bold text-amber-500">₹1,200</p>
         </div>
       </div>
-      
-      {earnings.sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No earning history.</div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Recent Transactions</h3>
-          {earnings.sessions.map((sess: any) => (
-            <div key={sess.id} className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <div>
-                <p className="font-bold text-slate-800">Session • {sess.sessionType}</p>
-                <p className="text-xs text-slate-500">{new Date(sess.scheduledAt).toLocaleDateString()}</p>
-              </div>
-              <div className="text-lg font-bold text-emerald-600">+₹{sess.amountEarned}</div>
-            </div>
-          ))}
-        </div>
-      )}
+
+      <h3 className="text-lg font-bold font-serif text-slate-800 mb-4">Recent Transactions</h3>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-3 font-semibold">Session</th>
+              <th className="px-6 py-3 font-semibold">Amount</th>
+              <th className="px-6 py-3 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tr>
+              <td className="px-6 py-4 font-medium">Chat</td>
+              <td className="px-6 py-4 font-mono">₹299</td>
+              <td className="px-6 py-4"><span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">Paid</span></td>
+            </tr>
+            <tr>
+              <td className="px-6 py-4 font-medium">Audio Call</td>
+              <td className="px-6 py-4 font-mono">₹399</td>
+              <td className="px-6 py-4"><span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">Paid</span></td>
+            </tr>
+            <tr>
+              <td className="px-6 py-4 font-medium">Video Call</td>
+              <td className="px-6 py-4 font-mono">₹499</td>
+              <td className="px-6 py-4"><span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">Pending</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
-
 
   const renderHistory = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Session History</h2>
-      {history.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No past sessions found.</div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <tr>
-                <th className="px-6 py-3 font-semibold">User</th>
-                <th className="px-6 py-3 font-semibold">Date</th>
-                <th className="px-6 py-3 font-semibold">Type</th>
-                <th className="px-6 py-3 font-semibold">Duration</th>
-                <th className="px-6 py-3 font-semibold text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {history.map((h: any) => (
-                <tr key={h.id}>
-                  <td className="px-6 py-4 font-bold">{h.user?.name || 'User'}</td>
-                  <td className="px-6 py-4">{new Date(h.scheduledAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">{h.sessionType}</td>
-                  <td className="px-6 py-4">{h.durationMinutes}m</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-semibold">Completed</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      
+      <div className="flex justify-between items-center mb-4">
+        <input type="text" placeholder="Search..." className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-sm focus:outline-none focus:border-teal-500 w-64 shadow-sm" />
+        <div className="flex gap-2">
+          {['All', 'Chat', 'Audio', 'Video'].map(f => (
+            <button key={f} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${f === 'All' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>{f}</button>
+          ))}
         </div>
-      )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-3 font-semibold">User</th>
+              <th className="px-6 py-3 font-semibold">Type</th>
+              <th className="px-6 py-3 font-semibold">Date</th>
+              <th className="px-6 py-3 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tr className="hover:bg-slate-50 cursor-pointer transition">
+              <td className="px-6 py-4 font-semibold text-slate-800">Priya</td>
+              <td className="px-6 py-4">Chat</td>
+              <td className="px-6 py-4">Sep 15</td>
+              <td className="px-6 py-4 font-medium text-teal-600">Completed</td>
+            </tr>
+            <tr className="hover:bg-slate-50 cursor-pointer transition">
+              <td className="px-6 py-4 font-semibold text-slate-800">Anjali</td>
+              <td className="px-6 py-4">Audio</td>
+              <td className="px-6 py-4">Sep 14</td>
+              <td className="px-6 py-4 font-medium text-teal-600">Completed</td>
+            </tr>
+            <tr className="hover:bg-slate-50 cursor-pointer transition">
+              <td className="px-6 py-4 font-semibold text-slate-800">Rahul</td>
+              <td className="px-6 py-4">Video</td>
+              <td className="px-6 py-4">Sep 12</td>
+              <td className="px-6 py-4 font-medium text-teal-600">Completed</td>
+            </tr>
+            <tr className="hover:bg-slate-50 cursor-pointer transition">
+              <td className="px-6 py-4 font-semibold text-slate-800">Neha</td>
+              <td className="px-6 py-4">Chat</td>
+              <td className="px-6 py-4">Sep 10</td>
+              <td className="px-6 py-4 font-medium text-teal-600">Completed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
-
 
   const renderSettings = () => (
     <div className="space-y-6">
