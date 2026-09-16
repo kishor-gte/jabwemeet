@@ -33,6 +33,12 @@ export default function HomePage() {
   const [regIdDocument, setRegIdDocument] = useState("");
   const [regProfilePhoto, setRegProfilePhoto] = useState("");
 
+  // Matchmaker document upload state
+  const [mmGovId, setMmGovId] = useState("");
+  const [mmAddressProof, setMmAddressProof] = useState("");
+  const [mmEduCert, setMmEduCert] = useState("");
+  const [mmWorkExp, setMmWorkExp] = useState("");
+
   const [regTerms, setRegTerms] = useState(false);
   const [regPrivacy, setRegPrivacy] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
@@ -174,9 +180,12 @@ export default function HomePage() {
     regTerms &&
     regPrivacy;
 
-  const isRegValid = regRole === 'BREAKUP_BUDDY' 
-    ? (isBaseRegValid && regIdType && regIdDocument && regProfilePhoto)
-    : (isBaseRegValid && dobFeedback.startsWith("✓") && regCity.trim().length >= 2);
+  const isRegValid =
+    regRole === 'BREAKUP_BUDDY'
+      ? (isBaseRegValid && regIdType && regIdDocument && regProfilePhoto)
+      : regRole === 'MATCHMAKER'
+      ? isBaseRegValid
+      : (isBaseRegValid && dobFeedback.startsWith("✓") && regCity.trim().length >= 2);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -221,6 +230,7 @@ export default function HomePage() {
         formData.append("password", regPassword);
         formData.append("confirmPassword", regConfirmPassword);
         formData.append("role", regRole);
+        if (regCity.trim()) formData.append("city", regCity.trim());
 
         const gov = document.getElementById('govIdProof') as HTMLInputElement;
         if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
@@ -941,11 +951,43 @@ export default function HomePage() {
               <div className="text-center py-8 space-y-4">
                 <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
                 {redirectTarget === "pending" ? (
-                  <>
+                  <div className="space-y-4">
                     <h3 className="text-xl font-bold text-white">Application Submitted!</h3>
-                    <p className="text-sm text-slate-400">Your Relationship Manager registration has been sent for admin verification. You will be notified once approved.</p>
-                    <button onClick={() => setShowRegisterModal(false)} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-semibold transition">Close</button>
-                  </>
+                    <p className="text-sm text-slate-300">
+                      Your Relationship Manager application has been submitted for admin verification.
+                    </p>
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl text-amber-300 text-xs text-left leading-relaxed">
+                      <strong>Admin Portal:</strong> You can review and approve this Relationship Manager account at{" "}
+                      <Link href="/admin" className="underline font-bold text-amber-200">
+                        /admin
+                      </Link>. Once approved, you can log in directly at{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRegisterModal(false);
+                          setShowLoginModal(true);
+                        }}
+                        className="underline font-bold text-amber-200"
+                      >
+                        Login
+                      </button>.
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center pt-2">
+                      <Link
+                        href="/admin"
+                        onClick={() => setShowRegisterModal(false)}
+                        className="px-5 py-2.5 bg-[#e06d53] hover:bg-[#c95940] text-white rounded-full text-xs font-bold transition shadow-lg"
+                      >
+                        Open Admin Portal
+                      </Link>
+                      <button
+                        onClick={() => setShowRegisterModal(false)}
+                        className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-semibold transition"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <h3 className="text-xl font-bold text-white">Welcome to JabWeMeet!</h3>
@@ -961,6 +1003,16 @@ export default function HomePage() {
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold font-serif text-white">Join JabWeMeet</h2>
                   <p className="text-xs text-slate-400 mt-1">Real People. Real Places. Real Connections.</p>
+                  {regRole === "MATCHMAKER" && (
+                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">
+                      <span>Registering as: Relationship Manager</span>
+                    </div>
+                  )}
+                  {regRole === "BREAKUP_BUDDY" && (
+                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-xs font-semibold">
+                      <span>Registering as: Breakup Buddy</span>
+                    </div>
+                  )}
                 </div>
 
                 {regError && (
@@ -1042,7 +1094,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-<<<<<<< HEAD
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Confirm Password *</label>
                     <input
@@ -1060,7 +1111,7 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {(regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER') ? (
+                  {regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER' && (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -1122,7 +1173,9 @@ export default function HomePage() {
                         </div>
                       </div>
                     </>
-                  ) : (
+                  )}
+
+                  {regRole === 'BREAKUP_BUDDY' && (
                     <>
                       <div>
                         <label className="block text-xs font-semibold text-slate-300 mb-1">ID Type *</label>
@@ -1177,67 +1230,90 @@ export default function HomePage() {
                         </div>
                       </div>
                     </>
-=======
-                          <input type="date" required={regRole !== "MATCHMAKER"} value={regDob} onChange={e => setRegDob(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition" />
-                          {dobFeedback && <div className={`text-[10px] mt-1 ${dobFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{dobFeedback}</div>}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
-                          <input type="text" required={regRole !== "MATCHMAKER"} value={regCity} onChange={e => setRegCity(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition" placeholder="e.g. Bangalore" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
-                          <select value={regGender} onChange={e => setRegGender(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition appearance-none">
-                            <option value="">Select gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
-                          <select value={regIntent} onChange={e => setRegIntent(e.target.value)} className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] transition appearance-none">
-                            <option value="Relationship">Relationship</option>
-                            <option value="Casual Dating">Casual Dating</option>
-                            <option value="Social Connections">Social Connections (Mixers/Travel)</option>
-                            <option value="Support">Breakup Support</option>
-                          </select>
-                        </div>
-                      </div>
-                    </>
                   )}
 
                   {regRole === "MATCHMAKER" && (
-                    <div className="space-y-4 pt-4 border-t border-white/10">
-                      <h4 className="text-sm font-semibold text-white">Document Verification</h4>
-                      <p className="text-xs text-slate-400 mb-4">Please upload the required documents for admin approval.</p>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Govt ID Proof *</label>
-                          <input type="file" id="govIdProof" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Address Proof *</label>
-                          <input type="file" id="addressProof" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
-                        </div>
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Operating City <span className="text-slate-400 font-normal">(Optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={regCity}
+                          onChange={(e) => setRegCity(e.target.value)}
+                          placeholder="e.g. Bangalore, Mumbai, Delhi"
+                          className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
+                        />
                       </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                      <div className="space-y-4 pt-4 border-t border-white/10">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Educational Certificate *</label>
-                          <input type="file" id="eduCertificate" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
+                          <h4 className="text-sm font-semibold text-white">Document Verification</h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Upload verification documents for admin review. You can also upload or update these after account approval.
+                          </p>
                         </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Work Experience Proof *</label>
-                          <input type="file" id="workExperience" required className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition" accept=".jpg,.jpeg,.png,.pdf" />
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Govt ID Proof</span>
+                              {mmGovId && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="govIdProof"
+                              onChange={(e) => setMmGovId(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Address Proof</span>
+                              {mmAddressProof && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="addressProof"
+                              onChange={(e) => setMmAddressProof(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Educational Certificate</span>
+                              {mmEduCert && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="eduCertificate"
+                              onChange={(e) => setMmEduCert(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
+                          <div>
+                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                              <span>Work Experience Proof</span>
+                              {mmWorkExp && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
+                            </label>
+                            <input
+                              type="file"
+                              id="workExperience"
+                              onChange={(e) => setMmWorkExp(e.target.files?.[0]?.name || "")}
+                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
->>>>>>> 662c0b7f315f4daf223d9ab5014757b836bd56aa
                   )}
 
                   <div className="space-y-2 pt-2 text-xs text-slate-400">
