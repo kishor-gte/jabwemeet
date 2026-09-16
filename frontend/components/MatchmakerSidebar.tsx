@@ -41,7 +41,7 @@ export default function MatchmakerSidebar() {
       <div className="h-20 flex items-center px-6 border-b border-rose-50">
         <Heart className="w-8 h-8 text-rose-500 fill-rose-500" />
         <div className="ml-3">
-          <h1 className="text-xl font-bold text-slate-800 leading-none">PureConnect</h1>
+          <h1 className="text-xl font-bold text-slate-800 leading-none">JabWeMeet</h1>
           <p className="text-[10px] text-slate-400 font-medium tracking-wide">Find Your Forever</p>
         </div>
       </div>
