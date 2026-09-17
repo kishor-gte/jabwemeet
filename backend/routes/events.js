@@ -63,7 +63,8 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
         maxAttendees: maxAttendees ? parseInt(maxAttendees, 10) : 50,
         ageRange,
         itinerary,
-        hostId
+        hostId,
+
       },
     });
 

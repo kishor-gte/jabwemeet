@@ -237,14 +237,8 @@ function RegisterContent() {
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center pt-2">
                   <Link
-                    href="/admin"
-                    className="px-6 py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold transition shadow-lg"
-                  >
-                    Open Admin Portal
-                  </Link>
-                  <Link
                     href="/login"
-                    className="px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition"
+                    className="px-6 py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold transition shadow-lg"
                   >
                     Go to Login
                   </Link>
