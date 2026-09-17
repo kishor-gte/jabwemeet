@@ -125,9 +125,13 @@ export default function RequestsPage() {
 
       if (data.success) {
         // Optimistic update in UI
-        setRequests((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status } : r))
-        );
+        if (status === "Approved") {
+          setRequests((prev) => prev.filter((r) => r.id !== id));
+        } else {
+          setRequests((prev) =>
+            prev.map((r) => (r.id === id ? { ...r, status } : r))
+          );
+        }
 
         // Update counts
         setCounts((prev) => {
@@ -306,18 +310,6 @@ export default function RequestsPage() {
           >
             <span className="w-2 h-2 rounded-full bg-amber-400" />
             <span>Pending Review ({counts.new})</span>
-          </button>
-
-          <button
-            onClick={() => setStatusFilter("Approved")}
-            className={`px-3.5 py-2 rounded-xl font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
-              statusFilter === "Approved"
-                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/25"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>Approved ({counts.approved})</span>
           </button>
 
           <button

@@ -5,8 +5,82 @@ const bcrypt = require('bcryptjs');
 async function seed() {
   console.log('--- Starting JabWeMeet Database Seeding ---');
 
+
   const defaultPassword = await bcrypt.hash('JabWeMeet@2026', 10);
   const matchmakerPassword = await bcrypt.hash('Matchmaker123!', 10);
+
+  // 1. Seed sample events across all 6 experience categories
+  const countEvents = await prisma.event.count();
+  if (countEvents === 0) {
+    await prisma.event.createMany({
+      data: [
+        {
+          title: 'Rooftop Singles Mixer & Cocktail Evening',
+          description: 'An evening of relaxed conversations, great music, and curated icebreakers atop the city skyline.',
+          category: 'Singles Events',
+          location: 'Sky Lounge, Indiranagar',
+          city: 'Bangalore',
+          date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          price: 1200,
+          maxAttendees: 40,
+        },
+        {
+          title: '5-Minute Chemistry: Speed Dating Edition',
+          description: '15 structured mini-conversations with verified members in an intimate café setting.',
+          category: 'Speed Dating',
+          location: 'Artisan Coffee Roasters, Bandra',
+          city: 'Mumbai',
+          date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          price: 1500,
+          maxAttendees: 30,
+        },
+        {
+          title: 'Curated Blind Dinner Date',
+          description: 'Hand-picked pairing based on shared values and relationship goals, hosted at a premier bistro.',
+          category: 'Blind Dates',
+          location: 'Olive Bistro, Mehrauli',
+          city: 'Delhi',
+          date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          price: 2500,
+          maxAttendees: 10,
+        },
+        {
+          title: 'Beginner Bachata & Salsa Social Date',
+          description: 'No partner or dance experience needed! Connect through rhythm, laughter, and movement.',
+          category: 'Dance Dates',
+          location: 'Movement Studio, Koregaon Park',
+          city: 'Pune',
+          date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+          price: 900,
+          maxAttendees: 35,
+        },
+        {
+          title: 'Weekend Mountain Escape & Bonfire',
+          description: 'A 2-day getaway with like-minded singles: stargazing, trail hiking, and acoustic bonfire sessions.',
+          category: 'Singles Travel',
+          location: 'Cedar Woods Retreat, Manali',
+          city: 'Himachal',
+          date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          price: 7500,
+          maxAttendees: 20,
+        },
+        {
+          title: 'Fresh Start: Breakup Recovery Circle & Comedy',
+          description: 'A warm, uplifting space to share stories, laugh together, and embrace new beginnings.',
+          category: 'Breakup Community',
+          location: 'The Common Room, Cyber Hub',
+          city: 'Gurugram',
+          date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+          price: 500,
+          maxAttendees: 25,
+        },
+      ],
+    });
+    console.log('Sample JabWeMeet events seeded.');
+  } else {
+    console.log('Events already exist in the database, skipping event seed.');
+  }
+
 
   // 1. Seed / Upsert Admin User
   const admin = await prisma.user.upsert({
@@ -214,43 +288,8 @@ async function seed() {
   }
   console.log('✓ Seeded matchmaking requests.');
 
-  // 8. Seed Matchmaker Appointments & Suggestions
-  const vikram = seededClients.find((c) => c.email === 'vikram@example.com');
-  const ananya = seededClients.find((c) => c.email === 'ananya@example.com');
-  const sneha = seededClients.find((c) => c.email === 'sneha@example.com');
-
-  if (vikram) {
-    const existingAppt = await prisma.appointment.findFirst({ where: { clientId: vikram.id } });
-    if (!existingAppt) {
-      await prisma.appointment.create({
-        data: {
-          clientId: vikram.id,
-          matchmakerId: matchmaker.id,
-          date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-          time: '14:30',
-          type: 'Follow-up Consultation',
-          mode: 'Video Call',
-          status: 'Scheduled',
-        },
-      });
-    }
-
-    if (sneha) {
-      const existingSug = await prisma.matchSuggestion.findFirst({
-        where: { clientId: vikram.id, suggestedProfileId: sneha.id },
-      });
-      if (!existingSug) {
-        await prisma.matchSuggestion.create({
-          data: {
-            matchmakerId: matchmaker.id,
-            clientId: vikram.id,
-            suggestedProfileId: sneha.id,
-            status: 'Pending',
-          },
-        });
-      }
-    }
-  }
+    console.log('Initial Admin, Host, and Demo accounts seeded.');
+  } 
 
   // 9. Seed Breakup Buddy Requests & Sessions
   if (demoUser) {

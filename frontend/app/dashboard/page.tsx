@@ -111,19 +111,18 @@ function DashboardContent() {
             } catch (e) {}
           }
 
-          const savedConns = localStorage.getItem(`jwm_conns_${data.user.id}`);
-          if (savedConns) {
-            try {
-              setConnections(JSON.parse(savedConns));
-            } catch (e) {}
-          }
-
-          const savedServices = localStorage.getItem(`jwm_services_${data.user.id}`);
-          if (savedServices) {
-            try {
-              setServiceRequests(JSON.parse(savedServices));
-            } catch (e) {}
-          }
+          // Load real-time connections from backend
+          try {
+            const connRes = await fetch("/api/auth/connections", {
+              credentials: "include",
+            });
+            if (connRes.ok) {
+              const connData = await connRes.json();
+              if (connData.success && Array.isArray(connData.connections)) {
+                setConnections(connData.connections);
+              }
+            }
+          } catch (e) {}
 
           // Load real-time matchmaking status from backend
           try {
@@ -221,19 +220,24 @@ function DashboardContent() {
     setTimeout(() => setReservationToast(null), 3500);
   };
 
-  // Handle Connecting with a Peer
-  const handleAddConnection = (newConn: ConnectionItem) => {
-    if (!user) return;
-    const exists = connections.some((c) => c.id === newConn.id);
-    if (exists) return;
-    const updated = [...connections, newConn];
-    setConnections(updated);
+  // Handle Update Connection
+  const handleUpdateConnection = async (id: string, action: "Approve" | "Reject") => {
     try {
-      localStorage.setItem(`jwm_conns_${user.id}`, JSON.stringify(updated));
-    } catch (e) {}
-
-    setReservationToast(`Connection request sent to ${newConn.name}!`);
-    setTimeout(() => setReservationToast(null), 4000);
+      const res = await fetch(`/api/auth/connections/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConnections(connections.map(c => c.id === id ? { ...c, ...data.connection } : c));
+        setReservationToast(action === 'Approve' ? 'Connection Approved!' : 'Passed on connection.');
+        setTimeout(() => setReservationToast(null), 4000);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Handle Requesting Premium Services
@@ -468,11 +472,12 @@ function DashboardContent() {
 
               {/* Dynamic Connections Section */}
               <ConnectionsSection
+                userId={user.id}
                 connections={connections}
                 userCity={user.city}
                 registeredEventsCount={registeredEvents.length}
                 onExploreEvents={() => scrollToElement("events")}
-                onAddConnection={handleAddConnection}
+                onUpdateConnection={handleUpdateConnection}
               />
 
               {/* Dynamic Activity & Notifications */}
@@ -521,6 +526,7 @@ function DashboardContent() {
           {/* TAB 4: MY CONNECTIONS */}
           {activeSection === "connections" && (
             <ConnectionsSection
+              userId={user.id}
               connections={connections}
               userCity={user.city}
               registeredEventsCount={registeredEvents.length}
@@ -528,7 +534,7 @@ function DashboardContent() {
                 setActiveSection("events");
                 window.history.replaceState(null, "", "/dashboard?tab=events");
               }}
-              onAddConnection={handleAddConnection}
+              onUpdateConnection={handleUpdateConnection}
             />
           )}
 
