@@ -36,6 +36,7 @@ interface ConnectionsSectionProps {
   registeredEventsCount: number;
   onExploreEvents: () => void;
   onUpdateConnection: (id: string, action: "Approve" | "Reject") => void;
+  onChat?: () => void;
 }
 
 export default function ConnectionsSection({
@@ -45,6 +46,7 @@ export default function ConnectionsSection({
   registeredEventsCount,
   onExploreEvents,
   onUpdateConnection,
+  onChat,
 }: ConnectionsSectionProps) {
   const [activeTab, setActiveTab] = useState<"all" | "discover">("all");
 
@@ -117,9 +119,12 @@ export default function ConnectionsSection({
                           {conn.meetingLocation && <span>{conn.meetingLocation}</span>}
                         </p>
                       )}
-                      <p className="text-[10px] text-rose-300 font-medium">
+                      <p className="text-[10px] text-rose-300 font-medium mb-3">
                         {conn.meetingMessage}
                       </p>
+                      <button onClick={onChat} className="w-full py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+                        <MessageCircle className="w-3 h-3" /> Chat with {otherPerson.name}
+                      </button>
                     </div>
                   ) : myStatus === "Pending" && conn.status !== "Rejected" ? (
                     <div className="flex flex-col gap-3 mt-2">
@@ -143,8 +148,13 @@ export default function ConnectionsSection({
                         <span className="text-[10px] text-slate-400 font-medium">Waiting for {otherPerson.name}'s response</span>
                      </div>
                   ) : conn.status === "BothApproved" ? (
-                     <div className="text-center py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                        <span className="text-[10px] text-emerald-400 font-bold">Both Approved! Matchmaker is arranging a date.</span>
+                     <div className="flex flex-col gap-2">
+                       <div className="text-center py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                          <span className="text-[10px] text-emerald-400 font-bold">Both Approved! Matchmaker is arranging a date.</span>
+                       </div>
+                       <button onClick={onChat} className="w-full py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+                         <MessageCircle className="w-3 h-3" /> Chat with {otherPerson.name}
+                       </button>
                      </div>
                   ) : (
                      <div className="text-center py-2 bg-rose-500/5 rounded-lg border border-rose-500/10">

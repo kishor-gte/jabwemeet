@@ -478,6 +478,7 @@ function DashboardContent() {
                 registeredEventsCount={registeredEvents.length}
                 onExploreEvents={() => scrollToElement("events")}
                 onUpdateConnection={handleUpdateConnection}
+              onChat={() => setActiveSection('messages')}
               />
 
               {/* Dynamic Activity & Notifications */}
@@ -535,6 +536,7 @@ function DashboardContent() {
                 window.history.replaceState(null, "", "/dashboard?tab=events");
               }}
               onUpdateConnection={handleUpdateConnection}
+              onChat={() => setActiveSection('messages')}
             />
           )}
 
@@ -548,7 +550,7 @@ function DashboardContent() {
 
           {/* TAB 6: MESSAGES */}
           {activeSection === "messages" && (
-            <MessagesView userName={user.name} />
+            <MessagesView userName={user.name} userId={user.id} connections={connections} />
           )}
 
           {/* TAB 7: NOTIFICATIONS */}

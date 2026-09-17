@@ -63,6 +63,7 @@ model User {
   clientConversations  Conversation[]    @relation("ClientConversations")
   matchmakerConversations Conversation[] @relation("MatchmakerConversations")
   sentMessages         Message[]
+  connectionMessages   ConnectionMessage[]
 
   // Breakup Buddy Relations
   buddyRequestsSent      BuddyRequest[]  @relation("BuddyRequestsUser")
@@ -103,6 +104,7 @@ model MatchSuggestion {
   meetingMessage       String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  connectionMessages   ConnectionMessage[]
 }
 
 model Appointment {
@@ -209,3 +211,13 @@ model BuddyReview {
   createdAt        DateTime @default(now())
 }
 
+model ConnectionMessage {
+  id             String          @id @default(cuid())
+  suggestionId   String
+  suggestion     MatchSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User            @relation(fields: [senderId], references: [id])
+  content        String
+  isRead         Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+}

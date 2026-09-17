@@ -765,3 +765,55 @@ router.put('/connections/:id', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
+
+// Get messages for a connection
+router.get('/connections/:id/messages', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (!connection || (connection.clientId !== userId && connection.suggestedProfileId !== userId)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const messages = await prisma.connectionMessage.findMany({
+      where: { suggestionId: id },
+      orderBy: { createdAt: 'asc' },
+      include: { sender: { select: { id: true, name: true, profileImage: true } } }
+    });
+
+    res.json({ success: true, messages });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  }
+});
+
+// Send a message in a connection
+router.post('/connections/:id/messages', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const userId = req.user.userId;
+
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (!connection || (connection.clientId !== userId && connection.suggestedProfileId !== userId)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const message = await prisma.connectionMessage.create({
+      data: {
+        suggestionId: id,
+        senderId: userId,
+        content
+      },
+      include: { sender: { select: { id: true, name: true, profileImage: true } } }
+    });
+
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ success: false, message: 'Failed to send message' });
+  }
+});

@@ -23,6 +23,7 @@ interface Match {
   profileImage: string | null;
   score: number;
   reason: string;
+  isConnected?: boolean;
 }
 
 export default function ClientsPage() {
@@ -160,7 +161,8 @@ export default function ClientsPage() {
                                       throw new Error(errData.message || "Failed to create");
                                     }
                                     
-                                    setMatches(matches.map(m => m.id === match.id ? { ...m, isConnected: true } : m));`nalert(`Connection request sent to ${activeClient.name} and ${match.name}!`);
+                                    setMatches(matches.map(m => m.id === match.id ? { ...m, isConnected: true } : m));
+                                    alert(`Connection request sent to ${activeClient.name} and ${match.name}!`);
                                   } catch (err: any) {
                                     console.error(err);
                                     alert(err.message || "Failed to send connection request.");

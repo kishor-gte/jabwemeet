@@ -12,9 +12,11 @@ import {
 
 interface MessagesViewProps {
   userName: string;
+  userId?: string;
+  connections?: any[];
 }
 
-export default function MessagesView({ userName }: MessagesViewProps) {
+export default function MessagesView({ userName, userId, connections = [] }: MessagesViewProps) {
   const [conversations, setConversations] = useState([
     {
       id: "conv-1",
@@ -40,6 +42,38 @@ export default function MessagesView({ userName }: MessagesViewProps) {
 
   const [activeConvId, setActiveConvId] = useState("conv-1");
   const [newMessage, setNewMessage] = useState("");
+
+  // Sync connections into conversations
+  React.useEffect(() => {
+    if (!userId || connections.length === 0) return;
+    
+    const validConnections = connections.filter(c => c.status === 'BothApproved' || c.status === 'DateFixed');
+    
+    setConversations(prev => {
+      const newConvs = [...prev];
+      
+      validConnections.forEach(c => {
+        if (!newConvs.find(conv => conv.id === c.id)) {
+           const isClient = c.client.id === userId;
+           const otherPerson = isClient ? c.suggestedProfile : c.client;
+           
+           newConvs.push({
+             id: c.id,
+             name: otherPerson.name,
+             role: "Confirmed Match",
+             unread: 0,
+             lastMessage: `Start chatting with ${otherPerson.name}!`,
+             time: "Just now",
+             messages: [
+               { sender: "them", text: `Hi! We are officially connected. I'm ${otherPerson.name}.`, time: "Just now" }
+             ]
+           });
+        }
+      });
+      
+      return newConvs;
+    });
+  }, [connections, userId]);
 
   const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
 
