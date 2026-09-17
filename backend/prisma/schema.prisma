@@ -71,6 +71,7 @@ model User {
   buddySessionsAsBuddy   BuddySession[]  @relation("BuddySessionsBuddy")
   buddyReviewsGiven      BuddyReview[]   @relation("BuddyReviewsUser")
   buddyReviewsReceived   BuddyReview[]   @relation("BuddyReviewsBuddy")
+  buddyMessagesSent      BuddyMessage[]
 
   @@index([email])
   @@index([phone])
@@ -171,9 +172,37 @@ model BuddyRequest {
   buddy            User     @relation("BuddyRequestsBuddy", fields: [buddyId], references: [id])
   topic            String?
   sessionType      String?  
-  status           String   @default("Pending") 
-  createdAt        DateTime @default(now())
+  status                String   @default("Pending") 
+  timeUsedSeconds       Int      @default(0)
+  chatLimitSeconds      Int      @default(900)
+  voiceCallSeconds      Int      @default(0)
+  voiceCallLimitSeconds Int      @default(300)
+  createdAt             DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
+  messages         BuddyMessage[]
+  presences        BuddyPresence[]
+}
+
+model BuddyMessage {
+  id               String   @id @default(cuid())
+  requestId        String
+  request          BuddyRequest @relation(fields: [requestId], references: [id])
+  senderId         String
+  sender           User     @relation(fields: [senderId], references: [id])
+  senderRole       String
+  text             String
+  createdAt        DateTime @default(now())
+}
+
+model BuddyPresence {
+  id               String   @id @default(cuid())
+  requestId        String
+  request          BuddyRequest @relation(fields: [requestId], references: [id])
+  role             String   // "USER" or "BUDDY"
+  lastSeen         DateTime @default(now())
+
+  @@unique([requestId, role])
 }
 
 model BuddySession {

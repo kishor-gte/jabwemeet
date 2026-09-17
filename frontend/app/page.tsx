@@ -326,7 +326,13 @@ export default function HomePage() {
                   Hi, <strong>{currentUser.name.split(" ")[0]}</strong>
                 </span>
                 <Link
-                  href="/dashboard"
+                  href={
+                    currentUser.role === 'ADMIN' ? '/admin' :
+                    currentUser.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
+                    currentUser.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
+                    currentUser.role === 'HOST' ? '/host/dashboard' :
+                    '/dashboard'
+                  }
                   className="px-4 py-2 rounded-full text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition"
                 >
                   Dashboard

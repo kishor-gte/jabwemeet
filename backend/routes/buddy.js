@@ -23,10 +23,52 @@ router.get('/requests', async (req, res) => {
   try {
     const requests = await prisma.buddyRequest.findMany({
       where: { buddyId: req.user.userId },
-      include: { user: { select: { name: true, profileImage: true } } },
-      orderBy: { createdAt: 'desc' }
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            gender: true,
+            profileImage: true,
+            dateOfBirth: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
     res.json({ success: true, data: requests });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+router.get('/accepted-users', async (req, res) => {
+  try {
+    const accepted = await prisma.buddyRequest.findMany({
+      where: {
+        buddyId: req.user.userId,
+        status: 'Accepted',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            gender: true,
+            profileImage: true,
+            dateOfBirth: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    res.json({ success: true, data: accepted });
   } catch (error) {
     res.status(500).json({ success: false });
   }
@@ -36,8 +78,21 @@ router.get('/sessions', async (req, res) => {
   try {
     const sessions = await prisma.buddySession.findMany({
       where: { buddyId: req.user.userId, status: 'Scheduled' },
-      include: { user: { select: { name: true, profileImage: true } } },
-      orderBy: { scheduledAt: 'asc' }
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            gender: true,
+            profileImage: true,
+            dateOfBirth: true,
+          },
+        },
+      },
+      orderBy: { scheduledAt: 'asc' },
     });
     res.json({ success: true, data: sessions });
   } catch (error) {
@@ -49,8 +104,21 @@ router.get('/history', async (req, res) => {
   try {
     const history = await prisma.buddySession.findMany({
       where: { buddyId: req.user.userId, status: 'Completed' },
-      include: { user: { select: { name: true, profileImage: true } } },
-      orderBy: { scheduledAt: 'desc' }
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            gender: true,
+            profileImage: true,
+            dateOfBirth: true,
+          },
+        },
+      },
+      orderBy: { scheduledAt: 'desc' },
     });
     res.json({ success: true, data: history });
   } catch (error) {
@@ -80,6 +148,313 @@ router.get('/earnings', async (req, res) => {
     let totalEarnings = 0;
     sessions.forEach(s => totalEarnings += s.amountEarned);
     res.json({ success: true, data: { totalEarnings, sessions } });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Update request status (Accept or Reject)
+router.patch('/requests/:id', async (req, res) => {
+  try {
+    const buddyId = req.user.userId;
+    const { id } = req.params;
+    const { status, scheduledAt, durationMinutes } = req.body;
+
+    if (!['Accepted', 'Rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status. Must be Accepted or Rejected.' });
+    }
+
+    const request = await prisma.buddyRequest.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to update this request' });
+    }
+
+    const updatedRequest = await prisma.buddyRequest.update({
+      where: { id },
+      data: { status },
+      include: { user: { select: { name: true, profileImage: true } } },
+    });
+
+    let session = null;
+    if (status === 'Accepted') {
+      session = await prisma.buddySession.create({
+        data: {
+          userId: request.userId,
+          buddyId: buddyId,
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+          durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 45,
+          sessionType: request.sessionType || '1-on-1 Call',
+          status: 'Scheduled',
+          amountEarned: 499.0,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: status === 'Accepted' ? 'Request accepted and session scheduled!' : 'Request rejected.',
+      data: updatedRequest,
+      session,
+    });
+  } catch (error) {
+    console.error('Error updating buddy request:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update request' });
+  }
+});
+
+// POST /api/buddy/requests/:id/accept
+router.post('/requests/:id/accept', async (req, res) => {
+  try {
+    const buddyId = req.user.userId;
+    const { id } = req.params;
+    const { scheduledAt, durationMinutes } = req.body;
+
+    const request = await prisma.buddyRequest.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to update this request' });
+    }
+
+    const updatedRequest = await prisma.buddyRequest.update({
+      where: { id },
+      data: { status: 'Accepted' },
+      include: { user: { select: { name: true, profileImage: true } } },
+    });
+
+    const session = await prisma.buddySession.create({
+      data: {
+        userId: request.userId,
+        buddyId: buddyId,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+        durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 45,
+        sessionType: request.sessionType || '1-on-1 Call',
+        status: 'Scheduled',
+        amountEarned: 499.0,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Request accepted and session scheduled successfully',
+      data: updatedRequest,
+      session,
+    });
+  } catch (error) {
+    console.error('Error accepting buddy request:', error);
+    return res.status(500).json({ success: false, message: 'Failed to accept request' });
+  }
+});
+
+// POST /api/buddy/requests/:id/reject
+router.post('/requests/:id/reject', async (req, res) => {
+  try {
+    const buddyId = req.user.userId;
+    const { id } = req.params;
+
+    const request = await prisma.buddyRequest.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to update this request' });
+    }
+
+    const updatedRequest = await prisma.buddyRequest.update({
+      where: { id },
+      data: { status: 'Rejected' },
+      include: { user: { select: { name: true, profileImage: true } } },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Request rejected successfully',
+      data: updatedRequest,
+    });
+  } catch (error) {
+    console.error('Error rejecting buddy request:', error);
+    return res.status(500).json({ success: false, message: 'Failed to reject request' });
+  }
+});
+
+// PATCH /api/buddy/sessions/:id/complete
+router.patch('/sessions/:id/complete', async (req, res) => {
+  try {
+    const buddyId = req.user.userId;
+    const { id } = req.params;
+
+    const session = await prisma.buddySession.findUnique({
+      where: { id },
+    });
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+
+    if (session.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const updatedSession = await prisma.buddySession.update({
+      where: { id },
+      data: {
+        status: 'Completed',
+        amountEarned: session.amountEarned > 0 ? session.amountEarned : 499.0,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Session marked as completed! Earnings updated.',
+      data: updatedSession,
+    });
+  } catch (error) {
+    console.error('Error completing session:', error);
+    return res.status(500).json({ success: false, message: 'Failed to complete session' });
+  }
+});
+
+// ─── CHAT MESSAGES ───────────────────────────────────────────────────────────
+
+// GET /api/buddy/chat/:requestId — fetch messages
+router.get('/chat/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const buddyId = req.user.userId;
+
+    const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const messages = await prisma.buddyMessage.findMany({
+      where: { requestId },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ success: true, data: messages, timeUsedSeconds: request.timeUsedSeconds });
+  } catch (error) {
+    console.error('Error fetching chat messages:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  }
+});
+
+// POST /api/buddy/away/:requestId — explicitly mark as away to instantly pause timer
+router.post('/away/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const buddyId = req.user.userId;
+
+    await prisma.buddyPresence.updateMany({
+      where: { requestId, role: 'BUDDY' },
+      data: { lastSeen: new Date(Date.now() - 60000) } // Set to 1 min ago
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// POST /api/buddy/chat/:requestId — send a message (buddy side)
+router.post('/chat/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { text } = req.body;
+    const buddyId = req.user.userId;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ success: false, message: 'Message text required' });
+    }
+
+    const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const message = await prisma.buddyMessage.create({
+      data: {
+        requestId,
+        senderId: buddyId,
+        senderRole: 'BUDDY',
+        text: text.trim(),
+      },
+    });
+    res.json({ success: true, data: message });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ success: false, message: 'Failed to send message' });
+  }
+});
+
+// POST /api/buddy/presence/:requestId — heartbeat (buddy side)
+router.post('/presence/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const buddyId = req.user.userId;
+
+    let request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await prisma.buddyPresence.upsert({
+      where: { requestId_role: { requestId, role: 'BUDDY' } },
+      update: { lastSeen: new Date() },
+      create: { requestId, role: 'BUDDY', lastSeen: new Date() },
+    });
+
+    const userPresence = await prisma.buddyPresence.findUnique({
+      where: { requestId_role: { requestId, role: 'USER' } },
+    });
+    const threshold = new Date(Date.now() - 15000); // 15 seconds threshold for away
+    const userActive = userPresence && userPresence.lastSeen > threshold;
+
+    res.json({ success: true, data: { bothActive: !!userActive, timeUsedSeconds: request.timeUsedSeconds } });
+  } catch (error) {
+    console.error('Presence error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// GET /api/buddy/presence/:requestId — check presence (buddy side)
+router.get('/presence/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const buddyId = req.user.userId;
+
+    const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.buddyId !== buddyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const threshold = new Date(Date.now() - 30000);
+    const [userPresence, buddyPresence] = await Promise.all([
+      prisma.buddyPresence.findUnique({ where: { requestId_role: { requestId, role: 'USER' } } }),
+      prisma.buddyPresence.findUnique({ where: { requestId_role: { requestId, role: 'BUDDY' } } }),
+    ]);
+
+    const userActive = userPresence && userPresence.lastSeen > threshold;
+    const buddyActive = buddyPresence && buddyPresence.lastSeen > threshold;
+
+    res.json({ success: true, data: { userActive: !!userActive, buddyActive: !!buddyActive, bothActive: !!(userActive && buddyActive) } });
   } catch (error) {
     res.status(500).json({ success: false });
   }

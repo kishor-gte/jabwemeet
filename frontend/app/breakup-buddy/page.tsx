@@ -29,6 +29,7 @@ import {
   LogOut,
 } from "lucide-react";
 import DashboardSidebar from "../dashboard/components/DashboardSidebar";
+import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 
 interface BreakupBuddy {
   id: string;
@@ -58,6 +59,10 @@ export default function BreakupBuddyPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCity, setSelectedCity] = useState("all");
+  
+  // Calling State
+  const [activeCallReqId, setActiveCallReqId] = useState<string | null>(null);
+  const [activeCallBuddyId, setActiveCallBuddyId] = useState<string | null>(null);
   const [selectedExpertise, setSelectedExpertise] = useState("all");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -71,11 +76,22 @@ export default function BreakupBuddyPage() {
 
   // Booking Modal State
   const [selectedBuddy, setSelectedBuddy] = useState<BreakupBuddy | null>(null);
-  const [sessionFormat, setSessionFormat] = useState("1-on-1 Listening Session");
-  const [preferredMode, setPreferredMode] = useState("Confidential Chat / WhatsApp");
+  const [sessionFormat, setSessionFormat] = useState("Chat");
   const [feelingDescription, setFeelingDescription] = useState("");
   const [bookingSending, setBookingSending] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+
+  const fetchMyRequests = () => {
+    fetch("/api/services/my-buddy-requests", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && Array.isArray(data.data)) {
+          setMyRequests(data.data);
+        }
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     // 1. Fetch current session if logged in
@@ -84,6 +100,7 @@ export default function BreakupBuddyPage() {
       .then((data) => {
         if (data?.success && data?.user) {
           setCurrentUser(data.user);
+          fetchMyRequests();
 
           // Load local user counts for sidebar
           try {
@@ -178,7 +195,6 @@ export default function BreakupBuddyPage() {
           body: JSON.stringify({
             buddyId: selectedBuddy.id,
             sessionFormat,
-            preferredMode,
             notes: feelingDescription,
           }),
         });
@@ -197,6 +213,7 @@ export default function BreakupBuddyPage() {
           );
 
           setBookingSuccess(true);
+          fetchMyRequests();
           setTimeout(() => {
             setBookingSuccess(false);
             setSelectedBuddy(null);
@@ -303,7 +320,16 @@ export default function BreakupBuddyPage() {
         connectionsCount={badgeCounts.connectionsCount}
         notificationsCount={badgeCounts.notificationsCount}
         onSelectSection={(sec) => {
-          router.push(sec === "dashboard" ? "/dashboard" : `/dashboard?tab=${sec}`);
+          if (sec === "dashboard") {
+            const dashUrl = currentUser?.role === 'ADMIN' ? '/admin' :
+                            currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
+                            currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
+                            currentUser?.role === 'HOST' ? '/host/dashboard' :
+                            '/dashboard';
+            router.push(dashUrl);
+          } else {
+            router.push(`/dashboard?tab=${sec}`);
+          }
         }}
         onLogout={handleLogout}
         mobileOpen={mobileSidebarOpen}
@@ -316,7 +342,13 @@ export default function BreakupBuddyPage() {
         <div className="bg-[#0d1526]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href={
+                currentUser?.role === 'ADMIN' ? '/admin' :
+                currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
+                currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
+                currentUser?.role === 'HOST' ? '/host/dashboard' :
+                '/dashboard'
+              }
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-indigo-400" />
@@ -601,17 +633,55 @@ export default function BreakupBuddyPage() {
 
                     {/* Card Footer Actions */}
                     <div className="p-6 pt-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedBuddy(buddy);
-                        }}
-                        className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition active:scale-[0.99]"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Book Confidential Session</span>
-                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
-                      </button>
+                      {(() => {
+                        const existingReq = myRequests.find((r) => r.buddyId === buddy.id);
+                        
+                        if (existingReq?.status === 'Pending') {
+                          return (
+                            <div className="w-full py-3 rounded-2xl bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center gap-2 border border-amber-500/30">
+                              <Clock className="w-4 h-4 animate-pulse" />
+                              <span>Request Pending - Waiting for Acceptance</span>
+                            </div>
+                          );
+                        }
+                        
+                        if (existingReq?.status === 'Accepted') {
+                          return (
+                            <div className="grid grid-cols-2 gap-3">
+                              <Link
+                                href={`/dashboard?tab=messages&requestId=${existingReq.id}`}
+                                className="py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold flex items-center justify-center gap-2 transition"
+                              >
+                                <MessageCircle className="w-4 h-4" /> Chat
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveCallReqId(existingReq.id);
+                                  setActiveCallBuddyId(buddy.id);
+                                }}
+                                className="flex-1 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 font-bold text-sm transition flex items-center justify-center gap-2"
+                              >
+                                <Phone className="w-4 h-4" /> Voice Call
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedBuddy(buddy);
+                            }}
+                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition active:scale-[0.99]"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>Book Confidential Session</span>
+                            <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
@@ -681,35 +751,8 @@ export default function BreakupBuddyPage() {
                       onChange={(e) => setSessionFormat(e.target.value)}
                       className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
                     >
-                      <option value="1-on-1 Listening Session">
-                        1-on-1 Confidential Listening Session
-                      </option>
-                      <option value="No-Contact Accountability Texting">
-                        No-Contact Accountability Texting
-                      </option>
-                      <option value="Closure & Moving-On Guidance">
-                        Closure & Moving-On Guidance
-                      </option>
-                      <option value="Peer Support Circle">Peer Support Circle</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Preferred Mode of Communication
-                    </label>
-                    <select
-                      value={preferredMode}
-                      onChange={(e) => setPreferredMode(e.target.value)}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="Confidential Chat / WhatsApp">
-                        Confidential Chat / WhatsApp
-                      </option>
-                      <option value="Private Voice Call">Private Voice Call</option>
-                      <option value="In-Person Coffee Meetup (Partner Cafe)">
-                        In-Person Coffee Meetup (Partner Cafe)
-                      </option>
+                      <option value="Chat">💬 Chat</option>
+                      <option value="Voice Call">📞 Voice Call</option>
                     </select>
                   </div>
 
@@ -752,6 +795,20 @@ export default function BreakupBuddyPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Voice Call Overlay */}
+      {activeCallReqId && activeCallBuddyId && (
+        <VoiceCallOverlay
+          requestId={activeCallReqId}
+          buddyId={activeCallBuddyId}
+          role="USER"
+          callerName={currentUser?.name}
+          onClose={() => {
+            setActiveCallReqId(null);
+            setActiveCallBuddyId(null);
+          }}
+        />
       )}
     </div>
   );
