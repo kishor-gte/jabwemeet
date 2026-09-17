@@ -26,6 +26,15 @@ interface ActivityFeedProps {
     breakupBuddy: boolean;
   };
   connectionRequestsCount: number;
+  announcements?: Array<{
+    id: string;
+    title: string;
+    message: string;
+    type: string;
+    sentAt: string;
+    sentBy?: string;
+  }>;
+  onViewAllNotifications?: () => void;
 }
 
 export default function ActivityFeed({
@@ -35,6 +44,8 @@ export default function ActivityFeed({
   registeredEvents,
   serviceRequests,
   connectionRequestsCount,
+  announcements = [],
+  onViewAllNotifications,
 }: ActivityFeedProps) {
   const createdDate = new Date(userCreatedAt);
   const formattedCreated = !isNaN(createdDate.getTime())
@@ -120,6 +131,15 @@ export default function ActivityFeed({
 
   // Dynamic Notifications list
   const notifications = [
+    // Broadcast Announcements
+    ...announcements.map((ann) => ({
+      id: ann.id,
+      title: ann.title,
+      subtitle: ann.message,
+      icon: Bell,
+      color: "text-amber-400",
+      isBroadcast: true,
+    })),
     ...registeredEvents.map((evt) => ({
       id: `notif-${evt.id}`,
       title: `RSVP Confirmed: ${evt.title}`,
@@ -130,6 +150,7 @@ export default function ActivityFeed({
       })} at ${evt.location}.`,
       icon: CalendarCheck,
       color: "text-emerald-400",
+      isBroadcast: false,
     })),
     ...(serviceRequests.relationshipManager
       ? [
@@ -139,6 +160,7 @@ export default function ActivityFeed({
             subtitle: "Your personal matchmaker will initiate contact within 24 hours.",
             icon: HeartHandshake,
             color: "text-rose-400",
+            isBroadcast: false,
           },
         ]
       : []),
@@ -150,6 +172,7 @@ export default function ActivityFeed({
             subtitle: "We're setting up a safe space for your healing journey.",
             icon: Headphones,
             color: "text-indigo-400",
+            isBroadcast: false,
           },
         ]
       : []),
@@ -210,8 +233,8 @@ export default function ActivityFeed({
               )}
             </div>
             <button
-              onClick={() => alert("Notification center is up to date.")}
-              className="text-xs font-semibold text-[#fca5a5] hover:text-white transition flex items-center gap-1"
+              onClick={onViewAllNotifications || (() => alert("Notification center is up to date."))}
+              className="text-xs font-semibold text-[#fca5a5] hover:text-white transition flex items-center gap-1 cursor-pointer"
             >
               <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -225,14 +248,25 @@ export default function ActivityFeed({
                 return (
                   <div
                     key={notif.id}
-                    className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex items-start gap-3"
+                    className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+                      notif.isBroadcast
+                        ? "bg-amber-500/10 border-amber-500/30"
+                        : "bg-white/5 border-white/5"
+                    }`}
                   >
                     <Icon className={`w-4 h-4 ${notif.color} shrink-0 mt-0.5`} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-slate-200 font-semibold">
-                        {notif.title}
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-slate-200 font-semibold truncate">
+                          {notif.title}
+                        </p>
+                        {notif.isBroadcast && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Broadcast
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed line-clamp-2">
                         {notif.subtitle}
                       </p>
                     </div>

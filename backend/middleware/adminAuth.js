@@ -1,22 +1,18 @@
 const prisma = require('../db');
 const { authenticateToken } = require('./auth');
 
-// Role hierarchy / permission mapping
-const STAFF_PERMISSIONS = {
-  SUPER_ADMIN: ['*'],
-  OPERATIONS_ADMIN: ['USERS', 'EVENTS', 'MANAGERS', 'BUDDIES', 'MATCHMAKING', 'SERVICES', 'ANALYTICS', 'OVERVIEW', 'SEARCH'],
-  EVENT_ADMIN: ['EVENTS', 'MANAGERS', 'ANALYTICS', 'OVERVIEW', 'SEARCH'],
-  FINANCE_ADMIN: ['PAYMENTS', 'REFUNDS', 'INVOICES', 'SUBSCRIPTIONS', 'PACKAGES', 'COUPONS', 'ANALYTICS', 'OVERVIEW', 'SEARCH'],
-  SAFETY_ADMIN: ['SAFETY', 'REPORTS', 'VERIFICATION', 'USERS_RESTRICTED', 'OVERVIEW', 'SEARCH'],
-  CONTENT_ADMIN: ['CONTENT', 'REVIEWS', 'NOTIFICATIONS', 'COUPONS', 'OVERVIEW', 'SEARCH'],
-  SUPPORT_ADMIN: ['SUPPORT', 'REPORTS_READ', 'USERS_READ', 'OVERVIEW', 'SEARCH'],
-};
-
 /**
- * Require Admin role and verify staff permission
- * @param {string} permissionCategory - 'USERS', 'EVENTS', 'PAYMENTS', etc. Optional.
+ * Require Admin role and verify SUPER_ADMIN privilege
+ * Authorization flow:
+ * 1. Authenticated User (token exists and valid) -> 401 if missing/invalid
+ * 2. User has ADMIN role -> 403 if not ADMIN
+ * 3. Database lookup for current status and staffRole:
+ *    - User exists -> 401 if not found
+ *    - Account is ACTIVE -> 403 if SUSPENDED or BLOCKED
+ *    - staffRole === 'SUPER_ADMIN' -> 403 if not SUPER_ADMIN
+ * 4. Attach req.staff with SUPER_ADMIN context and proceed
  */
-function requireAdmin(permissionCategory = null) {
+function requireAdmin() {
   return async (req, res, next) => {
     // 1. Must be authenticated
     if (!req.user) {
@@ -46,26 +42,18 @@ function requireAdmin(permissionCategory = null) {
         return res.status(403).json({ success: false, message: 'Admin account has been suspended or blocked' });
       }
 
+      // 3. Must have SUPER_ADMIN role
+      if (staffMember.staffRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, message: 'Access denied: SUPER_ADMIN role required' });
+      }
+
       req.staff = {
         id: staffMember.id,
         name: staffMember.name,
         email: staffMember.email,
         role: staffMember.role,
-        staffRole: staffMember.staffRole,
+        staffRole: 'SUPER_ADMIN',
       };
-
-      // 4. Check specific permission if requested
-      if (permissionCategory) {
-        const allowedPermissions = STAFF_PERMISSIONS[staffMember.staffRole] || [];
-        const hasPermission = allowedPermissions.includes('*') || allowedPermissions.includes(permissionCategory);
-
-        if (!hasPermission) {
-          return res.status(403).json({
-            success: false,
-            message: `Access denied: Insufficient staff permissions. '${permissionCategory}' requires elevated privileges.`,
-          });
-        }
-      }
 
       next();
     } catch (error) {
@@ -77,5 +65,5 @@ function requireAdmin(permissionCategory = null) {
 
 module.exports = {
   requireAdmin,
-  STAFF_PERMISSIONS,
 };
+

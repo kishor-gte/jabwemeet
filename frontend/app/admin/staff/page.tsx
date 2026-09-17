@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import {
   ShieldCheck,
-  UserCheck,
   Lock,
   Edit2,
   Clock,
@@ -12,11 +11,12 @@ import {
   X,
   CheckCircle2,
   Users,
-  KeyRound,
-  FileCheck2,
+  Shield,
+  Calendar,
+  Sparkles,
 } from "lucide-react";
 
-interface StaffMember {
+interface AdminMember {
   id: string;
   name: string;
   email: string;
@@ -28,65 +28,26 @@ interface StaffMember {
   lastActiveAt: string | null;
 }
 
-const ROLE_DESCRIPTIONS: Record<string, { label: string; desc: string; color: string }> = {
-  SUPER_ADMIN: {
-    label: "Super Admin",
-    desc: "Full unrestricted platform control, staff delegation, and billing",
-    color: "bg-rose-50 text-rose-700 border-rose-200",
-  },
-  OPERATIONS_ADMIN: {
-    label: "Operations Admin",
-    desc: "Oversees Users, Events, Managers, Matchmaking, and Buddies",
-    color: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  },
-  EVENT_ADMIN: {
-    label: "Event Host Admin",
-    desc: "Oversees real-world events, host assignments, and attendance",
-    color: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  FINANCE_ADMIN: {
-    label: "Finance Admin",
-    desc: "Regulates transactions, refunds, GST invoices, and coupon codes",
-    color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  SAFETY_ADMIN: {
-    label: "Trust & Safety Admin",
-    desc: "Investigates safety incidents, reviews documents, and user moderation",
-    color: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  CONTENT_ADMIN: {
-    label: "Content & CMS Admin",
-    desc: "Manages homepage copy, safety pledges, and global announcements",
-    color: "bg-purple-50 text-purple-700 border-purple-200",
-  },
-  SUPPORT_ADMIN: {
-    label: "Support Desk Admin",
-    desc: "Handles member tickets, inquiries, and resolution updates",
-    color: "bg-teal-50 text-teal-700 border-teal-200",
-  },
-};
-
-export default function AdminStaffPage() {
-  const [staff, setStaff] = useState<StaffMember[]>([]);
+export default function AdminManagementPage() {
+  const [admins, setAdmins] = useState<AdminMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminMember | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const [form, setForm] = useState({
-    staffRole: "SUPER_ADMIN",
     status: "ACTIVE",
     reason: "",
   });
 
-  async function fetchStaff() {
+  async function fetchAdmins() {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/staff", { credentials: "include" });
       const data = await res.json();
       if (data.success) {
-        setStaff(data.staffMembers || []);
+        setAdmins(data.staffMembers || []);
       }
     } catch (e) {
       console.error(e);
@@ -96,43 +57,46 @@ export default function AdminStaffPage() {
   }
 
   useEffect(() => {
-    fetchStaff();
+    fetchAdmins();
   }, []);
 
-  function openEditModal(member: StaffMember) {
-    setSelectedStaff(member);
+  function openEditModal(admin: AdminMember) {
+    setSelectedAdmin(admin);
     setForm({
-      staffRole: member.staffRole || "SUPER_ADMIN",
-      status: member.status || "ACTIVE",
+      status: admin.status || "ACTIVE",
       reason: "",
     });
     setErrorMsg("");
     setModalOpen(true);
   }
 
-  async function handleUpdateStaff(e: React.FormEvent) {
+  async function handleUpdateAdmin(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedStaff) return;
+    if (!selectedAdmin) return;
     if (!form.reason.trim()) {
-      setErrorMsg("Please specify a reason for this permission change (logged in Audit Trail).");
+      setErrorMsg("Please specify a justification for this account change (logged in Audit Trail).");
       return;
     }
 
     setSaving(true);
     setErrorMsg("");
     try {
-      const res = await fetch(`/api/admin/staff/${selectedStaff.id}`, {
+      const res = await fetch(`/api/admin/staff/${selectedAdmin.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          staffRole: "SUPER_ADMIN",
+          status: form.status,
+          reason: form.reason,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setModalOpen(false);
-        fetchStaff();
+        fetchAdmins();
       } else {
-        setErrorMsg(data.message || "Failed to update staff permissions");
+        setErrorMsg(data.message || "Failed to update admin status");
       }
     } catch (e: any) {
       setErrorMsg(e.message || "Network error");
@@ -141,256 +105,246 @@ export default function AdminStaffPage() {
     }
   }
 
-  const superAdminCount = staff.filter((s) => s.staffRole === "SUPER_ADMIN").length;
-  const activeStaffCount = staff.filter((s) => s.status === "ACTIVE").length;
+  const activeCount = admins.filter((s) => s.status === "ACTIVE").length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-7 h-7 text-rose-600" />
-            Staff Roles & Permission Enforcement
+    <div className="space-y-6 pb-12">
+      {/* Top Banner Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-[#121c2e] via-[#0f1728] to-[#121c2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            Security & Governance
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <ShieldCheck className="w-7 h-7 text-red-500" />
+            Admin Management
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Server-side role-based access control (RBAC). Changes are permanently recorded in the immutable audit log.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+            Super Administrator accounts with full platform governance. All account status modifications are recorded in the audit trail.
           </p>
+        </div>
+        <div className="relative z-10 inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-xl text-xs font-bold w-fit">
+          <Lock className="w-3.5 h-3.5" />
+          Single Role Architecture: SUPER_ADMIN Only
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Administrators</span>
-            <Users className="w-4 h-4 text-slate-400" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Administrators</span>
+            <Users className="w-4 h-4 text-slate-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{staff.length}</p>
-          <span className="text-xs text-slate-400">Authorized staff members</span>
+          <p className="text-2xl sm:text-3xl font-black text-white mt-2">{admins.length}</p>
+          <span className="text-[11px] text-slate-500">Authorized platform accounts</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Active Staff</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Active Admins</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-emerald-700 mt-2">{activeStaffCount}</p>
-          <span className="text-xs text-slate-400">Can log in & manage</span>
+          <p className="text-2xl sm:text-3xl font-black text-emerald-400 mt-2">{activeCount}</p>
+          <span className="text-[11px] text-slate-500">Granted active access</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Super Admins</span>
-            <Lock className="w-4 h-4 text-rose-500" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">Privilege Model</span>
+            <Shield className="w-4 h-4 text-red-400" />
           </div>
-          <p className="text-2xl font-bold text-rose-700 mt-2">{superAdminCount}</p>
-          <span className="text-xs text-slate-400">Full system override</span>
+          <p className="text-2xl sm:text-3xl font-black text-red-400 mt-2">SUPER_ADMIN</p>
+          <span className="text-[11px] text-slate-500">Full operational control</span>
         </div>
       </div>
 
-      {/* Staff Roster Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-rose-600" />
-            Authorized Platform Operators
+      {/* Admin Roster Table */}
+      <div className="rounded-3xl bg-[#0f172a] border border-white/10 shadow-xl overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <Shield className="w-4 h-4 text-red-500" />
+            Super Administrator Directory
           </h2>
-          <span className="text-xs text-slate-500">{staff.length} staff accounts</span>
+          <span className="text-xs text-slate-400">{admins.length} registered admin(s)</span>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-slate-500 text-sm">Loading staff members...</div>
+          <div className="p-12 text-center text-slate-500 text-xs animate-pulse">Loading admin directory...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Staff Member</th>
-                  <th className="py-3.5 px-4">Email</th>
-                  <th className="py-3.5 px-4">Assigned Role</th>
-                  <th className="py-3.5 px-4">Role Capabilities</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                <tr className="bg-white/[0.02] border-b border-white/10 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                  <th className="py-4 px-5">Admin Name</th>
+                  <th className="py-4 px-4">Email</th>
+                  <th className="py-4 px-4">Role</th>
+                  <th className="py-4 px-4">Status</th>
+                  <th className="py-4 px-4">Last Active</th>
+                  <th className="py-4 px-4">Created Date</th>
+                  <th className="py-4 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-sm">
-                {staff.map((member) => {
-                  const roleInfo = ROLE_DESCRIPTIONS[member.staffRole] || ROLE_DESCRIPTIONS.SUPER_ADMIN;
-                  return (
-                    <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">
-                            {member.name ? member.name.charAt(0).toUpperCase() : "A"}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900">{member.name}</p>
-                            <span className="text-[11px] text-slate-400">ID: {member.id.slice(0, 8)}...</span>
-                          </div>
+              <tbody className="divide-y divide-white/5 text-xs">
+                {admins.map((admin) => (
+                  <tr key={admin.id} className="hover:bg-white/[0.02] transition">
+                    <td className="py-4 px-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center font-bold text-sm">
+                          {admin.name ? admin.name.charAt(0).toUpperCase() : "A"}
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-slate-400" />
-                          {member.email}
+                        <div>
+                          <p className="font-bold text-white">{admin.name}</p>
+                          <span className="text-[10px] text-slate-500 font-mono">ID: {admin.id.slice(0, 8)}...</span>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${roleInfo.color}`}
-                        >
-                          <Lock className="w-3 h-3" />
-                          {roleInfo.label}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-slate-300 font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-slate-500" />
+                        {admin.email}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                        <Lock className="w-3 h-3" />
+                        SUPER_ADMIN
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      {admin.status === "ACTIVE" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                          Active
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-xs text-slate-500 max-w-xs">
-                        {roleInfo.desc}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {member.status === "ACTIVE" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                            Suspended
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => openEditModal(member)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          Modify Role
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">
+                          Suspended
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-slate-400 font-mono">
+                      {admin.lastActiveAt ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-500" />
+                          {new Date(admin.lastActiveAt).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">Never</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-slate-400 font-mono">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-slate-500" />
+                        {new Date(admin.createdAt).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="py-4 px-5 text-right">
+                      <button
+                        onClick={() => openEditModal(admin)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 hover:text-white border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl transition"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        Manage Status
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Role Hierarchy Reference Card */}
-      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
-          <FileCheck2 className="w-4 h-4 text-rose-600" />
-          Server-Enforced Role Matrix & Permissions
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Object.entries(ROLE_DESCRIPTIONS).map(([key, item]) => (
-            <div key={key} className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-              <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold border ${item.color}`}>
-                {item.label}
-              </span>
-              <p className="text-xs text-slate-600 leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Edit Role Modal */}
-      {modalOpen && selectedStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-rose-600" />
-                Edit Staff Permissions
+      {/* Edit Status Modal */}
+      {modalOpen && selectedAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
+          <div className="relative w-full max-w-md bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
+            <div className="px-1 py-1 border-b border-white/10 pb-4 mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-red-500" />
+                Manage Super Admin Status
               </h2>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:text-white transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateStaff} className="p-6 space-y-4">
+            <form onSubmit={handleUpdateAdmin} className="space-y-4 text-xs">
               {errorMsg && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+                <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-xl text-red-300 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <p className="text-xs font-semibold text-slate-800">{selectedStaff.name}</p>
-                <p className="text-xs font-mono text-slate-500">{selectedStaff.email}</p>
+              <div className="p-3.5 bg-[#162136] border border-white/10 rounded-2xl">
+                <p className="text-xs font-bold text-white">{selectedAdmin.name}</p>
+                <p className="text-[11px] font-mono text-slate-400">{selectedAdmin.email}</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Assign Staff Role *
+                <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                  Administrative Role
                 </label>
-                <select
-                  value={form.staffRole}
-                  onChange={(e) => setForm({ ...form, staffRole: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-rose-500 bg-white"
-                >
-                  <option value="SUPER_ADMIN">SUPER_ADMIN (Full Platform Access)</option>
-                  <option value="OPERATIONS_ADMIN">OPERATIONS_ADMIN (Users, Events, Matches)</option>
-                  <option value="EVENT_ADMIN">EVENT_ADMIN (Events & Managers)</option>
-                  <option value="FINANCE_ADMIN">FINANCE_ADMIN (Billing, Refunds, Invoices)</option>
-                  <option value="SAFETY_ADMIN">SAFETY_ADMIN (Reports, Moderation, IDs)</option>
-                  <option value="CONTENT_ADMIN">CONTENT_ADMIN (CMS, Announcements, Reviews)</option>
-                  <option value="SUPPORT_ADMIN">SUPPORT_ADMIN (Tickets & Queries)</option>
-                </select>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  {ROLE_DESCRIPTIONS[form.staffRole]?.desc}
+                <div className="px-3.5 py-2.5 bg-[#182337] border border-white/10 rounded-xl text-xs font-bold text-red-400 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-red-500" />
+                  SUPER_ADMIN (Full Platform Access)
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  All platform administrators operate under the unified SUPER_ADMIN role.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Account Status
+                <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                  Account Status *
                 </label>
                 <select
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-rose-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
                 >
-                  <option value="ACTIVE">ACTIVE (Granted Login)</option>
-                  <option value="SUSPENDED">SUSPENDED (Access Revoked)</option>
+                  <option value="ACTIVE" className="bg-[#182337] text-white">ACTIVE (Granted Full Access)</option>
+                  <option value="SUSPENDED" className="bg-[#182337] text-white">SUSPENDED (Access Revoked)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Reason for Modification *
+                <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                  Reason / Justification *
                 </label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="e.g. Assigned to Trust & Safety department per HR authorization"
+                  placeholder="e.g. Account activated following onboarding verification"
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-rose-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500"
                 />
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-slate-500">
                   This justification is permanently stored in the audit trail.
                 </span>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-2 border-t border-slate-200">
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-xl text-sm transition-colors"
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-medium rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium rounded-xl text-sm shadow-sm transition-all"
+                  className="px-6 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition"
                 >
-                  {saving ? "Saving..." : "Save Role Change"}
+                  {saving ? "Saving..." : "Save Status"}
                 </button>
               </div>
             </form>
