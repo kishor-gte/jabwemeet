@@ -1,233 +1,93 @@
-const fs = require('fs');
-let code = fs.readFileSync('frontend/app/breakup-buddy/dashboard/page.tsx', 'utf8');
+const fs = require("fs");
+let content = fs.readFileSync("backend/routes/services.js", "utf8");
 
-// Insert State
-const stateInjection = `  const [saving, setSaving] = useState(false);
+const reviewCode = "\n// 13. POST /api/services/buddy-review\n" +
+"// Submit a review for a Breakup Buddy\n" +
+"router.post(\"/buddy-review\", authenticateToken, async (req, res) => {\n" +
+"  try {\n" +
+"    const userId = req.user.userId;\n" +
+"    const { buddyId, rating, comment } = req.body;\n" +
+"\n" +
+"    if (!buddyId || !rating) {\n" +
+"      return res.status(400).json({ success: false, message: \"Buddy ID and rating are required.\" });\n" +
+"    }\n" +
+"\n" +
+"    const review = await prisma.buddyReview.create({\n" +
+"      data: {\n" +
+"        userId,\n" +
+"        buddyId,\n" +
+"        rating: parseInt(rating),\n" +
+"        comment: comment || \"\",\n" +
+"      }\n" +
+"    });\n" +
+"\n" +
+"    return res.json({ success: true, data: review });\n" +
+"  } catch (error) {\n" +
+"    console.error(\"Error creating buddy review:\", error);\n" +
+"    return res.status(500).json({ success: false, message: \"Failed to submit review.\" });\n" +
+"  }\n" +
+"});\n\nmodule.exports = router;\n";
 
-  // Real Data States
-  const [dashboardData, setDashboardData] = useState({ newRequests: 0, upcomingSessions: 0, completedSessions: 0 });
-  const [requests, setRequests] = useState<any[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [earnings, setEarnings] = useState({ totalEarnings: 0, sessions: [] });
+content = content.replace("module.exports = router;", reviewCode);
 
-  const fetchData = async () => {
-    try {
-      const [dashRes, reqRes, sessRes, histRes, revRes, earnRes] = await Promise.all([
-        fetch('/api/buddy/dashboard', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/requests', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/sessions', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/history', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/reviews', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/buddy/earnings', { credentials: 'include' }).then(r => r.json()),
-      ]);
-      if (dashRes.success) setDashboardData(dashRes.data);
-      if (reqRes.success) setRequests(reqRes.data);
-      if (sessRes.success) setSessions(sessRes.data);
-      if (histRes.success) setHistory(histRes.data);
-      if (revRes.success) setReviews(revRes.data);
-      if (earnRes.success) setEarnings(earnRes.data);
-    } catch(e) {}
-  };
+let startIdx = content.indexOf("router.post(\"/buddy-presence/:requestId\"");
+let endIdx = content.indexOf("router.get(\"/buddy-presence/:requestId\"");
 
-  useEffect(() => {
-    if (user) {
-      fetchData();
+if (startIdx !== -1 && endIdx !== -1) {
+    let block = content.substring(startIdx, endIdx);
+    
+    let upsertStart = block.indexOf("await prisma.buddyPresence.upsert({");
+    let matchEnd = "increment: 5 } }\n      });\n    }";
+    let upsertEnd = block.indexOf(matchEnd);
+    if (upsertEnd === -1) {
+        matchEnd = "increment: 5 } }\r\n      });\r\n    }";
+        upsertEnd = block.indexOf(matchEnd);
     }
-  }, [user]);
-`;
-
-code = code.replace('  const [saving, setSaving] = useState(false);', stateInjection);
-
-
-// Replace Dashboard
-const rxDash = /const renderDashboardHome = \(\) => \([\s\S]*?<\/div>\r?\n\s*\);\r?\n/;
-code = code.replace(rxDash, `const renderDashboardHome = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-2xl font-bold font-serif text-slate-800">Good Morning, {displayName.split(' ')[0] || 'Buddy'} 👋</h2>
-          <p className="text-slate-500 text-sm mt-1">Here's your session overview</p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">New Requests</p>
-          <p className="text-3xl font-bold text-teal-600">{dashboardData.newRequests}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Upcoming</p>
-          <p className="text-3xl font-bold text-sky-500">{dashboardData.upcomingSessions}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Completed</p>
-          <p className="text-3xl font-bold text-slate-800">{dashboardData.completedSessions}</p>
-        </div>
-      </div>
-    </div>
-  );\n\n`);
-
-// Replace Requests
-const rxReq = /const renderRequests = \(\) => \([\s\S]*?<\/div>\r?\n\s*\);\r?\n/;
-code = code.replace(rxReq, `const renderRequests = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">New Requests</h2>
-      <p className="text-slate-500 text-sm mb-6 border-b border-slate-200 pb-4">Manage incoming booking requests from users.</p>
-      
-      {requests.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No pending requests at the moment.</div>
-      ) : (
-        requests.map((req: any) => (
-          <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-lg text-slate-800">{req.user?.name || 'User'}</h3>
-                <p className="text-sm text-slate-500">{req.sessionType || 'Chat'} Session • {req.topic || 'General'}</p>
-                <p className="text-sm text-teal-600 font-semibold mt-1">Requested on {new Date(req.createdAt).toLocaleDateString()}</p>
-              </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">PENDING</span>
-            </div>
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <button className="flex-1 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition shadow-sm">Accept</button>
-              <button className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-sm font-semibold transition">Reject</button>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );\n\n`);
-
-// Replace Sessions
-const rxSess = /const \[sessionTab, setSessionTab\] = useState\("Active"\);\r?\n\s*const renderSessions = \(\) => \([\s\S]*?<\/div>\r?\n\s*\);\r?\n/;
-code = code.replace(rxSess, `const [sessionTab, setSessionTab] = useState("Active");
-  const renderSessions = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Sessions</h2>
-      
-      {sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No upcoming sessions.</div>
-      ) : (
-        sessions.map((sess: any) => (
-          <div key={sess.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between shadow-sm mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl overflow-hidden">
-                {sess.user?.profileImage ? <img src={sess.user.profileImage} alt="User" /> : '👤'}
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-800">{sess.user?.name || 'User'}</h4>
-                <p className="text-xs text-slate-500">{sess.sessionType || 'Video'} Call • {sess.durationMinutes} mins</p>
-                <p className="text-xs font-semibold text-teal-600 mt-0.5">{new Date(sess.scheduledAt).toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition">Reschedule</button>
-              <button className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-lg shadow-sm transition">Join</button>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );\n\n`);
-
-// Replace History
-const rxHist = /const renderHistory = \(\) => \([\s\S]*?<\/div>\r?\n\s*\);\r?\n/;
-code = code.replace(rxHist, `const renderHistory = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Session History</h2>
-      {history.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No past sessions found.</div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <tr>
-                <th className="px-6 py-3 font-semibold">User</th>
-                <th className="px-6 py-3 font-semibold">Date</th>
-                <th className="px-6 py-3 font-semibold">Type</th>
-                <th className="px-6 py-3 font-semibold">Duration</th>
-                <th className="px-6 py-3 font-semibold text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {history.map((h: any) => (
-                <tr key={h.id}>
-                  <td className="px-6 py-4 font-bold">{h.user?.name || 'User'}</td>
-                  <td className="px-6 py-4">{new Date(h.scheduledAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">{h.sessionType}</td>
-                  <td className="px-6 py-4">{h.durationMinutes}m</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-semibold">Completed</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );\n\n`);
-
-// Replace Reviews
-const rxRev = /const renderReviews = \(\) => \([\s\S]*?<\/div>\r?\n\s*\);\r?\n/;
-code = code.replace(rxRev, `const renderReviews = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Reviews</h2>
-      {reviews.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No reviews yet.</div>
-      ) : (
-        reviews.map((rev: any) => (
-          <div key={rev.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              {[...Array(5)].map((_, i) => (
-                <span key={i} className={\`text-lg \${i < rev.rating ? 'text-amber-400' : 'text-slate-200'}\`}>★</span>
-              ))}
-              <span className="text-slate-400 text-xs ml-2">{new Date(rev.createdAt).toLocaleDateString()}</span>
-            </div>
-            <p className="text-slate-700 text-sm mb-4">"{rev.comment}"</p>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-slate-800">- {rev.user?.name || 'Anonymous'}</span>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );\n\n`);
-
-// Replace Earnings
-const rxEarn = /const renderEarnings = \(\) => \([\s\S]*?<\/div>\r?\n\s*\);\r?\n/;
-code = code.replace(rxEarn, `const renderEarnings = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Earnings</h2>
-      <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-6 text-white shadow-sm mb-6 flex justify-between items-center">
-        <div>
-          <p className="text-teal-100 text-sm font-medium mb-1">Total Earnings</p>
-          <h3 className="text-4xl font-bold">₹{earnings.totalEarnings}</h3>
-        </div>
-        <div className="text-right">
-          <p className="text-teal-100 text-sm font-medium mb-1">Sessions Completed</p>
-          <h3 className="text-2xl font-bold">{earnings.sessions.length}</h3>
-        </div>
-      </div>
-      
-      {earnings.sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No earning history.</div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Recent Transactions</h3>
-          {earnings.sessions.map((sess: any) => (
-            <div key={sess.id} className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <div>
-                <p className="font-bold text-slate-800">Session • {sess.sessionType}</p>
-                <p className="text-xs text-slate-500">{new Date(sess.scheduledAt).toLocaleDateString()}</p>
-              </div>
-              <div className="text-lg font-bold text-emerald-600">+₹{sess.amountEarned}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );\n\n`);
-
-fs.writeFileSync('frontend/app/breakup-buddy/dashboard/page.tsx', code, 'utf8');
+    
+    upsertEnd += matchEnd.length;
+    
+    let before = block.substring(0, upsertStart);
+    let after = block.substring(upsertEnd);
+    
+    let newStr = "const oldPresence = await prisma.buddyPresence.findUnique({\n" +
+"      where: { requestId_role: { requestId, role: \"USER\" } }\n" +
+"    });\n\n" +
+"    await prisma.buddyPresence.upsert({\n" +
+"      where: { requestId_role: { requestId, role: \"USER\" } },\n" +
+"      update: { lastSeen: new Date() },\n" +
+"      create: { requestId, role: \"USER\", lastSeen: new Date() },\n" +
+"    });\n\n" +
+"    const buddyPresence = await prisma.buddyPresence.findUnique({\n" +
+"      where: { requestId_role: { requestId, role: \"BUDDY\" } },\n" +
+"    });\n" +
+"    const threshold = new Date(Date.now() - 15000);\n" +
+"    const buddyActive = buddyPresence && buddyPresence.lastSeen > threshold;\n\n" +
+"    if (buddyActive && request.timeUsedSeconds < request.chatLimitSeconds) {\n" +
+"      request = await prisma.buddyRequest.update({\n" +
+"        where: { id: requestId },\n" +
+"        data: { timeUsedSeconds: { increment: 5 } }\n" +
+"      });\n" +
+"    }\n\n" +
+"    const twoMinsAgo = new Date(Date.now() - 120000);\n" +
+"    const userJustEntered = !oldPresence || oldPresence.lastSeen < twoMinsAgo;\n\n" +
+"    if (userJustEntered) {\n" +
+"      const io = req.app.get(\"io\");\n" +
+"      if (io && request.buddyId) {\n" +
+"        const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });\n" +
+"        const uName = user ? user.name : \"User\";\n" +
+"        io.to(\"buddy-\" + request.buddyId).emit(\"user-entered-chat\", {\n" +
+"          requestId,\n" +
+"          userId,\n" +
+"          userName: uName,\n" +
+"          message: \"Hey, your user \" + uName + \" is in chat! Go and talk with them.\"\n" +
+"        });\n" +
+"      }\n" +
+"    }";
+    
+    let finalBlock = before + newStr + after;
+    content = content.substring(0, startIdx) + finalBlock + content.substring(endIdx);
+    fs.writeFileSync("backend/routes/services.js", content);
+    console.log("Successfully patched file!");
+} else {
+    console.log("Failed to find blocks");
+}

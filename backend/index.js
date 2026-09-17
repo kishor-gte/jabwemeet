@@ -139,6 +139,7 @@ const io = new Server(server, {
     credentials: true,
   }
 });
+app.set('io', io);
 
 // Track call intervals and metadata to update DB
 const activeCalls = new Map(); // requestId -> { interval, callLogId, startTime }

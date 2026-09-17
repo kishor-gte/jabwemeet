@@ -509,5 +509,78 @@ router.get('/call-logs', async (req, res) => {
   }
 });
 
+// GET /api/buddy/availability — fetch availability schedule, status & blocked dates
+router.get('/availability', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        isAvailableForRequests: true,
+        weeklySchedule: true,
+        blockedDates: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        isAvailableForRequests: user.isAvailableForRequests ?? true,
+        weeklySchedule: user.weeklySchedule || [],
+        blockedDates: user.blockedDates || [],
+        availableDays: user.availableDays || [],
+        availableTimeStart: user.availableTimeStart || '',
+        availableTimeEnd: user.availableTimeEnd || '',
+      }
+    });
+  } catch (error) {
+    console.error('Fetch availability error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch availability' });
+  }
+});
+
+// PUT /api/buddy/availability — update availability schedule, status & blocked dates
+router.put('/availability', async (req, res) => {
+  try {
+    const { isAvailableForRequests, weeklySchedule, blockedDates, availableDays, availableTimeStart, availableTimeEnd } = req.body;
+    
+    const updateData = {};
+    if (typeof isAvailableForRequests === 'boolean') updateData.isAvailableForRequests = isAvailableForRequests;
+    if (weeklySchedule !== undefined) updateData.weeklySchedule = weeklySchedule;
+    if (Array.isArray(blockedDates)) updateData.blockedDates = blockedDates;
+    if (Array.isArray(availableDays)) updateData.availableDays = availableDays;
+    if (availableTimeStart !== undefined) updateData.availableTimeStart = availableTimeStart;
+    if (availableTimeEnd !== undefined) updateData.availableTimeEnd = availableTimeEnd;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: updateData,
+      select: {
+        isAvailableForRequests: true,
+        weeklySchedule: true,
+        blockedDates: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Availability schedule updated successfully!',
+      data: updatedUser
+    });
+  } catch (error) {
+    console.error('Update availability error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update availability' });
+  }
+});
+
 module.exports = router;
 

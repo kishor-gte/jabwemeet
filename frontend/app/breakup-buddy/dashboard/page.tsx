@@ -28,6 +28,41 @@ export default function BreakupBuddyDashboardPage() {
   const [availableTimeEnd, setAvailableTimeEnd] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Availability & Schedule Dynamic States
+  const [isAvailableForRequests, setIsAvailableForRequests] = useState<boolean>(true);
+  const [weeklySchedule, setWeeklySchedule] = useState<any[]>([
+    { day: "Monday", slots: ["10:00 AM — 01:00 PM", "06:00 PM — 10:00 PM"] },
+    { day: "Tuesday", slots: ["10:00 AM — 01:00 PM"] },
+    { day: "Wednesday", slots: ["06:00 PM — 10:00 PM"] },
+    { day: "Thursday", slots: [] },
+    { day: "Friday", slots: [] },
+    { day: "Saturday", slots: [] },
+    { day: "Sunday", slots: [] },
+  ]);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [newBlockDate, setNewBlockDate] = useState<string>("");
+  const [savingAvailability, setSavingAvailability] = useState<boolean>(false);
+  const [addingSlotDay, setAddingSlotDay] = useState<string | null>(null);
+  const [slotStartTime, setSlotStartTime] = useState<string>("10:00 AM");
+  const [slotEndTime, setSlotEndTime] = useState<string>("01:00 PM");
+  // Notifications Dynamic State
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [selectedChatRequestId, setSelectedChatRequestId] = useState<string | undefined>(undefined);
+
+  const handleNotificationClick = (notif: any) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
+    );
+    setShowNotificationsDropdown(false);
+    if (notif.targetRequestId) {
+      setSelectedChatRequestId(notif.targetRequestId);
+    }
+    if (notif.targetTab) {
+      setActiveTab(notif.targetTab);
+    }
+  };
+
   // Real Data States
   const [dashboardData, setDashboardData] = useState({ newRequests: 0, upcomingSessions: 0, completedSessions: 0 });
   const [requests, setRequests] = useState<any[]>([]);
@@ -43,7 +78,59 @@ export default function BreakupBuddyDashboardPage() {
   const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [requestFilter, setRequestFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
 
+  const fetchAvailability = async () => {
+    try {
+      const res = await fetch("/api/buddy/availability", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && data.data) {
+        if (typeof data.data.isAvailableForRequests === "boolean") {
+          setIsAvailableForRequests(data.data.isAvailableForRequests);
+        }
+        if (Array.isArray(data.data.weeklySchedule) && data.data.weeklySchedule.length > 0) {
+          setWeeklySchedule(data.data.weeklySchedule);
+        }
+        if (Array.isArray(data.data.blockedDates)) {
+          setBlockedDates(data.data.blockedDates);
+        }
+      }
+    } catch (e) {}
+  };
+
+  const handleSaveAvailability = async (updatedFields?: any) => {
+    setSavingAvailability(true);
+    setActionMessage(null);
+    try {
+      const payload = {
+        isAvailableForRequests: updatedFields?.isAvailableForRequests !== undefined ? updatedFields.isAvailableForRequests : isAvailableForRequests,
+        weeklySchedule: updatedFields?.weeklySchedule !== undefined ? updatedFields.weeklySchedule : weeklySchedule,
+        blockedDates: updatedFields?.blockedDates !== undefined ? updatedFields.blockedDates : blockedDates,
+      };
+      const res = await fetch("/api/buddy/availability", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionMessage({ text: "✓ Availability schedule updated successfully!", type: "success" });
+        if (data.data) {
+          if (typeof data.data.isAvailableForRequests === "boolean") setIsAvailableForRequests(data.data.isAvailableForRequests);
+          if (Array.isArray(data.data.weeklySchedule)) setWeeklySchedule(data.data.weeklySchedule);
+          if (Array.isArray(data.data.blockedDates)) setBlockedDates(data.data.blockedDates);
+        }
+      } else {
+        setActionMessage({ text: data.message || "Failed to update availability", type: "error" });
+      }
+    } catch (e) {
+      setActionMessage({ text: "Error saving availability", type: "error" });
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
   const fetchData = async () => {
+    fetchAvailability();
     try {
       const [dashRes, reqRes, accRes, sessRes, histRes, revRes, earnRes, callLogRes] = await Promise.all([
         fetch('/api/buddy/dashboard', { credentials: 'include' }).then(r => r.json()),
@@ -86,7 +173,33 @@ export default function BreakupBuddyDashboardPage() {
       s.emit("join-buddy-room", user.id);
     });
 
+    s.on("user-entered-chat", (data) => {
+      const uName = data.userName || "User";
+      const newNotif = {
+        id: `notif-${Date.now()}`,
+        title: "User in Chat",
+        message: data.message || `Hey, your user ${uName} is in chat! Go and talk with them.`,
+        timestamp: "Just now",
+        read: false,
+        targetTab: "Messages",
+        targetRequestId: data.requestId,
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+    });
+
     s.on("incoming-call", (data) => {
+      const caller = data.callerName || "User";
+      const newNotif = {
+        id: `notif-${Date.now()}`,
+        title: "Incoming Voice Call",
+        message: `Incoming voice call from ${caller}.`,
+        timestamp: "Just now",
+        read: false,
+        targetTab: "Call Log",
+        targetRequestId: data.requestId,
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+
       setIncomingCall((currentCall) => {
         if (currentCall) {
           if (currentCall.requestId === data.requestId) {
@@ -847,85 +960,235 @@ export default function BreakupBuddyDashboardPage() {
 
 
   const renderMessages = () => (
-    <BuddyMessagesTab acceptedUsers={acceptedUsers} />
+    <BuddyMessagesTab acceptedUsers={acceptedUsers} initialActiveReqId={selectedChatRequestId} />
   );
 
-  const renderAvailability = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Availability</h2>
-      <p className="text-slate-500 text-sm mb-6 border-b border-slate-200 pb-4">Manage your online status and weekly schedule.</p>
+  const renderAvailability = () => {
+    const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6 flex justify-between items-center">
-        <div>
-          <h3 className="font-bold text-slate-800">Your Status</h3>
-          <p className="text-xs text-teal-600 font-medium flex items-center gap-1 mt-1"><span className="w-2 h-2 rounded-full bg-teal-500"></span> Available for Requests</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-semibold text-slate-700">Accept new requests</label>
-          <div className="w-12 h-6 bg-teal-500 rounded-full relative cursor-pointer shadow-inner">
-            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold font-serif text-slate-800">Manage Availability</h2>
+            <p className="text-slate-500 text-sm mt-0.5">Set your weekly routine, active timeslots, and blocked days.</p>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-        <h3 className="font-bold text-slate-800 mb-4">Weekly Schedule</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4 items-center border-b border-slate-100 pb-4">
-            <div className="font-semibold text-slate-700">Monday</div>
-            <div className="col-span-2 flex flex-col gap-2 text-sm text-slate-600">
-              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg w-fit border border-slate-100">
-                <span>10:00 AM — 01:00 PM</span><button className="text-slate-400 hover:text-red-500 ml-2">✕</button>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg w-fit border border-slate-100">
-                <span>06:00 PM — 10:00 PM</span><button className="text-slate-400 hover:text-red-500 ml-2">✕</button>
-              </div>
+        {/* 1. Your Status Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-800 mb-1">Your Status</h3>
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className={`w-2.5 h-2.5 rounded-full ${isAvailableForRequests ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              <span className={isAvailableForRequests ? "text-emerald-700" : "text-slate-500"}>
+                {isAvailableForRequests ? "Available for Requests" : "Unavailable for Requests"}
+              </span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 items-center border-b border-slate-100 pb-4">
-            <div className="font-semibold text-slate-700">Tuesday</div>
-            <div className="col-span-2 flex flex-col gap-2 text-sm text-slate-600">
-              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg w-fit border border-slate-100">
-                <span>10:00 AM — 01:00 PM</span><button className="text-slate-400 hover:text-red-500 ml-2">✕</button>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 items-center border-b border-slate-100 pb-4">
-            <div className="font-semibold text-slate-700">Wednesday</div>
-            <div className="col-span-2 flex flex-col gap-2 text-sm text-slate-600">
-              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg w-fit border border-slate-100">
-                <span>06:00 PM — 10:00 PM</span><button className="text-slate-400 hover:text-red-500 ml-2">✕</button>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 items-center border-b border-slate-100 pb-4">
-            <div className="font-semibold text-slate-400">Thursday</div>
-            <div className="col-span-2"><button className="text-xs font-semibold text-teal-600 hover:underline">+ Add Time Slot</button></div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 items-center border-b border-slate-100 pb-4">
-            <div className="font-semibold text-slate-400">Friday</div>
-            <div className="col-span-2"><button className="text-xs font-semibold text-teal-600 hover:underline">+ Add Time Slot</button></div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 items-center">
-            <div className="font-semibold text-slate-400">Sunday</div>
-            <div className="col-span-2 text-sm text-slate-400 italic">Unavailable</div>
-          </div>
-        </div>
-        <div className="mt-6 pt-4 border-t border-slate-100">
-          <button className="px-6 py-2 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold shadow-sm transition">Save Schedule</button>
-        </div>
-      </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-        <h3 className="font-bold text-slate-800 mb-2">Block Date</h3>
-        <p className="text-xs text-slate-500 mb-4">Prevent users from booking when you are unavailable.</p>
-        <div className="flex gap-2">
-          <input type="date" className="px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500" />
-          <button className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition border border-slate-200">Block</button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-700">Accept new requests</span>
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !isAvailableForRequests;
+                setIsAvailableForRequests(nextVal);
+                handleSaveAvailability({ isAvailableForRequests: nextVal });
+              }}
+              className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
+                isAvailableForRequests ? "bg-teal-500" : "bg-slate-300"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
+                  isAvailableForRequests ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Weekly Schedule Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-800">Weekly Schedule</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Customize time slots for each day of the week.</p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {daysOrder.map((dayName) => {
+              const dayObj = weeklySchedule.find((s: any) => s.day === dayName);
+              const slots: string[] = dayObj?.slots || [];
+
+              return (
+                <div key={dayName} className="py-4 first:pt-0 last:pb-0 grid grid-cols-1 md:grid-cols-4 items-start gap-4">
+                  <div className="font-bold text-slate-700 text-sm md:pt-1.5">{dayName}</div>
+                  
+                  <div className="md:col-span-3 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {slots.length === 0 ? (
+                        <span className="text-xs italic text-slate-400">Unavailable</span>
+                      ) : (
+                        slots.map((slot, idx) => (
+                          <div
+                            key={idx}
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 transition"
+                          >
+                            <span>{slot}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedSlots = slots.filter((_, i) => i !== idx);
+                                const updatedSchedule = daysOrder.map(d => {
+                                  if (d === dayName) return { day: d, slots: updatedSlots };
+                                  const existing = weeklySchedule.find((s: any) => s.day === d);
+                                  return existing || { day: d, slots: [] };
+                                });
+                                setWeeklySchedule(updatedSchedule);
+                              }}
+                              className="text-slate-400 hover:text-rose-500 font-bold transition text-sm leading-none ml-1 cursor-pointer"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setAddingSlotDay(dayName)}
+                        className="text-xs font-semibold text-teal-600 hover:text-teal-700 transition cursor-pointer ml-1"
+                      >
+                        + Add Time Slot
+                      </button>
+                    </div>
+
+                    {addingSlotDay === dayName && (
+                      <div className="flex items-center gap-2 bg-slate-50 border border-teal-200 p-2.5 rounded-xl animate-in fade-in max-w-md mt-2">
+                        <select
+                          value={slotStartTime}
+                          onChange={(e) => setSlotStartTime(e.target.value)}
+                          className="px-2 py-1 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-800"
+                        >
+                          {["08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM", "10:00 PM"].map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <span className="text-xs font-bold text-slate-400">—</span>
+                        <select
+                          value={slotEndTime}
+                          onChange={(e) => setSlotEndTime(e.target.value)}
+                          className="px-2 py-1 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-800"
+                        >
+                          {["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM", "10:00 PM", "11:00 PM"].map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSlotStr = `${slotStartTime} — ${slotEndTime}`;
+                            const updatedSlots = [...slots, newSlotStr];
+                            const updatedSchedule = daysOrder.map(d => {
+                              if (d === dayName) return { day: d, slots: updatedSlots };
+                              const existing = weeklySchedule.find((s: any) => s.day === d);
+                              return existing || { day: d, slots: [] };
+                            });
+                            setWeeklySchedule(updatedSchedule);
+                            setAddingSlotDay(null);
+                          }}
+                          className="px-3 py-1 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition cursor-pointer ml-auto"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddingSlotDay(null)}
+                          className="text-xs text-slate-400 hover:text-slate-600 font-bold px-1 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => handleSaveAvailability()}
+              disabled={savingAvailability}
+              className="px-6 py-2.5 rounded-xl bg-[#131d2e] hover:bg-slate-800 text-white font-bold text-sm shadow transition disabled:opacity-60 cursor-pointer"
+            >
+              {savingAvailability ? "Saving Schedule..." : "Save Schedule"}
+            </button>
+          </div>
+        </div>
+
+        {/* 3. Block Date Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Block Date</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Prevent users from booking when you are unavailable.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="date"
+              value={newBlockDate}
+              onChange={(e) => setNewBlockDate(e.target.value)}
+              className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!newBlockDate) return;
+                if (!blockedDates.includes(newBlockDate)) {
+                  const updated = [...blockedDates, newBlockDate].sort();
+                  setBlockedDates(updated);
+                  handleSaveAvailability({ blockedDates: updated });
+                }
+                setNewBlockDate("");
+              }}
+              className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition border border-slate-200 cursor-pointer"
+            >
+              Block
+            </button>
+          </div>
+
+          {blockedDates.length > 0 && (
+            <div className="pt-2">
+              <p className="text-xs font-bold text-slate-700 mb-2">Currently Blocked Dates:</p>
+              <div className="flex flex-wrap gap-2">
+                {blockedDates.map((dStr) => (
+                  <div key={dStr} className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                    <span>📅 {dStr}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = blockedDates.filter((x) => x !== dStr);
+                        setBlockedDates(updated);
+                        handleSaveAvailability({ blockedDates: updated });
+                      }}
+                      className="text-rose-400 hover:text-rose-600 font-bold text-sm ml-1 cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderReviews = () => (
     <div className="space-y-6">
@@ -1241,7 +1504,7 @@ export default function BreakupBuddyDashboardPage() {
           <h3 className="text-lg font-bold font-serif text-slate-800 mb-4">Services</h3>
           <div className="mb-6">
             <div className="flex gap-6">
-              {['Chat', 'Audio Call', 'Video Call'].map(type => (
+              {['Chat', 'Audio Call'].map(type => (
                 <label key={type} className="flex items-center gap-2 cursor-pointer text-slate-700 hover:text-slate-900 font-medium text-sm transition">
                   <input type="checkbox" checked={sessionTypes.includes(type)} onChange={() => toggleArrayItem(type, sessionTypes, setSessionTypes)} className="accent-teal-500 w-4 h-4 rounded" />
                   {type}
@@ -1317,10 +1580,81 @@ export default function BreakupBuddyDashboardPage() {
           <div className="md:hidden font-bold font-serif text-slate-800">JabWeMeet</div>
           <div className="hidden md:block text-sm text-slate-500 font-bold uppercase tracking-wider">{activeTab}</div>
           <div className="flex items-center gap-4">
-            <button className="text-slate-400 hover:text-slate-600 transition relative">
-              <span className="text-xl">🔔</span>
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            {/* Dynamic Notifications Bell */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextState = !showNotificationsDropdown;
+                  setShowNotificationsDropdown(nextState);
+                  if (nextState) {
+                    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                  }
+                }}
+                className="text-slate-500 hover:text-slate-800 transition relative p-2 rounded-full hover:bg-slate-100 cursor-pointer"
+                title="Notifications"
+              >
+                <span className="text-xl">🔔</span>
+                {notifications.filter((n) => !n.read).length > 0 && (
+                  <span className="absolute top-0 right-0 px-1.5 py-0.5 min-w-[18px] text-[10px] font-extrabold text-white bg-red-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-bounce">
+                    {notifications.filter((n) => !n.read).length}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown Menu */}
+              {showNotificationsDropdown && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-800 text-sm">Notifications</span>
+                      <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[10px] font-bold">
+                        {notifications.length} Total
+                      </span>
+                    </div>
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setNotifications([])}
+                        className="text-[11px] text-slate-400 hover:text-rose-500 font-bold transition cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 text-xs italic">
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => handleNotificationClick(notif)}
+                          className={`p-4 hover:bg-teal-50/50 transition cursor-pointer flex gap-3 items-start ${
+                            !notif.read ? "bg-slate-50/80" : ""
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm shrink-0 border border-teal-200 mt-0.5">
+                            💬
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                              <span>{notif.title}</span>
+                              <span className="text-[10px] font-normal text-slate-400">{notif.timestamp}</span>
+                            </p>
+                            <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{notif.message}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-full hover:bg-slate-100 transition border border-slate-200 shadow-sm">
               <div className="w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">
                 {displayName ? displayName[0].toUpperCase() : 'B'}
@@ -1408,3 +1742,5 @@ export default function BreakupBuddyDashboardPage() {
     </div>
   );
 }
+
+

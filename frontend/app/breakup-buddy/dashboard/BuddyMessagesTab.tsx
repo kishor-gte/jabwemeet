@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MessageCircle, Send, Clock } from "lucide-react";
 
-export default function BuddyMessagesTab({ acceptedUsers }: { acceptedUsers: any[] }) {
-  const [activeReqId, setActiveReqId] = useState<string | null>(null);
+export default function BuddyMessagesTab({
+  acceptedUsers,
+  initialActiveReqId,
+}: {
+  acceptedUsers: any[];
+  initialActiveReqId?: string;
+}) {
+  const [activeReqId, setActiveReqId] = useState<string | null>(initialActiveReqId || null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(15 * 60);
@@ -10,10 +16,12 @@ export default function BuddyMessagesTab({ acceptedUsers }: { acceptedUsers: any
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!activeReqId && acceptedUsers.length > 0) {
+    if (initialActiveReqId) {
+      setActiveReqId(initialActiveReqId);
+    } else if (!activeReqId && acceptedUsers.length > 0) {
       setActiveReqId(acceptedUsers[0].id);
     }
-  }, [acceptedUsers, activeReqId]);
+  }, [acceptedUsers, initialActiveReqId]);
 
   useEffect(() => {
     if (!activeReqId) return;

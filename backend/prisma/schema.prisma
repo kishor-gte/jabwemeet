@@ -39,9 +39,12 @@ model User {
   languages          String[]  @default([])
   areasOfExpertise   String[]  @default([])
   sessionTypes       String[]  @default([])
-  availableDays      String[]  @default([])
-  availableTimeStart String?
-  availableTimeEnd   String?
+  availableDays          String[]  @default([])
+  availableTimeStart     String?
+  availableTimeEnd     String?
+  isAvailableForRequests Boolean   @default(true)
+  weeklySchedule         Json?
+  blockedDates           String[]  @default([])
 
   // Matchmaker Fields
   isApproved         Boolean   @default(false)

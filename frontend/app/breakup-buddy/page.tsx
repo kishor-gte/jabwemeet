@@ -47,6 +47,7 @@ interface BreakupBuddy {
   availableDays: string[];
   availableTimeStart: string | null;
   availableTimeEnd: string | null;
+  weeklySchedule?: any;
   isVerified: boolean;
   isApproved: boolean;
   createdAt: string;
@@ -84,6 +85,13 @@ export default function BreakupBuddyPage() {
   const [bookingSending, setBookingSending] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [myRequests, setMyRequests] = useState<any[]>([]);
+
+  // Feedback State
+  const [feedbackBuddyId, setFeedbackBuddyId] = useState<string | null>(null);
+  const [rating, setRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
   const fetchMyRequests = () => {
     fetch("/api/services/my-buddy-requests", { credentials: "include" })
@@ -247,6 +255,38 @@ export default function BreakupBuddyPage() {
     }
 
     setBookingSending(false);
+  };
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedbackSending(true);
+    try {
+      const res = await fetch("/api/services/buddy-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          buddyId: feedbackBuddyId,
+          rating,
+          comment: feedbackComment,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedbackSuccess(true);
+        setTimeout(() => {
+          setFeedbackSuccess(false);
+          setFeedbackBuddyId(null);
+          setFeedbackComment("");
+          setRating(5);
+        }, 3000);
+      } else {
+        alert("Failed to submit feedback: " + (data.message || data.error || "Unknown error"));
+      }
+    } catch (err) {
+      alert("Failed to submit feedback.");
+    }
+    setFeedbackSending(false);
   };
 
   const getPhotoUrl = (photo: string | null) => {
@@ -634,19 +674,50 @@ export default function BreakupBuddyPage() {
                         </div>
 
                         {/* Availability Details if present */}
-                        {(buddy.availableTimeStart || buddy.availableDays.length > 0) && (
-                          <div className="pt-2 border-t border-white/5 flex items-center gap-2 text-[11px] text-slate-400">
-                            <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                            <span>
-                              {buddy.availableDays.length > 0
-                                ? buddy.availableDays.join(", ")
-                                : "Flexible Schedule"}{" "}
-                              {buddy.availableTimeStart && buddy.availableTimeEnd
-                                ? `(${buddy.availableTimeStart} - ${buddy.availableTimeEnd})`
-                                : ""}
-                            </span>
-                          </div>
-                        )}
+                        {(() => {
+                          let activeDays = [];
+                          let hasSlots = false;
+                          if (Array.isArray(buddy.weeklySchedule) && buddy.weeklySchedule.length > 0) {
+                            activeDays = buddy.weeklySchedule.filter((s: any) => s.slots && s.slots.length > 0).map((s: any) => s.day);
+                            hasSlots = activeDays.length > 0;
+                          } else if (buddy.availableDays && buddy.availableDays.length > 0) {
+                            activeDays = buddy.availableDays;
+                          }
+                          const shortDays = activeDays.map((d: string) => d.slice(0, 3));
+
+                          if (shortDays.length === 0 && !buddy.availableTimeStart && !hasSlots) return null;
+
+                          return (
+                            <div className="pt-3 border-t border-white/5 space-y-2">
+                              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-emerald-400" /> Availability
+                              </span>
+                              {shortDays.length > 0 ? (
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="flex flex-wrap gap-1">
+                                    {shortDays.map((day: string, idx: number) => (
+                                      <span key={idx} className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                                        {day}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <p className="text-[10px] text-slate-400">
+                                    {buddy.availableTimeStart && buddy.availableTimeEnd 
+                                      ? `Usually active between ${buddy.availableTimeStart} - ${buddy.availableTimeEnd}`
+                                      : hasSlots ? "Specific timing slots available for booking." : "Flexible hours."}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-slate-400">
+                                  Flexible Schedule 
+                                  {buddy.availableTimeStart && buddy.availableTimeEnd
+                                    ? ` (${buddy.availableTimeStart} - ${buddy.availableTimeEnd})`
+                                    : ""}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -666,10 +737,10 @@ export default function BreakupBuddyPage() {
                         
                         if (existingReq?.status === 'Accepted') {
                           return (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-2">
                               <Link
                                 href={`/dashboard?tab=messages&requestId=${existingReq.id}`}
-                                className="py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold flex items-center justify-center gap-2 transition"
+                                className="py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition"
                               >
                                 <MessageCircle className="w-4 h-4" /> Chat
                               </Link>
@@ -679,9 +750,18 @@ export default function BreakupBuddyPage() {
                                   setActiveCallReqId(existingReq.id);
                                   setActiveCallBuddyId(buddy.id);
                                 }}
-                                className="flex-1 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 font-bold text-sm transition flex items-center justify-center gap-2"
+                                className="flex-1 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 font-bold text-xs transition flex items-center justify-center gap-1.5"
                               >
-                                <Phone className="w-4 h-4" /> Voice Call
+                                <Phone className="w-4 h-4" /> Call
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFeedbackBuddyId(buddy.id);
+                                }}
+                                className="flex-1 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5"
+                              >
+                                <Sparkles className="w-4 h-4" /> Feedback
                               </button>
                             </div>
                           );
@@ -815,6 +895,81 @@ export default function BreakupBuddyPage() {
           </div>
         </div>
       )}
+      {/* Feedback Modal */}
+      {feedbackBuddyId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setFeedbackBuddyId(null)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {feedbackSuccess ? (
+              <div className="text-center py-6 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Feedback Submitted!</h3>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-sm mx-auto leading-relaxed">
+                  Thank you for sharing how you felt about your buddy.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleFeedbackSubmit} className="space-y-5">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Rate your Buddy</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    How was your experience with this Breakup Buddy?
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Rating (1-5)
+                    </label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRating(star)}
+                          className={`text-2xl transition ${rating >= star ? 'text-amber-400' : 'text-slate-600 hover:text-slate-500'}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Comment
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                      placeholder="Share how you felt..."
+                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={feedbackSending}
+                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50"
+                >
+                  {feedbackSending ? "Submitting..." : "Submit Feedback"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Voice Call Overlay (Outgoing) */}
       {activeCallReqId && activeCallBuddyId && (
@@ -846,3 +1001,4 @@ export default function BreakupBuddyPage() {
     </div>
   );
 }
+

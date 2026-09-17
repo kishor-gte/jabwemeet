@@ -12,7 +12,10 @@ async function initAdminDb() {
       ADD COLUMN IF NOT EXISTS "identityVerified" BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS "mobileVerified" BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS "lastActiveAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS "internalNotes" TEXT;
+      ADD COLUMN IF NOT EXISTS "internalNotes" TEXT,
+      ADD COLUMN IF NOT EXISTS "isAvailableForRequests" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "weeklySchedule" JSONB DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS "blockedDates" TEXT[] DEFAULT ARRAY[]::TEXT[];
     `);
 
     // Ensure ALL ADMIN users have staffRole = 'SUPER_ADMIN' and status = 'ACTIVE'

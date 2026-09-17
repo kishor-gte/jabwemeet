@@ -73,6 +73,7 @@ router.get("/breakup-buddies", async (req, res) => {
         availableDays: true,
         availableTimeStart: true,
         availableTimeEnd: true,
+        weeklySchedule: true,
         isVerified: true,
         isApproved: true,
         createdAt: true,
@@ -89,7 +90,7 @@ router.get("/breakup-buddies", async (req, res) => {
     console.error("Error fetching approved breakup buddies:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch approved breakup buddies.",
+      message: "Failed to fetch approved breakup buddies.", error: error.message, stack: error.stack,
     });
   }
 });
@@ -467,16 +468,20 @@ router.post("/buddy-presence/:requestId", authenticateToken, async (req, res) =>
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
+    const oldPresence = await prisma.buddyPresence.findUnique({
+      where: { requestId_role: { requestId, role: "USER" } }
+    });
+
     await prisma.buddyPresence.upsert({
-      where: { requestId_role: { requestId, role: 'USER' } },
+      where: { requestId_role: { requestId, role: "USER" } },
       update: { lastSeen: new Date() },
-      create: { requestId, role: 'USER', lastSeen: new Date() },
+      create: { requestId, role: "USER", lastSeen: new Date() },
     });
 
     const buddyPresence = await prisma.buddyPresence.findUnique({
-      where: { requestId_role: { requestId, role: 'BUDDY' } },
+      where: { requestId_role: { requestId, role: "BUDDY" } },
     });
-    const threshold = new Date(Date.now() - 15000); // 15s threshold
+    const threshold = new Date(Date.now() - 15000);
     const buddyActive = buddyPresence && buddyPresence.lastSeen > threshold;
 
     if (buddyActive && request.timeUsedSeconds < request.chatLimitSeconds) {
@@ -484,6 +489,23 @@ router.post("/buddy-presence/:requestId", authenticateToken, async (req, res) =>
         where: { id: requestId },
         data: { timeUsedSeconds: { increment: 5 } }
       });
+    }
+
+    const twoMinsAgo = new Date(Date.now() - 15000);
+    const userJustEntered = !oldPresence || oldPresence.lastSeen < twoMinsAgo;
+
+    if (userJustEntered) {
+      const io = req.app.get("io");
+      if (io && request.buddyId) {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+        const uName = user ? user.name : "User";
+        io.to("buddy-" + request.buddyId).emit("user-entered-chat", {
+          requestId,
+          userId,
+          userName: uName,
+          message: "Hey, your user " + uName + " is in chat! Go and talk with them."
+        });
+      }
     }
 
     res.json({ success: true, data: { bothActive: buddyActive, timeUsedSeconds: request.timeUsedSeconds, chatLimitSeconds: request.chatLimitSeconds } });
@@ -591,6 +613,38 @@ router.get("/call-history", authenticateToken, async (req, res) => {
   }
 });
 
+
+// 13. POST /api/services/buddy-review
+// Submit a review for a Breakup Buddy
+router.post("/buddy-review", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { buddyId, rating, comment } = req.body;
+
+    if (!buddyId || !rating) {
+      return res.status(400).json({ success: false, message: "Buddy ID and rating are required." });
+    }
+
+    const review = await prisma.buddyReview.create({
+      data: {
+        userId,
+        buddyId,
+        rating: parseInt(rating),
+        comment: comment || "",
+      }
+    });
+
+    return res.json({ success: true, data: review });
+  } catch (error) {
+    console.error("Error creating buddy review:", error);
+    return res.status(500).json({ success: false, message: "Failed to submit review." });
+  }
+});
+
 module.exports = router;
+
+
+
+
 
 
