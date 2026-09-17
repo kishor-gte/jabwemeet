@@ -12,70 +12,41 @@ import {
   Heart,
   Calendar,
   ShieldCheck,
+  Check,
+  X,
+  Gift
 } from "lucide-react";
 
 export interface ConnectionItem {
   id: string;
-  name: string;
-  city: string;
-  status: "connected" | "pending";
-  intent?: string;
-  sharedEventsCount?: number;
+  status: string;
+  clientStatus: string;
+  suggestedStatus: string;
+  meetingDate: string | null;
+  meetingMessage: string | null;
+  client: { id: string; name: string; profileImage: string | null; city: string; };
+  suggestedProfile: { id: string; name: string; profileImage: string | null; city: string; };
+  matchmaker: { id: string; name: string; };
 }
 
 interface ConnectionsSectionProps {
-  connections: ConnectionItem[];
+  userId?: string;
+  connections: any[];
   userCity: string;
   registeredEventsCount: number;
   onExploreEvents: () => void;
-  onAddConnection: (newConn: ConnectionItem) => void;
+  onUpdateConnection: (id: string, action: "Approve" | "Reject") => void;
 }
 
 export default function ConnectionsSection({
+  userId,
   connections,
   userCity,
   registeredEventsCount,
   onExploreEvents,
-  onAddConnection,
+  onUpdateConnection,
 }: ConnectionsSectionProps) {
-  // Dynamic discoverable community members based on user's city
-  const suggestedMembers: ConnectionItem[] = [
-    {
-      id: "peer-1",
-      name: "Aanya Verma",
-      city: userCity || "Bangalore",
-      status: "pending",
-      intent: "Meaningful Dating",
-      sharedEventsCount: 1,
-    },
-    {
-      id: "peer-2",
-      name: "Vikram Malhotra",
-      city: userCity || "Bangalore",
-      status: "pending",
-      intent: "Social Gatherings",
-      sharedEventsCount: 2,
-    },
-    {
-      id: "peer-3",
-      name: "Tanvi Roy",
-      city: userCity || "Bangalore",
-      status: "pending",
-      intent: "Relationship",
-      sharedEventsCount: 1,
-    },
-  ];
-
-  const [requestedPeerIds, setRequestedPeerIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "discover">("all");
-
-  const handleConnect = (peer: ConnectionItem) => {
-    setRequestedPeerIds((prev) => [...prev, peer.id]);
-    onAddConnection({
-      ...peer,
-      status: "pending",
-    });
-  };
 
   return (
     <div id="connections" className="space-y-6">
@@ -83,169 +54,122 @@ export default function ConnectionsSection({
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-slate-300 text-xs font-semibold mb-2 border border-white/10">
             <Users className="w-3.5 h-3.5 text-blue-400" />
-            Social Network • {connections.length} Active Connections
+            Matchmaker Network • {connections.length} Suggestions
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
             Your Connections
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Real people you have met at JabWeMeet events or connected with in {userCity || "your city"}.
+            Hand-picked matches selected by your Relationship Manager.
           </p>
-        </div>
-
-        {/* Tab Selector */}
-        <div className="flex items-center gap-2 bg-[#131d2e] p-1 rounded-xl border border-white/10 text-xs">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-              activeTab === "all"
-                ? "bg-[#e06d53] text-white shadow-sm"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            My Connections ({connections.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("discover")}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-              activeTab === "discover"
-                ? "bg-[#e06d53] text-white shadow-sm"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            Discover in {userCity || "City"} ({suggestedMembers.length})
-          </button>
         </div>
       </div>
 
-      {/* View: Active Connections List */}
       {activeTab === "all" && (
         <>
           {connections.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {connections.map((conn) => (
+              {connections.map((conn) => {
+                const isClient = conn.client.id === userId;
+                const otherPerson = isClient ? conn.suggestedProfile : conn.client;
+                const myStatus = isClient ? conn.clientStatus : conn.suggestedStatus;
+
+                return (
                 <div
                   key={conn.id}
-                  className="rounded-2xl bg-[#131d2e] border border-white/10 p-5 flex items-center justify-between gap-4 shadow hover:border-white/20 transition"
+                  className="rounded-2xl bg-[#131d2e] border border-white/10 p-5 flex flex-col justify-between gap-4 shadow hover:border-white/20 transition relative overflow-hidden"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-md">
-                      {conn.name.slice(0, 2).toUpperCase()}
-                    </div>
+                  {conn.status === "DateFixed" && (
+                     <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold text-center py-1">
+                        IT'S A DATE!
+                     </div>
+                  )}
+
+                  <div className={`flex items-center gap-3 min-w-0 ${conn.status === 'DateFixed' ? 'mt-4' : ''}`}>
+                    {otherPerson.profileImage ? (
+                      <img src={otherPerson.profileImage} alt={otherPerson.name} className="w-12 h-12 rounded-full object-cover shadow-md" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-md">
+                        {otherPerson.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h4 className="text-sm font-bold text-white truncate">{conn.name}</h4>
+                        <h4 className="text-sm font-bold text-white truncate">{otherPerson.name}</h4>
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       </div>
-                      <p className="text-xs text-slate-400 truncate">{conn.city}</p>
-                      {conn.status === "pending" ? (
-                        <span className="text-[10px] text-amber-300 font-semibold">
-                          Connection Pending
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-emerald-300 font-semibold">
-                          Connected
-                        </span>
-                      )}
+                      <p className="text-xs text-slate-400 truncate">{otherPerson.city}</p>
+                      <p className="text-[10px] text-slate-500 mt-1">Suggested by {conn.matchmaker.name}</p>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => alert(`Starting private message session with ${conn.name}`)}
-                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs border border-white/10 transition shrink-0"
-                    title="Message"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
+                  {conn.status === "DateFixed" ? (
+                    <div className="bg-rose-500/10 rounded-xl p-3 border border-rose-500/20 text-center">
+                      <div className="flex justify-center mb-1"><Gift className="w-4 h-4 text-rose-400" /></div>
+                      <p className="text-xs font-bold text-white mb-1">
+                        {new Date(conn.meetingDate).toLocaleDateString()} at {new Date(conn.meetingDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </p>
+                      {(conn.meetingLocation || conn.meetingVenue) && (
+                        <p className="text-[10px] text-white/70 mb-1 flex items-center justify-center gap-1">
+                          <MapPin className="w-3 h-3 text-rose-400" /> 
+                          {conn.meetingVenue && <span className="font-bold">{conn.meetingVenue}</span>}
+                          {conn.meetingVenue && conn.meetingLocation && <span>, </span>}
+                          {conn.meetingLocation && <span>{conn.meetingLocation}</span>}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-rose-300 font-medium">
+                        {conn.meetingMessage}
+                      </p>
+                    </div>
+                  ) : myStatus === "Pending" && conn.status !== "Rejected" ? (
+                    <div className="flex flex-col gap-3 mt-2">
+                       <div className="bg-purple-500/10 rounded-lg p-2.5 border border-purple-500/20">
+                          <p className="text-[11px] text-purple-300 leading-tight">
+                            <Sparkles className="w-3 h-3 inline mr-1 text-purple-400 -mt-0.5" />
+                            Your Relationship Manager found this highly compatible match for you!
+                          </p>
+                       </div>
+                       <div className="flex items-center gap-2">
+                         <button onClick={() => onUpdateConnection(conn.id, "Approve")} className="flex-1 flex justify-center items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 py-1.5 rounded-lg text-xs font-bold transition">
+                            <Check className="w-3 h-3" /> Approve
+                         </button>
+                         <button onClick={() => onUpdateConnection(conn.id, "Reject")} className="flex-1 flex justify-center items-center gap-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 py-1.5 rounded-lg text-xs font-bold transition">
+                            <X className="w-3 h-3" /> Pass
+                         </button>
+                       </div>
+                    </div>
+                  ) : myStatus === "Approved" && conn.status !== "BothApproved" && conn.status !== "Rejected" ? (
+                     <div className="text-center py-2 bg-white/5 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-slate-400 font-medium">Waiting for {otherPerson.name}'s response</span>
+                     </div>
+                  ) : conn.status === "BothApproved" ? (
+                     <div className="text-center py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                        <span className="text-[10px] text-emerald-400 font-bold">Both Approved! Matchmaker is arranging a date.</span>
+                     </div>
+                  ) : (
+                     <div className="text-center py-2 bg-rose-500/5 rounded-lg border border-rose-500/10">
+                        <span className="text-[10px] text-rose-400 font-medium">Not a Match</span>
+                     </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            /* Dynamic Empty State */
             <div className="rounded-3xl bg-[#131d2e] border border-white/10 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-xl">
               <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto mb-4">
                 <Sparkles className="w-8 h-8" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
-                Your next connection could start with a real-world experience.
+                No active connections right now.
               </h3>
               <p className="text-sm text-slate-400 mb-6 max-w-sm mx-auto leading-relaxed">
-                {registeredEventsCount > 0
-                  ? `You have reserved spots for upcoming events. When you attend in ${userCity}, you can exchange mutual connection requests with attendees here.`
-                  : `You haven't made any connections yet. Start by joining a Singles Mixer, Speed Dating, or Dance Date in ${userCity}.`}
+                Your Relationship Manager is looking for highly compatible matches for you. 
+                You will see them here once suggested!
               </p>
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={() => setActiveTab("discover")}
-                  className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
-                >
-                  Discover Peers in {userCity}
-                </button>
-                <button
-                  onClick={onExploreEvents}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-semibold shadow-lg shadow-[#e06d53]/30 transition"
-                >
-                  <Compass className="w-4 h-4" />
-                  <span>Explore Events</span>
-                </button>
-              </div>
             </div>
           )}
         </>
-      )}
-
-      {/* View: Discover Co-Attendees / Peers in City */}
-      {activeTab === "discover" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {suggestedMembers.map((peer) => {
-            const hasRequested = requestedPeerIds.includes(peer.id);
-            return (
-              <div
-                key={peer.id}
-                className="rounded-2xl bg-[#131d2e] border border-white/10 p-5 flex flex-col justify-between space-y-4 shadow hover:border-white/20 transition"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/15 border border-indigo-500/30 flex items-center justify-center font-bold text-white text-sm shrink-0">
-                      {peer.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-white truncate">{peer.name}</h4>
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-[#e06d53]" />
-                        {peer.city}
-                      </p>
-                      <p className="text-[11px] text-slate-300 mt-0.5 truncate">
-                        Intent: {peer.intent}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">
-                    Attending events in {peer.city}
-                  </span>
-
-                  {hasRequested ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-400 text-xs font-semibold">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Request Sent
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleConnect(peer)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-semibold shadow transition"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>Say Hi / Connect</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       )}
     </div>
   );

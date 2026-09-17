@@ -685,4 +685,83 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Get connections for the logged-in user
+router.get('/connections', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const connections = await prisma.matchSuggestion.findMany({
+      where: {
+        OR: [
+          { clientId: userId },
+          { suggestedProfileId: userId }
+        ]
+      },
+      include: {
+        client: {
+          select: { id: true, name: true, profileImage: true, gender: true, city: true, dateOfBirth: true }
+        },
+        suggestedProfile: {
+          select: { id: true, name: true, profileImage: true, gender: true, city: true, dateOfBirth: true }
+        },
+        matchmaker: {
+          select: { id: true, name: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, connections });
+  } catch (error) {
+    console.error('Error fetching connections:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch connections' });
+  }
+});
+
+// Approve or reject a connection
+router.put('/connections/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // 'Approve' or 'Reject'
+    const userId = req.user.userId;
+
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (!connection) {
+      return res.status(404).json({ success: false, message: 'Connection not found' });
+    }
+
+    const updateData = {};
+    if (connection.clientId === userId) {
+      updateData.clientStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+    } else if (connection.suggestedProfileId === userId) {
+      updateData.suggestedStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+    } else {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Determine overall status
+    let overallStatus = connection.status;
+    if (action === 'Reject') {
+      overallStatus = 'Rejected';
+    } else if (action === 'Approve') {
+      const otherStatus = connection.clientId === userId ? connection.suggestedStatus : connection.clientStatus;
+      if (otherStatus === 'Approved') {
+        overallStatus = 'BothApproved';
+      } else {
+        overallStatus = connection.clientId === userId ? 'ClientApproved' : 'SuggestedApproved';
+      }
+    }
+    updateData.status = overallStatus;
+
+    const updated = await prisma.matchSuggestion.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({ success: true, connection: updated });
+  } catch (error) {
+    console.error('Error updating connection:', error);
+    res.status(500).json({ success: false, message: 'Failed to update connection' });
+  }
+});
+
 module.exports = router;
