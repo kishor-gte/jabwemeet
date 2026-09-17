@@ -2041,7 +2041,8 @@
 
         if (response.ok && data.success) {
           // Success state
-          registeredUserRedirect = data.redirectUrl || '/dashboard';
+          const chosenRole = document.getElementById('reg_role') ? document.getElementById('reg_role').value : 'USER';
+          registeredUserRedirect = (chosenRole === 'HOST' || chosenRole === 'EVENT_MANAGER') ? '/host/dashboard' : (data.redirectUrl || '/dashboard');
           document.getElementById('registerFormView').style.display = 'none';
           document.getElementById('registerSuccessView').style.display = 'block';
           checkUserSession(); // update navbar

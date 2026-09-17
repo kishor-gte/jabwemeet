@@ -9,9 +9,13 @@ const eventsRouter = require('./routes/events');
 const adminRouter = require('./routes/admin');
 const matchmakerRouter = require('./routes/matchmaker');
 const servicesRouter = require('./routes/services');
+const { initAdminDb } = require('./db/adminInit');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// Initialize admin schema safely in background
+initAdminDb().catch(err => console.error('Failed to initialize admin database:', err));
 
 // Trust proxy for rate limiting behind reverse proxies (like Next.js rewrites)
 app.set('trust proxy', 1);
