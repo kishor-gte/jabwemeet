@@ -62,7 +62,7 @@ export default function AdminSafetyPage() {
           status,
           internalNotes,
           actionToUser: actionToUser || undefined,
-          reason: "Safety admin updated case investigation",
+          reason: "Super Admin updated case investigation",
         }),
       });
       const data = await res.json();

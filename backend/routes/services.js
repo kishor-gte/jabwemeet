@@ -309,4 +309,23 @@ router.post("/buddy-request", authenticateToken, async (req, res) => {
   }
 });
 
+// 7. GET /api/notifications
+// Fetch active platform announcements & broadcasts for users
+router.get("/notifications", async (req, res) => {
+  try {
+    const announcements = await prisma.$queryRawUnsafe(`
+      SELECT "id", "title", "message", "type", "targetAudience", "sentBy", "sentAt"
+      FROM "NotificationAnnouncement"
+      ORDER BY "sentAt" DESC
+      LIMIT 25
+    `);
+    return res.json({ success: true, announcements });
+  } catch (error) {
+    console.error("Error fetching user announcements:", error);
+    return res.status(500).json({ success: false, announcements: [] });
+  }
+});
+
 module.exports = router;
+
+

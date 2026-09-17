@@ -92,7 +92,7 @@ const NAV_SECTIONS = [
       { label: "Notifications & Broadcast", href: "/admin/notifications", icon: BellRing },
       { label: "Content CMS", href: "/admin/content", icon: FileText },
       { label: "Platform Analytics", href: "/admin/analytics", icon: BarChart3 },
-      { label: "Staff & Permissions", href: "/admin/staff", icon: Shield },
+      { label: "Admin Management", href: "/admin/staff", icon: Shield },
       { label: "Audit Logs", href: "/admin/audit-logs", icon: History },
       { label: "System Settings", href: "/admin/settings", icon: Settings },
     ],
@@ -248,10 +248,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Right Actions */}
         <div className="flex items-center gap-3">
-          {/* Staff Role Badge */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          {/* Super Admin Badge */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
             <Shield className="w-3.5 h-3.5" />
-            <span>{user.staffRole || "SUPER_ADMIN"}</span>
+            <span>SUPER ADMIN</span>
           </div>
 
           {/* Switch to Member View */}
