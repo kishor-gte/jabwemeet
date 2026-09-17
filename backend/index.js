@@ -62,6 +62,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/matchmaker', matchmakerRouter);
+app.use('/api/buddy', require('./routes/buddy'));
 app.use('/api/services', servicesRouter);
 app.use('/api', servicesRouter);
 

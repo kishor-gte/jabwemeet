@@ -1,16 +1,16 @@
-const express = require('express');
-const prisma = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const express = require("express");
+const prisma = require("../db");
+const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 
 // 1. GET /api/services/relationship-managers (or /api/relationship-managers)
 // Fetch all relationship managers who are registered and approved by admin
-router.get('/relationship-managers', async (req, res) => {
+router.get("/relationship-managers", async (req, res) => {
   try {
     const managers = await prisma.user.findMany({
       where: {
-        role: 'MATCHMAKER',
+        role: "MATCHMAKER",
         isApproved: true,
       },
       select: {
@@ -31,7 +31,7 @@ router.get('/relationship-managers', async (req, res) => {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return res.json({
@@ -40,21 +40,21 @@ router.get('/relationship-managers', async (req, res) => {
       data: managers,
     });
   } catch (error) {
-    console.error('Error fetching approved relationship managers:', error);
+    console.error("Error fetching approved relationship managers:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to fetch approved relationship managers.',
+      message: "Failed to fetch approved relationship managers.",
     });
   }
 });
 
 // 2. GET /api/services/breakup-buddies (or /api/breakup-buddies)
 // Fetch all breakup buddies who are registered and approved by admin
-router.get('/breakup-buddies', async (req, res) => {
+router.get("/breakup-buddies", async (req, res) => {
   try {
     const buddies = await prisma.user.findMany({
       where: {
-        role: 'BREAKUP_BUDDY',
+        role: "BREAKUP_BUDDY",
         isApproved: true,
       },
       select: {
@@ -77,7 +77,7 @@ router.get('/breakup-buddies', async (req, res) => {
         isApproved: true,
         createdAt: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return res.json({
@@ -86,17 +86,17 @@ router.get('/breakup-buddies', async (req, res) => {
       data: buddies,
     });
   } catch (error) {
-    console.error('Error fetching approved breakup buddies:', error);
+    console.error("Error fetching approved breakup buddies:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to fetch approved breakup buddies.',
+      message: "Failed to fetch approved breakup buddies.",
     });
   }
 });
 
 // 3. POST /api/services/matchmaking-requests
 // Submit a new introduction/matchmaking request targeting a Relationship Manager
-router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
+router.post("/matchmaking-requests", authenticateToken, async (req, res) => {
   try {
     const clientId = req.user.userId;
     const { matchmakerId, managerName, goal, notes } = req.body;
@@ -104,7 +104,8 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
     if (!matchmakerId) {
       return res.status(400).json({
         success: false,
-        message: 'A relationship manager ID is required to request an introduction.',
+        message:
+          "A relationship manager ID is required to request an introduction.",
       });
     }
 
@@ -112,7 +113,7 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
     const manager = await prisma.user.findFirst({
       where: {
         id: matchmakerId,
-        role: 'MATCHMAKER',
+        role: "MATCHMAKER",
         isApproved: true,
       },
       select: { id: true, name: true },
@@ -121,7 +122,7 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
     if (!manager) {
       return res.status(404).json({
         success: false,
-        message: 'The requested relationship manager is not currently active.',
+        message: "The requested relationship manager is not currently active.",
       });
     }
 
@@ -129,8 +130,8 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
     const requestPayload = {
       matchmakerId: manager.id,
       managerName: manager.name,
-      goal: goal || 'Long-term Relationship',
-      notes: notes || '',
+      goal: goal || "Long-term Relationship",
+      notes: notes || "",
       submittedAt: new Date().toISOString(),
     };
 
@@ -138,9 +139,9 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
     const existing = await prisma.matchmakingRequest.findFirst({
       where: {
         clientId,
-        status: 'New',
+        status: "New",
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     let resultRequest;
@@ -150,7 +151,7 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
         where: { id: existing.id },
         data: {
           lookingFor: JSON.stringify(requestPayload),
-          status: 'New',
+          status: "New",
         },
       });
     } else {
@@ -159,7 +160,7 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
         data: {
           clientId,
           lookingFor: JSON.stringify(requestPayload),
-          status: 'New',
+          status: "New",
         },
       });
     }
@@ -170,17 +171,17 @@ router.post('/matchmaking-requests', authenticateToken, async (req, res) => {
       data: resultRequest,
     });
   } catch (error) {
-    console.error('Error creating matchmaking request:', error);
+    console.error("Error creating matchmaking request:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to submit matchmaking request.',
+      message: "Failed to submit matchmaking request.",
     });
   }
 });
 
 // 4. GET /api/services/my-matchmaking-requests
 // Fetch current member's introduction requests and assigned manager status
-router.get('/my-matchmaking-requests', authenticateToken, async (req, res) => {
+router.get("/my-matchmaking-requests", authenticateToken, async (req, res) => {
   try {
     const clientId = req.user.userId;
 
@@ -206,23 +207,23 @@ router.get('/my-matchmaking-requests', authenticateToken, async (req, res) => {
     // Fetch all requests submitted by this client
     const requests = await prisma.matchmakingRequest.findMany({
       where: { clientId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     const formattedRequests = requests.map((r) => {
       let parsed = {
-        goal: r.lookingFor || 'Long-term Relationship',
-        notes: '',
+        goal: r.lookingFor || "Long-term Relationship",
+        notes: "",
         matchmakerId: null,
         managerName: null,
       };
 
-      if (r.lookingFor && r.lookingFor.startsWith('{')) {
+      if (r.lookingFor && r.lookingFor.startsWith("{")) {
         try {
           const j = JSON.parse(r.lookingFor);
           parsed = {
-            goal: j.goal || 'Long-term Relationship',
-            notes: j.notes || '',
+            goal: j.goal || "Long-term Relationship",
+            notes: j.notes || "",
             matchmakerId: j.matchmakerId || null,
             managerName: j.managerName || null,
           };
@@ -251,11 +252,60 @@ router.get('/my-matchmaking-requests', authenticateToken, async (req, res) => {
       requests: formattedRequests,
     });
   } catch (error) {
-    console.error('Error fetching member matchmaking requests:', error);
+    console.error("Error fetching member matchmaking requests:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to load member matchmaking requests.',
+      message: "Failed to load member matchmaking requests.",
     });
+  }
+});
+
+// 5. POST /api/services/buddy-request
+// Submit a request to a Breakup Buddy
+router.post("/buddy-request", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { buddyId, sessionFormat, preferredMode, notes } = req.body;
+
+    if (!buddyId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Buddy ID is required." });
+    }
+
+    const buddy = await prisma.user.findFirst({
+      where: { id: buddyId, role: "BREAKUP_BUDDY", isApproved: true },
+    });
+
+    if (!buddy) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "Breakup Buddy not found or unavailable.",
+        });
+    }
+
+    const request = await prisma.buddyRequest.create({
+      data: {
+        userId,
+        buddyId,
+        sessionType: preferredMode || "Private Voice Call",
+        topic: notes ? `${sessionFormat} | ${notes}` : sessionFormat,
+        status: "Pending",
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Support session requested successfully!",
+      data: request,
+    });
+  } catch (error) {
+    console.error("Error creating buddy request:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to submit request." });
   }
 });
 
