@@ -274,7 +274,7 @@ export default function HomePage() {
           setRegSuccess(true);
           setRedirectTarget("pending");
         } else {
-          const dest = data.redirectUrl || (regRole === "HOST" ? "/host/dashboard" : "/dashboard");
+          const dest = (regRole === "HOST" || regRole === "EVENT_MANAGER") ? "/host/dashboard" : (data.redirectUrl || "/dashboard");
           setRedirectTarget(dest);
           setRegSuccess(true);
           setTimeout(() => {
