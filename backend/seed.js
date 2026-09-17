@@ -73,6 +73,8 @@ async function seed() {
       ],
     });
     console.log('Sample JabWeMeet events seeded.');
+  } else {
+    console.log('Events already exist in the database, skipping event seed.');
   }
 
   // 2. Seed an Admin and Demo User if none exists
@@ -122,6 +124,8 @@ async function seed() {
     });
 
     console.log('Initial Admin, Host, and Demo accounts seeded.');
+  } else {
+    console.log('Users already exist in the database, skipping user seed.');
   }
 
   console.log('Seeding complete.');
