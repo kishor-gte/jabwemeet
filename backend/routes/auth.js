@@ -276,17 +276,6 @@ router.post('/register', upload.fields([
       },
     });
 
-    // Automatically create a Matchmaking Request for standard users
-    if (newUser.role === 'USER') {
-      await prisma.matchmakingRequest.create({
-        data: {
-          clientId: newUser.id,
-          lookingFor: newUser.relationshipIntent || 'Partner',
-          status: 'New',
-        }
-      });
-    }
-
     // Create JWT token
     const token = jwt.sign(
       {
