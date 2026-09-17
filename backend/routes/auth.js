@@ -179,7 +179,7 @@ router.post('/register', upload.fields([
       });
     }
 
-    // Date of birth & Age validation (18+) - optional for Breakup Buddy & Matchmaker
+    // Date of birth & Age validation (18+) - optional for Breakup Buddy, Matchmaker & Host
     let dob = null;
     if (dateOfBirth) {
       dob = new Date(dateOfBirth);
@@ -193,13 +193,13 @@ router.post('/register', upload.fields([
       if (age < 18) {
         return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
       }
-    } else if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER') {
+    } else if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER' && role !== 'HOST') {
       return res.status(400).json({ success: false, message: 'Date of birth is required.' });
     }
 
-    // City validation - optional for Breakup Buddy & Matchmaker
+    // City validation - optional for Breakup Buddy, Matchmaker & Host
     let validCity = city && typeof city === 'string' ? city.trim() : null;
-    if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER') {
+    if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER' && role !== 'HOST') {
       if (!validCity || validCity.length < 2) {
         return res.status(400).json({ success: false, message: 'City is required.' });
       }
@@ -252,9 +252,11 @@ router.post('/register', upload.fields([
         city: validCity,
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
+
         role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' ? role : 'USER',
         isVerified: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY'),
         isApproved: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY'),
+
         idType: idType ? String(idType).trim() : null,
         idDocument: idDocument ? String(idDocument).trim() : null,
         profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
@@ -413,11 +415,33 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 });
 
-// 4. GET /api/auth/me
-router.get('/me', authenticateToken, async (req, res) => {
+// 4. GET /api/auth/me - Clean session profile check
+router.get('/me', async (req, res) => {
   try {
+    let token = null;
+
+    // Check HTTP-only cookie first
+    if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+    // Fallback to Authorization header
+    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return res.json({ success: false, authenticated: false, user: null });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.json({ success: false, authenticated: false, user: null });
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
+      where: { id: decoded.userId },
       select: {
         id: true,
         name: true,
@@ -444,11 +468,12 @@ router.get('/me', authenticateToken, async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User account not found.' });
+      return res.json({ success: false, authenticated: false, user: null });
     }
 
     return res.json({
       success: true,
+      authenticated: true,
       user,
       redirectUrl: getRoleRedirect(user.role),
     });

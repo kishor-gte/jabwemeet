@@ -64,6 +64,7 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
         ageRange,
         itinerary,
         hostId,
+
       },
     });
 
