@@ -15,11 +15,11 @@ async function initAdminDb() {
       ADD COLUMN IF NOT EXISTS "internalNotes" TEXT;
     `);
 
-    // Ensure existing ADMIN users have staffRole = 'SUPER_ADMIN' and status = 'ACTIVE'
+    // Ensure ALL ADMIN users have staffRole = 'SUPER_ADMIN' and status = 'ACTIVE'
     await prisma.$executeRawUnsafe(`
       UPDATE "User" 
       SET "staffRole" = 'SUPER_ADMIN', "status" = 'ACTIVE', "identityVerified" = true
-      WHERE "role" = 'ADMIN' AND ("staffRole" IS NULL OR "staffRole" = '');
+      WHERE "role" = 'ADMIN';
     `);
 
     // 2. Extend Event table

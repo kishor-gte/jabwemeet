@@ -91,7 +91,7 @@ export default function AdminRefundsPage() {
                     <td className="px-4 py-4 font-bold text-white">{r.userName}</td>
                     <td className="px-4 py-4 text-emerald-400 font-bold text-sm">₹{r.amount}</td>
                     <td className="px-4 py-4 text-slate-300 max-w-xs">{r.reason}</td>
-                    <td className="px-4 py-4 text-purple-300">{r.processedBy || "Finance Admin"}</td>
+                    <td className="px-4 py-4 text-purple-300">{r.processedBy || "Super Admin"}</td>
                     <td className="px-4 py-4">
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
                         {r.status}
