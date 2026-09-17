@@ -127,8 +127,23 @@ export default function HostDashboardPage() {
         {/* Event List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.length === 0 ? (
-            <div className="col-span-full bg-[#131d2e] rounded-2xl p-8 text-center border border-white/10">
-              <p className="text-slate-400">You haven't created any events yet.</p>
+            <div className="col-span-full bg-[#131d2e] rounded-3xl p-12 text-center border border-white/10 shadow-xl space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-[#e06d53]/15 text-[#e06d53] flex items-center justify-center text-3xl mx-auto">
+                🎉
+              </div>
+              <h3 className="text-xl font-bold">No Events Created Yet</h3>
+              <p className="text-slate-400 max-w-md mx-auto text-sm">
+                Get started by creating your first offline event: Single Events, Speed Dating, Dance Dating, or Singles Travels.
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="bg-[#e06d53] hover:bg-[#c95a43] px-6 py-3 rounded-full font-bold text-sm inline-flex items-center gap-2 transition shadow-lg shadow-[#e06d53]/25"
+                >
+                  <Plus size={18} />
+                  Create Your First Event
+                </button>
+              </div>
             </div>
           ) : (
             events.map((event) => (

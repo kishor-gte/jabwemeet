@@ -13,7 +13,7 @@ function RegisterContent() {
 
   useEffect(() => {
     const urlRole = searchParams.get("role");
-    if (urlRole === "MATCHMAKER" || urlRole === "BREAKUP_BUDDY" || urlRole === "USER") {
+    if (urlRole === "MATCHMAKER" || urlRole === "BREAKUP_BUDDY" || urlRole === "USER" || urlRole === "HOST") {
       setRole(urlRole);
     }
   }, [searchParams]);
@@ -66,14 +66,14 @@ function RegisterContent() {
       let reqBody: BodyInit;
       let reqHeaders: HeadersInit = {};
 
-      if (role === "MATCHMAKER") {
+      if (role === "MATCHMAKER" || role === "HOST") {
         const formData = new FormData();
         formData.append("name", name.trim());
         formData.append("email", email.trim());
         formData.append("phone", phone.trim());
         formData.append("password", password);
         formData.append("confirmPassword", confirmPassword);
-        formData.append("role", "MATCHMAKER");
+        formData.append("role", role);
         if (city.trim()) formData.append("city", city.trim());
 
         const gov = document.getElementById("reg_govIdProof") as HTMLInputElement;
@@ -94,7 +94,7 @@ function RegisterContent() {
           phone: phone.trim(),
           password,
           confirmPassword,
-          dateOfBirth: role === "BREAKUP_BUDDY" ? undefined : dob,
+          dateOfBirth: role === "BREAKUP_BUDDY" || role === "HOST" ? (dob || undefined) : dob,
           city: role === "BREAKUP_BUDDY" ? undefined : city,
           gender,
           relationshipIntent: intent,
@@ -118,7 +118,7 @@ function RegisterContent() {
           setPendingApproval(true);
           setSuccess(true);
         } else {
-          setRedirectTarget(data.redirectUrl || "/dashboard");
+          setRedirectTarget(data.redirectUrl || (role === "HOST" ? "/host/dashboard" : "/dashboard"));
           setSuccess(true);
         }
       } else {
@@ -149,11 +149,11 @@ function RegisterContent() {
 
         {/* Role Selector Tabs */}
         {!success && (
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-black/30 rounded-2xl border border-white/10 mb-6 text-xs font-semibold">
+          <div className="grid grid-cols-4 gap-1 p-1 bg-black/30 rounded-2xl border border-white/10 mb-6 text-[11px] font-semibold">
             <button
               type="button"
               onClick={() => setRole("USER")}
-              className={`py-2 px-3 rounded-xl transition ${
+              className={`py-2 px-1 text-center rounded-xl transition ${
                 role === "USER"
                   ? "bg-[#e06d53] text-white shadow-md"
                   : "text-slate-400 hover:text-white"
@@ -163,19 +163,30 @@ function RegisterContent() {
             </button>
             <button
               type="button"
+              onClick={() => setRole("HOST")}
+              className={`py-2 px-1 text-center rounded-xl transition ${
+                role === "HOST"
+                  ? "bg-rose-600 text-white shadow-md"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Event Host
+            </button>
+            <button
+              type="button"
               onClick={() => setRole("MATCHMAKER")}
-              className={`py-2 px-2 rounded-xl transition ${
+              className={`py-2 px-1 text-center rounded-xl transition ${
                 role === "MATCHMAKER"
                   ? "bg-amber-600 text-white shadow-md"
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              Relationship Manager
+              Matchmaker
             </button>
             <button
               type="button"
               onClick={() => setRole("BREAKUP_BUDDY")}
-              className={`py-2 px-2 rounded-xl transition ${
+              className={`py-2 px-1 text-center rounded-xl transition ${
                 role === "BREAKUP_BUDDY"
                   ? "bg-purple-600 text-white shadow-md"
                   : "text-slate-400 hover:text-white"
@@ -183,6 +194,12 @@ function RegisterContent() {
             >
               Breakup Buddy
             </button>
+          </div>
+        )}
+
+        {role === "HOST" && !success && (
+          <div className="mb-5 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+            <strong>Event Manager Account:</strong> Create & host Singles Events, Speed Dating, Dance Dating, and Singles Travels. You will be redirected directly to your Event Manager Dashboard.
           </div>
         )}
 
@@ -372,8 +389,8 @@ function RegisterContent() {
               </>
             )}
 
-            {/* Relationship Manager Fields */}
-            {role === "MATCHMAKER" && (
+            {/* Relationship Manager & Host Fields */}
+            {(role === "MATCHMAKER" || role === "HOST") && (
               <div className="space-y-4 pt-2">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">

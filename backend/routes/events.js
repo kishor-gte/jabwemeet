@@ -27,8 +27,9 @@ router.get('/', async (req, res) => {
 // GET /api/events/host - List events created by the logged-in host
 router.get('/host', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER']), async (req, res) => {
   try {
+    const hostId = req.user.userId || req.user.id;
     const events = await prisma.event.findMany({
-      where: { hostId: req.user.id },
+      where: { hostId },
       orderBy: { date: 'desc' },
     });
 
@@ -47,6 +48,8 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
       return res.status(400).json({ success: false, message: 'Missing required event fields' });
     }
 
+    const hostId = req.user.userId || req.user.id;
+
     const newEvent = await prisma.event.create({
       data: {
         title,
@@ -60,7 +63,7 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
         maxAttendees: maxAttendees ? parseInt(maxAttendees, 10) : 50,
         ageRange,
         itinerary,
-        hostId: req.user.id
+        hostId
       },
     });
 

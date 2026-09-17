@@ -114,12 +114,10 @@ async function seed() {
         email: 'host@jabweemeet.com',
         phone: '+919876543212',
         password: defaultPassword,
-        dateOfBirth: new Date('1994-03-10'),
         city: 'Mumbai',
-        gender: 'Female',
-        relationshipIntent: 'Social Connections',
         role: 'HOST',
         isVerified: true,
+        isApproved: true,
       },
     });
 

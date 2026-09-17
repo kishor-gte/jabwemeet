@@ -183,7 +183,7 @@ export default function HomePage() {
   const isRegValid =
     regRole === 'BREAKUP_BUDDY'
       ? (isBaseRegValid && regIdType && regIdDocument && regProfilePhoto)
-      : regRole === 'MATCHMAKER'
+      : (regRole === 'MATCHMAKER' || regRole === 'HOST')
       ? isBaseRegValid
       : (isBaseRegValid && dobFeedback.startsWith("✓") && regCity.trim().length >= 2);
 
@@ -222,7 +222,7 @@ export default function HomePage() {
       let reqBody: BodyInit;
       let reqHeaders: HeadersInit = {};
 
-      if (regRole === "MATCHMAKER") {
+      if (regRole === "MATCHMAKER" || regRole === "HOST") {
         const formData = new FormData();
         formData.append("name", regName);
         formData.append("email", regEmail);
@@ -274,8 +274,12 @@ export default function HomePage() {
           setRegSuccess(true);
           setRedirectTarget("pending");
         } else {
-          setRedirectTarget(data.redirectUrl || "/dashboard");
+          const dest = data.redirectUrl || (regRole === "HOST" ? "/host/dashboard" : "/dashboard");
+          setRedirectTarget(dest);
           setRegSuccess(true);
+          setTimeout(() => {
+            router.push(dest);
+          }, 800);
         }
       } else {
         setRegError(data.message || "Registration failed. Please check inputs.");
@@ -351,7 +355,8 @@ export default function HomePage() {
                   </button>
                   {activeJoinDropdownId === 'nav' && (
                     <div className="absolute right-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
-                      <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                      <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User / Member</button>
+                      <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
                       <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
                       <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
                     </div>
@@ -402,7 +407,8 @@ export default function HomePage() {
               </button>
               {activeJoinDropdownId === 'hero' && (
                 <div className="absolute left-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
-                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User / Member</button>
+                  <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
                   <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
                   <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
                 </div>
@@ -788,7 +794,8 @@ export default function HomePage() {
               </button>
               {activeJoinDropdownId === 'cta' && (
                 <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
-                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User</button>
+                  <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User / Member</button>
+                  <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
                   <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
                   <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
                 </div>
@@ -1003,6 +1010,11 @@ export default function HomePage() {
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold font-serif text-white">Join JabWeMeet</h2>
                   <p className="text-xs text-slate-400 mt-1">Real People. Real Places. Real Connections.</p>
+                  {regRole === "HOST" && (
+                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 text-xs font-semibold">
+                      <span>Registering as: Event Host / Manager</span>
+                    </div>
+                  )}
                   {regRole === "MATCHMAKER" && (
                     <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">
                       <span>Registering as: Relationship Manager</span>
@@ -1111,7 +1123,7 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER' && (
+                  {regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER' && regRole !== 'HOST' && (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -1232,7 +1244,7 @@ export default function HomePage() {
                     </>
                   )}
 
-                  {regRole === "MATCHMAKER" && (
+                  {(regRole === "MATCHMAKER" || regRole === "HOST") && (
                     <div className="space-y-4 pt-2">
                       <div>
                         <label className="block text-xs font-semibold text-slate-300 mb-1">
