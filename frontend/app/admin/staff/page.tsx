@@ -30,6 +30,7 @@ interface AdminMember {
 
 export default function AdminManagementPage() {
   const [admins, setAdmins] = useState<AdminMember[]>([]);
+  const [currentAdminId, setCurrentAdminId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminMember | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -44,10 +45,17 @@ export default function AdminManagementPage() {
   async function fetchAdmins() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/staff", { credentials: "include" });
+      const [res, meRes] = await Promise.all([
+        fetch("/api/admin/staff", { credentials: "include" }),
+        fetch("/api/admin/me", { credentials: "include" }),
+      ]);
       const data = await res.json();
+      const meData = await meRes.json();
       if (data.success) {
         setAdmins(data.staffMembers || []);
+      }
+      if (meData.success && meData.user) {
+        setCurrentAdminId(meData.user.id);
       }
     } catch (e) {
       console.error(e);
@@ -75,6 +83,11 @@ export default function AdminManagementPage() {
     if (!selectedAdmin) return;
     if (!form.reason.trim()) {
       setErrorMsg("Please specify a justification for this account change (logged in Audit Trail).");
+      return;
+    }
+
+    if (selectedAdmin.id === currentAdminId && form.status !== "ACTIVE") {
+      setErrorMsg("You cannot deactivate or suspend your own active Super Admin session.");
       return;
     }
 
@@ -106,6 +119,7 @@ export default function AdminManagementPage() {
   }
 
   const activeCount = admins.filter((s) => s.status === "ACTIVE").length;
+  const inactiveCount = admins.filter((s) => s.status !== "ACTIVE").length;
 
   return (
     <div className="space-y-6 pb-12">
@@ -121,7 +135,7 @@ export default function AdminManagementPage() {
             Admin Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
-            Super Administrator accounts with full platform governance. All account status modifications are recorded in the audit trail.
+            Super Administrator accounts with full platform governance. Account status changes (including deactivation) are permanent and recorded in the audit trail.
           </p>
         </div>
         <div className="relative z-10 inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-xl text-xs font-bold w-fit">
@@ -131,7 +145,7 @@ export default function AdminManagementPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Administrators</span>
@@ -147,7 +161,16 @@ export default function AdminManagementPage() {
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <p className="text-2xl sm:text-3xl font-black text-emerald-400 mt-2">{activeCount}</p>
-          <span className="text-[11px] text-slate-500">Granted active access</span>
+          <span className="text-[11px] text-slate-500">Granted active platform access</span>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">Deactivated / Suspended</span>
+            <AlertTriangle className="w-4 h-4 text-rose-400" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-rose-400 mt-2">{inactiveCount}</p>
+          <span className="text-[11px] text-slate-500">Access revoked accounts</span>
         </div>
 
         <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
@@ -217,9 +240,13 @@ export default function AdminManagementPage() {
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
                           Active
                         </span>
+                      ) : admin.status === "DEACTIVATED" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                          Deactivated
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">
-                          Suspended
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                          {admin.status || "Suspended"}
                         </span>
                       )}
                     </td>
@@ -282,6 +309,13 @@ export default function AdminManagementPage() {
                 </div>
               )}
 
+              {selectedAdmin.id === currentAdminId && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>You are currently logged in as this administrator. You cannot deactivate your own session.</span>
+                </div>
+              )}
+
               <div className="p-3.5 bg-[#162136] border border-white/10 rounded-2xl">
                 <p className="text-xs font-bold text-white">{selectedAdmin.name}</p>
                 <p className="text-[11px] font-mono text-slate-400">{selectedAdmin.email}</p>
@@ -306,12 +340,19 @@ export default function AdminManagementPage() {
                 </label>
                 <select
                   value={form.status}
+                  disabled={selectedAdmin.id === currentAdminId}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="ACTIVE" className="bg-[#182337] text-white">ACTIVE (Granted Full Access)</option>
-                  <option value="SUSPENDED" className="bg-[#182337] text-white">SUSPENDED (Access Revoked)</option>
+                  <option value="DEACTIVATED" className="bg-[#182337] text-white">DEACTIVATED (Account Deactivated - Access Revoked)</option>
+                  <option value="SUSPENDED" className="bg-[#182337] text-white">SUSPENDED (Temporarily Suspended - Access Revoked)</option>
                 </select>
+                {selectedAdmin.id === currentAdminId && (
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Self-deactivation is disabled for security and platform continuity.
+                  </p>
+                )}
               </div>
 
               <div>

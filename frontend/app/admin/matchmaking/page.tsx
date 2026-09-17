@@ -115,17 +115,17 @@ export default function AdminMatchmakingPage() {
       {/* TAB 1: REQUESTS */}
       {activeTab === "requests" && (
         <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300 table-fixed">
               <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                 <tr>
-                  <th className="px-5 py-3.5">Client Member</th>
-                  <th className="px-4 py-3.5">Contact</th>
-                  <th className="px-4 py-3.5">City</th>
-                  <th className="px-4 py-3.5">Intent / Goal</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5">Submitted</th>
-                  <th className="px-5 py-3.5 text-right">Workflow</th>
+                  <th className="w-[17%] px-4 py-3.5">Client Member</th>
+                  <th className="w-[21%] px-3 py-3.5">Contact</th>
+                  <th className="w-[11%] px-3 py-3.5">City</th>
+                  <th className="w-[23%] px-3 py-3.5">Intent / Goal</th>
+                  <th className="w-[10%] px-3 py-3.5">Status</th>
+                  <th className="w-[9%] px-3 py-3.5">Submitted</th>
+                  <th className="w-[9%] px-4 py-3.5 text-right">Workflow</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 font-medium">
@@ -138,23 +138,31 @@ export default function AdminMatchmakingPage() {
                 ) : (
                   data.requests.map((r: any) => (
                     <tr key={r.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-white text-sm">{r.client?.name || "Member"}</div>
+                      <td className="px-4 py-4 min-w-0">
+                        <div className="font-bold text-white text-sm truncate" title={r.client?.name || "Member"}>
+                          {r.client?.name || "Member"}
+                        </div>
                       </td>
 
-                      <td className="px-4 py-4 text-slate-400">
-                        <div>{r.client?.email}</div>
-                        <div className="text-[11px]">{r.client?.phone || "N/A"}</div>
+                      <td className="px-3 py-4 text-slate-400 min-w-0">
+                        <div className="truncate text-slate-300" title={r.client?.email}>{r.client?.email || "N/A"}</div>
+                        <div className="text-[11px] truncate text-slate-500">{r.client?.phone || "N/A"}</div>
                       </td>
 
-                      <td className="px-4 py-4 capitalize">{r.client?.city || "Unspecified"}</td>
-
-                      <td className="px-4 py-4">
-                        <span className="text-slate-300">{r.lookingFor || "Long-term Partner"}</span>
+                      <td className="px-3 py-4 capitalize min-w-0">
+                        <div className="truncate" title={r.client?.city || "Unspecified"}>
+                          {r.client?.city || "Unspecified"}
+                        </div>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      <td className="px-3 py-4 min-w-0">
+                        <span className="text-slate-300 block truncate" title={r.lookingFor || "Long-term Partner"}>
+                          {r.lookingFor || "Long-term Partner"}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                           r.status === "New"
                             ? "bg-amber-500/20 text-amber-400"
                             : r.status === "Matched"
@@ -165,23 +173,23 @@ export default function AdminMatchmakingPage() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-4 text-slate-400 text-[11px]">
+                      <td className="px-3 py-4 text-slate-400 text-[11px] whitespace-nowrap">
                         {new Date(r.createdAt).toLocaleDateString()}
                       </td>
 
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-4 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end">
                           {r.status === "New" ? (
                             <button
                               onClick={() => handleUpdateRequestStatus(r.id, "In Progress")}
-                              className="px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+                              className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] transition shadow"
                             >
                               Assign Review
                             </button>
                           ) : (
                             <button
                               onClick={() => handleUpdateRequestStatus(r.id, "Matched")}
-                              className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                              className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition shadow"
                             >
                               Mark Matched
                             </button>
@@ -200,15 +208,15 @@ export default function AdminMatchmakingPage() {
       {/* TAB 2: SUGGESTIONS */}
       {activeTab === "suggestions" && (
         <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300 table-fixed">
               <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                 <tr>
-                  <th className="px-5 py-3.5">Client Member A</th>
-                  <th className="px-4 py-3.5">Proposed Candidate B</th>
-                  <th className="px-4 py-3.5">Curating Matchmaker</th>
-                  <th className="px-4 py-3.5">Mutual Consent</th>
-                  <th className="px-4 py-3.5">Created Date</th>
+                  <th className="w-[23%] px-5 py-3.5">Client Member A</th>
+                  <th className="w-[23%] px-4 py-3.5">Proposed Candidate B</th>
+                  <th className="w-[20%] px-4 py-3.5">Curating Matchmaker</th>
+                  <th className="w-[17%] px-4 py-3.5">Mutual Consent</th>
+                  <th className="w-[17%] px-4 py-3.5">Created Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 font-medium">
@@ -221,27 +229,37 @@ export default function AdminMatchmakingPage() {
                 ) : (
                   data.suggestions.map((s: any) => (
                     <tr key={s.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-5 py-4 font-bold text-white">
-                        {s.client?.name}
-                        <span className="text-[11px] text-slate-400 block">{s.client?.city}</span>
+                      <td className="px-5 py-4 min-w-0">
+                        <div className="font-bold text-white truncate" title={s.client?.name}>
+                          {s.client?.name}
+                        </div>
+                        <span className="text-[11px] text-slate-400 block truncate" title={s.client?.city}>
+                          {s.client?.city}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-4 font-bold text-rose-300">
-                        {s.suggestedProfile?.name}
-                        <span className="text-[11px] text-slate-400 block">{s.suggestedProfile?.city}</span>
+                      <td className="px-4 py-4 min-w-0">
+                        <div className="font-bold text-rose-300 truncate" title={s.suggestedProfile?.name}>
+                          {s.suggestedProfile?.name}
+                        </div>
+                        <span className="text-[11px] text-slate-400 block truncate" title={s.suggestedProfile?.city}>
+                          {s.suggestedProfile?.city}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-4 text-purple-300">
-                        {s.matchmaker?.name || "RM"}
+                      <td className="px-4 py-4 text-purple-300 min-w-0">
+                        <div className="truncate" title={s.matchmaker?.name || "RM"}>
+                          {s.matchmaker?.name || "RM"}
+                        </div>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400">
                           {s.status}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4 text-slate-400 text-[11px]">
+                      <td className="px-4 py-4 text-slate-400 text-[11px] whitespace-nowrap">
                         {new Date(s.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -256,15 +274,15 @@ export default function AdminMatchmakingPage() {
       {/* TAB 3: DATES */}
       {activeTab === "dates" && (
         <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300 table-fixed">
               <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                 <tr>
-                  <th className="px-5 py-3.5">Client</th>
-                  <th className="px-4 py-3.5">RM In Charge</th>
-                  <th className="px-4 py-3.5">Date & Time</th>
-                  <th className="px-4 py-3.5">Type & Mode</th>
-                  <th className="px-4 py-3.5">Status</th>
+                  <th className="w-[25%] px-5 py-3.5">Client</th>
+                  <th className="w-[20%] px-4 py-3.5">RM In Charge</th>
+                  <th className="w-[22%] px-4 py-3.5">Date & Time</th>
+                  <th className="w-[18%] px-4 py-3.5">Type & Mode</th>
+                  <th className="w-[15%] px-4 py-3.5">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 font-medium">
@@ -277,25 +295,35 @@ export default function AdminMatchmakingPage() {
                 ) : (
                   data.appointments.map((a: any) => (
                     <tr key={a.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-5 py-4 font-bold text-white">
-                        {a.client?.name}
-                        <span className="text-[11px] text-slate-400 block">{a.client?.phone}</span>
+                      <td className="px-5 py-4 min-w-0">
+                        <div className="font-bold text-white truncate" title={a.client?.name}>
+                          {a.client?.name}
+                        </div>
+                        <span className="text-[11px] text-slate-400 block truncate" title={a.client?.phone}>
+                          {a.client?.phone}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-4 text-purple-300">
-                        {a.matchmaker?.name}
+                      <td className="px-4 py-4 text-purple-300 min-w-0">
+                        <div className="truncate" title={a.matchmaker?.name}>
+                          {a.matchmaker?.name}
+                        </div>
                       </td>
 
-                      <td className="px-4 py-4 text-slate-200">
-                        {new Date(a.date).toLocaleDateString()} at {a.time}
+                      <td className="px-4 py-4 text-slate-200 min-w-0">
+                        <div className="truncate">
+                          {new Date(a.date).toLocaleDateString()} at {a.time}
+                        </div>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className="text-slate-300 font-semibold">{a.type} ({a.mode})</span>
+                      <td className="px-4 py-4 min-w-0">
+                        <span className="text-slate-300 font-semibold block truncate" title={`${a.type} (${a.mode})`}>
+                          {a.type} ({a.mode})
+                        </span>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
                           {a.status}
                         </span>
                       </td>

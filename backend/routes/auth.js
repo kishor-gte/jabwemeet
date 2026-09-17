@@ -378,6 +378,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    // Block deactivated, suspended, or blocked accounts
+    if (user.status && user.status !== 'ACTIVE') {
+      return res.status(403).json({
+        success: false,
+        message: `Your account has been ${user.status.toLowerCase()}. Please contact platform administration.`,
+      });
+    }
+
     if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST') && !user.isApproved) {
       return res.status(403).json({
         success: false,
@@ -766,4 +774,252 @@ router.put('/connections/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get messages for a connection
+router.get('/connections/:id/messages', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (!connection || (connection.clientId !== userId && connection.suggestedProfileId !== userId)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Mark messages as read
+    await prisma.connectionMessage.updateMany({
+      where: {
+        suggestionId: id,
+        senderId: { not: userId },
+        isRead: false
+      },
+      data: { isRead: true }
+    });
+
+    const messages = await prisma.connectionMessage.findMany({
+      where: { suggestionId: id },
+      orderBy: { createdAt: 'asc' },
+      include: { sender: { select: { id: true, name: true, profileImage: true } } }
+    });
+
+    res.json({ success: true, messages });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  }
+});
+
+// Send a message in a connection
+router.post('/connections/:id/messages', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const userId = req.user.userId;
+
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (!connection || (connection.clientId !== userId && connection.suggestedProfileId !== userId)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const message = await prisma.connectionMessage.create({
+      data: {
+        suggestionId: id,
+        senderId: userId,
+        content
+      },
+      include: { sender: { select: { id: true, name: true, profileImage: true } } }
+    });
+
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ success: false, message: 'Failed to send message' });
+  }
+});
+
+// Get unread messages state
+router.get('/messages/unread', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const unreadMessages = await prisma.connectionMessage.findMany({
+      where: {
+        suggestion: {
+          OR: [
+            { clientId: userId },
+            { suggestedProfileId: userId }
+          ]
+        },
+        senderId: { not: userId },
+        isRead: false
+      },
+      select: {
+        suggestionId: true,
+        sender: { select: { name: true } }
+      }
+    });
+
+    const unreadByConnection = {};
+    unreadMessages.forEach(m => {
+      unreadByConnection[m.suggestionId] = (unreadByConnection[m.suggestionId] || 0) + 1;
+    });
+
+    res.json({ 
+      success: true, 
+      count: unreadMessages.length,
+      unreadByConnection,
+      senders: [...new Set(unreadMessages.map(m => m.sender.name))]
+    });
+  } catch (error) {
+    console.error('Error fetching unread:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch unread' });
+  }
+});
+
+// Check Dating Eligibility & Packages
+router.get('/dating-eligibility', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const approvedMatchesCount = await prisma.matchSuggestion.count({
+      where: {
+        OR: [
+          { clientId: userId, clientStatus: 'Approved' },
+          { suggestedProfileId: userId, suggestedStatus: 'Approved' }
+        ]
+      }
+    });
+
+    const packages = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
+    `);
+
+    res.json({
+      success: true,
+      approvedMatchesCount,
+      freeDatesRemaining: Math.max(0, 1 - approvedMatchesCount),
+      packages
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Process Payment
+router.post('/payments/package', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { packageId, amount } = req.body;
+    
+    const paymentId = 'PAY-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
+      VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'STRIPE', NOW())
+    `, paymentId, userId, parseFloat(amount));
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user && user.assignedManagerId) {
+      const rmEarning = parseFloat(amount) * 0.90;
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
+        VALUES ($1, $2, $3, 'RM_EARNING_DATING', 'SUCCESS', 'INTERNAL', NOW())
+      `, 'EARN-' + Math.random().toString(36).substring(2, 9).toUpperCase(), user.assignedManagerId, rmEarning);
+    }
+
+    res.json({ success: true, paymentId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Fetch User Payments
+router.get('/payments', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const payments = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "Payment" WHERE "userId" = $1 ORDER BY "createdAt" DESC
+    `, userId);
+    res.json({ success: true, payments });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Submit Date Feedback
+router.post('/connections/:id/feedback', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id: matchId } = req.params;
+    const { rating, feedback } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // AI Sentiment Analysis
+    let sentiment = 'NEUTRAL';
+    try {
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze the sentiment of this post-date feedback. Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL.\n\nFeedback: "${feedback}"\nRating: ${rating}/5`
+      });
+      const result = response.text.trim().toUpperCase();
+      if (result.includes('NEGATIVE')) sentiment = 'NEGATIVE';
+      else if (result.includes('POSITIVE')) sentiment = 'POSITIVE';
+      else if (result.includes('NEUTRAL')) sentiment = 'NEUTRAL';
+      else if (rating <= 2) sentiment = 'NEGATIVE';
+    } catch (aiErr) {
+      console.error('AI Sentiment Analysis failed:', aiErr);
+      if (rating <= 2) sentiment = 'NEGATIVE';
+    }
+
+    // Create table if not exists (with sentiment and isPublished)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT NOT NULL,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        "isPublished" BOOLEAN DEFAULT FALSE,
+        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    const feedbackId = 'FB-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "DateFeedback" ("id", "matchId", "userId", "gender", "rating", "feedback", "sentiment")
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, feedbackId, matchId, userId, user.gender || 'Unknown', parseInt(rating), feedback, sentiment);
+    
+    res.json({ success: true, sentiment });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message, stack: err.stack });
+  }
+});
+
+// Get Public Feedbacks (Testimonials)
+router.get('/public/feedbacks', async (req, res) => {
+  try {
+    const feedbacks = await prisma.$queryRawUnsafe(`
+      SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
+      FROM "DateFeedback" f
+      JOIN "User" u ON f."userId" = u."id"
+      WHERE f."isPublished" = true
+      ORDER BY f."createdAt" DESC
+      LIMIT 5
+    `);
+    res.json({ success: true, feedbacks });
+  } catch (err) {
+    console.error('Error fetching public feedbacks:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
 module.exports = router;
+

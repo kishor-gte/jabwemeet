@@ -28,6 +28,12 @@ model User {
   isVerified         Boolean   @default(true)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  status             String?   @default("ACTIVE")
+  staffRole          String?   @default("SUPER_ADMIN")
+  identityVerified   Boolean?  @default(false)
+  mobileVerified     Boolean?  @default(true)
+  lastActiveAt       DateTime? @default(now())
+  internalNotes      String?
   events             Event[]
 
   // Breakup Buddy Fields
@@ -66,6 +72,7 @@ model User {
   clientConversations  Conversation[]    @relation("ClientConversations")
   matchmakerConversations Conversation[] @relation("MatchmakerConversations")
   sentMessages         Message[]
+  connectionMessages   ConnectionMessage[]
 
   // Breakup Buddy Relations
   buddyRequestsSent      BuddyRequest[]  @relation("BuddyRequestsUser")
@@ -115,7 +122,10 @@ model MatchSuggestion {
   meetingVenue         String?
   meetingMessage       String?
   createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @default(now()) @updatedAt
+
+  updatedAt            DateTime  @updatedAt
+  connectionMessages   ConnectionMessage[]
+
 }
 
 model Appointment {
@@ -269,6 +279,17 @@ model BuddyReview {
   createdAt        DateTime @default(now())
 }
 
+model ConnectionMessage {
+  id             String          @id @default(cuid())
+  suggestionId   String
+  suggestion     MatchSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User            @relation(fields: [senderId], references: [id])
+  content        String
+  isRead         Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+}
+
 
 model CallLog {
   id           String       @id @default(cuid())
@@ -319,4 +340,5 @@ model HostPayment {
 
   @@index([hostId])
 }
+
 

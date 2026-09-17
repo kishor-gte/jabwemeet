@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/navigation";
+import React, { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -69,6 +69,7 @@ const NAV_SECTIONS = [
   {
     title: "Finance & Billing",
     items: [
+      { label: "My Earnings", href: "/admin/earnings", icon: CreditCard },
       { label: "Payments & Revenue", href: "/admin/payments", icon: CreditCard },
       { label: "Refund Requests", href: "/admin/payments/refunds", icon: RotateCcw },
       { label: "Invoices", href: "/admin/payments/invoices", icon: Receipt },
@@ -94,14 +95,36 @@ const NAV_SECTIONS = [
       { label: "Platform Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Admin Management", href: "/admin/staff", icon: Shield },
       { label: "Audit Logs", href: "/admin/audit-logs", icon: History },
-      { label: "System Settings", href: "/admin/settings", icon: Settings },
     ],
   },
 ];
 
+const ALL_NAV_HREFS = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
+
+function isNavItemActive(itemHref: string, currentPathname: string): boolean {
+  if (itemHref === "/admin") {
+    return currentPathname === "/admin";
+  }
+  if (currentPathname === itemHref) {
+    return true;
+  }
+  if (currentPathname.startsWith(itemHref + "/")) {
+    const hasMoreSpecific = ALL_NAV_HREFS.some(
+      (otherHref) =>
+        otherHref !== itemHref &&
+        (currentPathname === otherHref || currentPathname.startsWith(otherHref + "/")) &&
+        otherHref.length > itemHref.length
+    );
+    return !hasMoreSpecific;
+  }
+  return false;
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
 
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +133,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Save sidebar scroll position
+  const handleSidebarScroll = (e: React.UIEvent<HTMLElement>) => {
+    sessionStorage.setItem("admin_sidebar_scroll", String(e.currentTarget.scrollTop));
+  };
+
+  const handleNavClick = () => {
+    if (sidebarRef.current) {
+      sessionStorage.setItem("admin_sidebar_scroll", String(sidebarRef.current.scrollTop));
+    }
+  };
+
+  // Restore sidebar scroll position across navigation and loads, and reset main content scroll
+  useEffect(() => {
+    if (loading) return;
+    const restoreScroll = () => {
+      const saved = sessionStorage.getItem("admin_sidebar_scroll");
+      if (saved && sidebarRef.current) {
+        sidebarRef.current.scrollTop = parseInt(saved, 10);
+      } else if (sidebarRef.current) {
+        const activeElem = sidebarRef.current.querySelector('[data-active="true"]');
+        if (activeElem) {
+          activeElem.scrollIntoView({ block: "nearest" });
+        }
+      }
+    };
+
+    restoreScroll();
+    const timer = setTimeout(restoreScroll, 50);
+
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+
+    return () => clearTimeout(timer);
+  }, [pathname, loading]);
 
   // Check auth and admin permissions
   useEffect(() => {
@@ -214,7 +273,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu className="w-5 h-5" />
           </button>
 
-          <a href="/admin" className="flex items-center gap-2.5 group">
+          <Link href="/admin" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform">
               J
             </div>
@@ -231,7 +290,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Platform Control Center
               </span>
             </div>
-          </a>
+          </Link>
         </div>
 
         {/* Global Search Bar */}
@@ -285,7 +344,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <div className="flex-1 flex overflow-hidden">
         {/* DESKTOP SIDEBAR */}
-        <aside className="hidden lg:flex flex-col w-64 bg-[#0d1627] border-r border-white/10 shrink-0 h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+        <aside
+          ref={sidebarRef}
+          onScroll={handleSidebarScroll}
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          className="hidden lg:flex flex-col w-64 bg-[#0d1627] border-r border-white/10 shrink-0 h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden"
+        >
           <div className="p-4 space-y-6">
             {NAV_SECTIONS.map((section, idx) => (
               <div key={idx} className="space-y-1">
@@ -294,15 +358,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </h4>
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive =
-                    item.href === "/admin"
-                      ? pathname === "/admin"
-                      : pathname === item.href || pathname.startsWith(item.href + "/");
+                  const isActive = isNavItemActive(item.href, pathname);
 
                   return (
-                    <a
+                    <Link
                       key={item.href}
                       href={item.href}
+                      scroll={false}
+                      data-active={isActive}
+                      onClick={handleNavClick}
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
                         isActive
                           ? "bg-gradient-to-r from-red-600/90 to-rose-600/80 text-white font-bold shadow-md shadow-red-500/20"
@@ -315,7 +379,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         }`}
                       />
                       <span>{item.label}</span>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>
@@ -337,7 +401,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
               onClick={() => setMobileDrawerOpen(false)}
             />
-            <div className="relative w-72 max-w-[85vw] bg-[#0d1627] h-full flex flex-col z-10 border-r border-white/10 shadow-2xl overflow-y-auto">
+            <div
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              className="relative w-72 max-w-[85vw] bg-[#0d1627] h-full flex flex-col z-10 border-r border-white/10 shadow-2xl overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden"
+            >
               <div className="p-4 flex items-center justify-between border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white text-xs">
@@ -361,13 +428,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </h4>
                     {section.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive =
-                        item.href === "/admin"
-                          ? pathname === "/admin"
-                          : pathname === item.href || pathname.startsWith(item.href + "/");
+                      const isActive = isNavItemActive(item.href, pathname);
 
                       return (
-                        <a
+                        <Link
                           key={item.href}
                           href={item.href}
                           onClick={() => setMobileDrawerOpen(false)}
@@ -379,7 +443,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                           <Icon className="w-4 h-4 shrink-0" />
                           <span>{item.label}</span>
-                        </a>
+                        </Link>
                       );
                     })}
                   </div>
@@ -390,7 +454,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 custom-scrollbar">
+        <main ref={mainRef} className="flex-1 overflow-y-auto h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto w-full">{children}</div>
         </main>
       </div>
@@ -442,7 +506,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       </h5>
                       <div className="space-y-1">
                         {searchResults.users.map((u: any) => (
-                          <a
+                          <Link
                             key={u.id}
                             href={`/admin/users/${u.id}`}
                             onClick={() => setSearchOpen(false)}
@@ -455,7 +519,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold text-[10px]">
                               {u.role}
                             </span>
-                          </a>
+                          </Link>
                         ))}
                       </div>
                     </div>
@@ -469,7 +533,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       </h5>
                       <div className="space-y-1">
                         {searchResults.events.map((e: any) => (
-                          <a
+                          <Link
                             key={e.id}
                             href={`/admin/events/${e.id}/registrations`}
                             onClick={() => setSearchOpen(false)}
@@ -480,7 +544,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                               <div className="text-[11px] text-slate-400">{e.category} • {e.city} • ₹{e.price}</div>
                             </div>
                             <span className="text-slate-400 text-[10px]">View Registrations →</span>
-                          </a>
+                          </Link>
                         ))}
                       </div>
                     </div>
@@ -494,7 +558,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       </h5>
                       <div className="space-y-1">
                         {searchResults.payments.map((p: any) => (
-                          <a
+                          <Link
                             key={p.id}
                             href="/admin/payments"
                             onClick={() => setSearchOpen(false)}
@@ -507,7 +571,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
                               {p.status}
                             </span>
-                          </a>
+                          </Link>
                         ))}
                       </div>
                     </div>

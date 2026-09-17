@@ -614,37 +614,28 @@ router.get("/call-history", authenticateToken, async (req, res) => {
 });
 
 
-// 13. POST /api/services/buddy-review
-// Submit a review for a Breakup Buddy
-router.post("/buddy-review", authenticateToken, async (req, res) => {
+// 13. GET /api/services/content (or /api/content)
+// Public endpoint for CMS platform content
+router.get("/content", async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const { buddyId, rating, comment } = req.body;
-
-    if (!buddyId || !rating) {
-      return res.status(400).json({ success: false, message: "Buddy ID and rating are required." });
-    }
-
-    const review = await prisma.buddyReview.create({
-      data: {
-        userId,
-        buddyId,
-        rating: parseInt(rating),
-        comment: comment || "",
-      }
-    });
-
-    return res.json({ success: true, data: review });
+    const cmsSetting = await prisma.$queryRawUnsafe(`
+      SELECT "value" FROM "SystemSetting" WHERE "key" = 'platform_cms' LIMIT 1
+    `);
+    const content = cmsSetting[0]?.value || {
+      heroHeadline: "Not another dating app. A reason to meet.",
+      heroSubheadline: "Tired of endless swiping and conversations that never become real meetings? JabWeMeet creates opportunities to meet people offline through curated events, experiences and genuine human connections.",
+      aboutText: "JabWeMeet is built on the truth that real chemistry happens in the real world. We combine safe real-world events, dedicated Relationship Managers, and empathetic Breakup Buddies.",
+      safetyPledge: "Every member profile is verified. Every event is hosted by background-vetted hosts in partner venues. Zero tolerance for harassment.",
+      announcementBanner: "Welcome to JabWeMeet! Discover upcoming mixers and curated blind dinner dates in your city.",
+    };
+    return res.json({ success: true, content });
   } catch (error) {
-    console.error("Error creating buddy review:", error);
-    return res.status(500).json({ success: false, message: "Failed to submit review." });
+    console.error("Error fetching public CMS content:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch content" });
+
   }
 });
 
 module.exports = router;
-
-
-
-
 
 

@@ -10,7 +10,8 @@ import {
   CalendarDays, 
   MessageSquare,
   LogOut,
-  Star
+  Star,
+  Wallet
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -29,10 +30,11 @@ export default function MatchmakerSidebar() {
     { name: "Dashboard", href: "/matchmaker/dashboard", icon: Home },
     { name: "Assigned Clients", href: "/matchmaker/clients", icon: Users },
     { name: "Matchmaking Requests", href: "/matchmaker/requests", icon: Heart },
-    { name: "Suggestions", href: "/matchmaker/suggestions", icon: Lightbulb },
+    { name: "Connection Requests", href: "/matchmaker/suggestions", icon: Lightbulb },
     { name: "Scheduling", href: "/matchmaker/scheduling", icon: CalendarDays },
     { name: "Feedback", href: "/matchmaker/feedback", icon: Star },
     { name: "Messages", href: "/matchmaker/messages", icon: MessageSquare },
+    { name: "Earnings", href: "/matchmaker/earnings", icon: Wallet },
   ];
 
   return (

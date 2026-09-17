@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export default function HomePage() {
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [regDob, setRegDob] = useState("");
   const [regCity, setRegCity] = useState("");
   const [regGender, setRegGender] = useState("");
@@ -69,6 +72,7 @@ export default function HomePage() {
   const [selectedEventCategory, setSelectedEventCategory] = useState("All");
   const [expandedItineraryId, setExpandedItineraryId] = useState<string | null>(null);
   const [bookedEventSuccess, setBookedEventSuccess] = useState<string | null>(null);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
 
   const fetchLiveEvents = () => {
     fetch("/api/events")
@@ -80,6 +84,37 @@ export default function HomePage() {
       })
       .catch((e) => console.error("Error fetching live events:", e))
       .finally(() => setEventsLoading(false));
+  };
+
+  const fetchTestimonials = () => {
+    fetch("/api/auth/public/feedbacks")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data?.feedbacks) {
+          setTestimonials(data.feedbacks);
+        }
+      })
+      .catch((e) => console.error("Error fetching testimonials:", e));
+  };
+
+  // Public CMS Content state
+  const [cmsContent, setCmsContent] = useState<any>({
+    heroHeadline: "",
+    heroSubheadline: "",
+    aboutText: "",
+    safetyPledge: "",
+    announcementBanner: "",
+  });
+
+  const fetchCmsContent = () => {
+    fetch("/api/services/content")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data?.content) {
+          setCmsContent(data.content);
+        }
+      })
+      .catch((e) => console.error("Error fetching CMS content:", e));
   };
 
   // Check user session & load live events on load
@@ -94,6 +129,8 @@ export default function HomePage() {
       .catch(() => {});
 
     fetchLiveEvents();
+    fetchTestimonials();
+    fetchCmsContent();
   }, []);
 
   // Real-time email validation + debounced check-email
@@ -320,9 +357,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white">
-      {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0b111e]/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      {/* TOP ANNOUNCEMENT & NAVBAR */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        {cmsContent.announcementBanner && (
+          <div className="w-full bg-gradient-to-r from-[#e06d53] via-rose-600 to-[#b8432a] text-white text-xs py-2 px-4 text-center font-semibold shadow-md flex items-center justify-center gap-2">
+            <span>📢 {cmsContent.announcementBanner}</span>
+          </div>
+        )}
+        <nav className="bg-[#0b111e]/90 backdrop-blur-md border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg">
               J
@@ -394,6 +437,7 @@ export default function HomePage() {
           </div>
         </div>
       </nav>
+      </div>
 
       {/* HERO SECTION */}
       <header className="pt-40 pb-28 px-6 text-center relative overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(224,109,83,0.15)_0%,transparent_60%)] border-b border-white/10">
@@ -403,10 +447,16 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight font-serif">
-            Not another dating app.<br />
-            <span className="bg-gradient-to-r from-white via-slate-200 to-[#e06d53] bg-clip-text text-transparent">
-              A reason to meet.
-            </span>
+            {cmsContent.heroHeadline ? (
+              <span>{cmsContent.heroHeadline}</span>
+            ) : (
+              <>
+                Not another dating app.<br />
+                <span className="bg-gradient-to-r from-white via-slate-200 to-[#e06d53] bg-clip-text text-transparent">
+                  A reason to meet.
+                </span>
+              </>
+            )}
           </h1>
 
           <p className="text-base sm:text-lg uppercase tracking-widest font-semibold text-slate-300">
@@ -414,8 +464,7 @@ export default function HomePage() {
           </p>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
-            Tired of endless swiping and conversations that never become real meetings?
-            JabWeMeet creates opportunities to meet people offline through curated events, experiences and genuine human connections.
+            {cmsContent.heroSubheadline || "Tired of endless swiping and conversations that never become real meetings? JabWeMeet creates opportunities to meet people offline through curated events, experiences and genuine human connections."}
           </p>
 
           <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
@@ -534,8 +583,8 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl font-bold font-serif mt-2">
               A place to meet people in the real world.
             </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto mt-3">
-              JabWeMeet is a real-world connection platform designed around shared experiences instead of endless online chatting.
+            <p className="text-slate-600 max-w-2xl mx-auto mt-3 leading-relaxed whitespace-pre-line">
+              {cmsContent.aboutText || "JabWeMeet is a real-world connection platform designed around shared experiences instead of endless online chatting."}
             </p>
           </div>
 
@@ -987,6 +1036,52 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* RECENT SUCCESS FEEDBACKS */}
+      {testimonials.length > 0 && (
+        <section className="py-20 px-6 bg-[#131d2e] border-y border-white/10" id="testimonials">
+          <div className="max-w-6xl mx-auto space-y-12">
+            <div className="text-center">
+              <span className="text-xs uppercase tracking-widest font-bold text-[#e06d53]">
+                Real Connections
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold font-serif text-white mt-2">
+                What Our Clients Say
+              </h2>
+            </div>
+            
+            <div className="flex overflow-x-auto gap-6 pb-8 snap-x custom-scrollbar">
+              {testimonials.map((t, idx) => (
+                <div key={idx} className="min-w-[320px] max-w-[350px] bg-white/5 border border-white/10 p-6 rounded-2xl shrink-0 snap-center flex flex-col justify-between shadow-xl">
+                  <div>
+                    <div className="flex text-[#e06d53] mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <svg key={i} className={`w-4 h-4 ${i < t.rating ? 'fill-current' : 'text-slate-600'}`} viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-sm text-slate-300 italic mb-6 leading-relaxed">
+                      "{t.feedback}"
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 mt-4 border-t border-white/10 pt-4">
+                    <img 
+                      src={t.userImage || `https://ui-avatars.com/api/?name=${t.userName}&background=2a3954&color=fff`} 
+                      alt={t.userName}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-white">{t.userName}</p>
+                      <p className="text-[10px] text-slate-400">Verified Client</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* WHY JABWEMEET */}
       <section className="py-24 px-6 border-b border-white/10" id="why">
         <div className="max-w-6xl mx-auto space-y-12">
@@ -1029,6 +1124,15 @@ export default function HomePage() {
           <h2 className="text-3xl sm:text-4xl font-bold font-serif text-white">
             Meet confidently. Connect safely.
           </h2>
+
+          {cmsContent.safetyPledge && (
+            <div className="max-w-2xl mx-auto p-4 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-sm leading-relaxed whitespace-pre-line text-left">
+              <p className="font-semibold text-emerald-400 mb-1 flex items-center gap-1.5">
+                🛡️ Platform Trust & Safety Pledge:
+              </p>
+              <p>{cmsContent.safetyPledge}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-left pt-4">
             {[
@@ -1110,7 +1214,7 @@ export default function HomePage() {
               <span className="font-extrabold text-xl text-white">Jab<span className="text-[#e06d53]">We</span>Meet</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              JabWeMeet brings people together through real-world experiences, singles events, speed dating, blind dates, dance experiences, social travel and genuine human connections.
+              {cmsContent.aboutText || "JabWeMeet brings people together through real-world experiences, singles events, speed dating, blind dates, dance experiences, social travel and genuine human connections."}
             </p>
           </div>
           <div>
@@ -1227,8 +1331,8 @@ export default function HomePage() {
 
       {/* REGISTER MODAL */}
       {showRegisterModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#131d2e] border border-white/10 rounded-2xl w-full max-w-lg p-8 relative my-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="bg-[#131d2e] border border-white/10 rounded-2xl w-full max-w-lg p-8 relative my-8 shadow-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <button
               onClick={() => setShowRegisterModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg"
@@ -1364,14 +1468,23 @@ export default function HomePage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Password *</label>
-                    <input
-                      type="password"
-                      required
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showRegPassword ? "text" : "password"}
+                        required
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                     <div className="mt-2 p-3 bg-white/5 rounded-lg border border-white/5 text-xs grid grid-cols-2 gap-1 text-slate-400">
                       <span className={isPwLen ? "text-emerald-400 font-medium" : ""}>{isPwLen ? "✓" : "✕"} 8+ chars</span>
                       <span className={isPwUpper ? "text-emerald-400 font-medium" : ""}>{isPwUpper ? "✓" : "✕"} Uppercase</span>
@@ -1383,14 +1496,23 @@ export default function HomePage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Confirm Password *</label>
-                    <input
-                      type="password"
-                      required
-                      value={regConfirmPassword}
-                      onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showRegConfirmPassword ? "text" : "password"}
+                        required
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showRegConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                     {confirmPwFeedback && (
                       <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
                         {confirmPwFeedback}
@@ -1664,6 +1786,12 @@ export default function HomePage() {
               ✕
             </button>
             <h2 className="text-2xl font-bold font-serif text-white mb-4">JabWeMeet Safety Pledge</h2>
+            {cmsContent.safetyPledge && (
+              <div className="mb-4 p-4 rounded-xl bg-[#182337] border border-emerald-500/30 text-emerald-300 text-xs leading-relaxed whitespace-pre-line">
+                <p className="font-semibold text-emerald-400 mb-1">Official Platform Pledge:</p>
+                <p>{cmsContent.safetyPledge}</p>
+              </div>
+            )}
             <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
               <p><strong>1. Strict Verification:</strong> Every attendee must verify their mobile number and identity.</p>
               <p><strong>2. Safe Public Venues:</strong> All events take place in vetted public cafes, restaurants, and lounges.</p>

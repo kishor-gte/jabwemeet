@@ -527,10 +527,38 @@ Respond ONLY with valid JSON (an array of objects).
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              id: { type: "STRING" },
+              score: { type: "INTEGER" },
+              reason: { type: "STRING" }
+            },
+            required: ["id", "score", "reason"]
+          }
+        }
       }
     });
 
-    const matchesJson = JSON.parse(response.text);
+    let rawText = (response.text || "").trim();
+    if (rawText.startsWith("```")) {
+      rawText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    }
+
+    let matchesJson = [];
+    try {
+      matchesJson = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.warn("Direct JSON.parse failed, attempting extraction regex:", parseErr);
+      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        matchesJson = JSON.parse(jsonMatch[0]);
+      } else {
+        throw parseErr;
+      }
+    }
 
     // Merge in profile images
     const enrichedMatches = matchesJson.map(m => {
@@ -542,11 +570,37 @@ Respond ONLY with valid JSON (an array of objects).
       };
     });
 
-    const existingConns = await prisma.matchSuggestion.findMany({ where: { OR: [ { clientId: id }, { suggestedProfileId: id } ] } }); const finalMatches = enrichedMatches.map(m => ({ ...m, isConnected: existingConns.some(c => (c.clientId === id && c.suggestedProfileId === m.id) || (c.clientId === m.id && c.suggestedProfileId === id)) })); return res.json({ success: true, matches: finalMatches });
+    const existingConns = await prisma.matchSuggestion.findMany({
+      where: { OR: [ { clientId: id }, { suggestedProfileId: id } ] }
+    });
+    const finalMatches = enrichedMatches.map(m => ({
+      ...m,
+      isConnected: existingConns.some(c => (c.clientId === id && c.suggestedProfileId === m.id) || (c.clientId === m.id && c.suggestedProfileId === id))
+    }));
+    return res.json({ success: true, matches: finalMatches });
 
   } catch (error) {
     console.error('Error in AI compatibility:', error);
-    return res.status(500).json({ success: false, message: 'AI compatibility check failed' });
+    // Graceful fallback to prevent UI failure
+    try {
+      const fallbackMatches = otherUsers.slice(0, 3).map((u, i) => ({
+        id: u.id,
+        name: u.name,
+        profileImage: u.profileImage,
+        score: 85 - (i * 5),
+        reason: `${u.name} is based in ${u.city || 'your area'} and seeking ${u.relationshipIntent || 'a relationship'}.`
+      }));
+      const existingConns = await prisma.matchSuggestion.findMany({
+        where: { OR: [{ clientId: id }, { suggestedProfileId: id }] }
+      });
+      const finalMatches = fallbackMatches.map(m => ({
+        ...m,
+        isConnected: existingConns.some(c => (c.clientId === id && c.suggestedProfileId === m.id) || (c.clientId === m.id && c.suggestedProfileId === id))
+      }));
+      return res.json({ success: true, matches: finalMatches, isFallback: true });
+    } catch (fallbackErr) {
+      return res.status(500).json({ success: false, message: 'AI compatibility check failed' });
+    }
   }
 });
 
@@ -634,6 +688,101 @@ router.put('/connections/:id/date', async (req, res) => {
   } catch (error) {
     console.error('Error setting date:', error);
     res.status(500).json({ success: false, message: 'Failed to set date.' });
+  }
+});
+
+// Fetch RM Earnings
+router.get('/earnings', async (req, res) => {
+  try {
+    const { matchmakerId } = req.query;
+    if (!matchmakerId) {
+      return res.status(400).json({ success: false, message: 'matchmakerId required' });
+    }
+
+    const earnings = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "Payment" 
+      WHERE "userId" = $1 AND "type" = 'RM_EARNING_DATING' 
+      ORDER BY "createdAt" DESC
+    `, matchmakerId);
+
+    res.json({ success: true, earnings });
+  } catch (error) {
+    console.error('Error fetching earnings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch earnings' });
+  }
+});
+
+// Fetch Feedbacks for RM's matches
+router.get('/feedbacks', async (req, res) => {
+  try {
+    const { matchmakerId } = req.query;
+    if (!matchmakerId) {
+      return res.status(400).json({ success: false, message: 'matchmakerId required' });
+    }
+
+    // Ensure table exists just in case
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT NOT NULL,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    // Fetch feedbacks where the match belongs to this RM
+    const feedbacks = await prisma.$queryRawUnsafe(`
+      SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
+      FROM "DateFeedback" f
+      JOIN "MatchSuggestion" m ON f."matchId" = m."id"
+      JOIN "User" u ON f."userId" = u."id"
+      WHERE m."matchmakerId" = $1
+      ORDER BY f."createdAt" DESC
+    `, matchmakerId);
+
+    res.json({ success: true, feedbacks });
+  } catch (error) {
+    console.error('Error fetching feedbacks:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch feedbacks' });
+  }
+});
+
+// Delete a negative feedback
+router.delete('/feedbacks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.$executeRawUnsafe(`DELETE FROM "DateFeedback" WHERE "id" = $1`, id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting feedback:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete feedback' });
+  }
+});
+
+// Toggle Publish status of a feedback
+router.patch('/feedbacks/:id/publish', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isPublished } = req.body;
+    
+    // Create column if it doesn't exist
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "DateFeedback" ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN DEFAULT FALSE
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      UPDATE "DateFeedback" SET "isPublished" = $1 WHERE "id" = $2
+    `, isPublished, id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error publishing feedback:', error);
+    res.status(500).json({ success: false, message: 'Failed to publish feedback' });
   }
 });
 
