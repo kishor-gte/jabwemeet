@@ -712,4 +712,78 @@ router.get('/earnings', async (req, res) => {
   }
 });
 
+// Fetch Feedbacks for RM's matches
+router.get('/feedbacks', async (req, res) => {
+  try {
+    const { matchmakerId } = req.query;
+    if (!matchmakerId) {
+      return res.status(400).json({ success: false, message: 'matchmakerId required' });
+    }
+
+    // Ensure table exists just in case
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT NOT NULL,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    // Fetch feedbacks where the match belongs to this RM
+    const feedbacks = await prisma.$queryRawUnsafe(`
+      SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
+      FROM "DateFeedback" f
+      JOIN "MatchSuggestion" m ON f."matchId" = m."id"
+      JOIN "User" u ON f."userId" = u."id"
+      WHERE m."matchmakerId" = $1
+      ORDER BY f."createdAt" DESC
+    `, matchmakerId);
+
+    res.json({ success: true, feedbacks });
+  } catch (error) {
+    console.error('Error fetching feedbacks:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch feedbacks' });
+  }
+});
+
+// Delete a negative feedback
+router.delete('/feedbacks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.$executeRawUnsafe(`DELETE FROM "DateFeedback" WHERE "id" = $1`, id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting feedback:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete feedback' });
+  }
+});
+
+// Toggle Publish status of a feedback
+router.patch('/feedbacks/:id/publish', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isPublished } = req.body;
+    
+    // Create column if it doesn't exist
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "DateFeedback" ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN DEFAULT FALSE
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      UPDATE "DateFeedback" SET "isPublished" = $1 WHERE "id" = $2
+    `, isPublished, id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error publishing feedback:', error);
+    res.status(500).json({ success: false, message: 'Failed to publish feedback' });
+  }
+});
+
 module.exports = router;

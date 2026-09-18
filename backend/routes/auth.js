@@ -937,5 +937,81 @@ router.get('/payments', authenticateToken, async (req, res) => {
   }
 });
 
+// Submit Date Feedback
+router.post('/connections/:id/feedback', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id: matchId } = req.params;
+    const { rating, feedback } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // AI Sentiment Analysis
+    let sentiment = 'NEUTRAL';
+    try {
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze the sentiment of this post-date feedback. Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL.\n\nFeedback: "${feedback}"\nRating: ${rating}/5`
+      });
+      const result = response.text.trim().toUpperCase();
+      if (result.includes('NEGATIVE')) sentiment = 'NEGATIVE';
+      else if (result.includes('POSITIVE')) sentiment = 'POSITIVE';
+      else if (result.includes('NEUTRAL')) sentiment = 'NEUTRAL';
+      else if (rating <= 2) sentiment = 'NEGATIVE';
+    } catch (aiErr) {
+      console.error('AI Sentiment Analysis failed:', aiErr);
+      if (rating <= 2) sentiment = 'NEGATIVE';
+    }
+
+    // Create table if not exists (with sentiment and isPublished)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT NOT NULL,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        "isPublished" BOOLEAN DEFAULT FALSE,
+        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    const feedbackId = 'FB-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "DateFeedback" ("id", "matchId", "userId", "gender", "rating", "feedback", "sentiment")
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, feedbackId, matchId, userId, user.gender || 'Unknown', parseInt(rating), feedback, sentiment);
+    
+    res.json({ success: true, sentiment });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message, stack: err.stack });
+  }
+});
+
+// Get Public Feedbacks (Testimonials)
+router.get('/public/feedbacks', async (req, res) => {
+  try {
+    const feedbacks = await prisma.$queryRawUnsafe(`
+      SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
+      FROM "DateFeedback" f
+      JOIN "User" u ON f."userId" = u."id"
+      WHERE f."isPublished" = true
+      ORDER BY f."createdAt" DESC
+      LIMIT 5
+    `);
+    res.json({ success: true, feedbacks });
+  } catch (err) {
+    console.error('Error fetching public feedbacks:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
 module.exports = router;
 

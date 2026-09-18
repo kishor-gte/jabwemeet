@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   Check,
   X,
-  Gift
+  Gift,
+  Star
 } from "lucide-react";
 
 export interface ConnectionItem {
@@ -55,6 +56,11 @@ export default function ConnectionsSection({
   const [pendingConnId, setPendingConnId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const [feedbackModalConnId, setFeedbackModalConnId] = useState<string | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
   useEffect(() => {
     fetch("/api/auth/dating-eligibility", { credentials: "include" })
       .then(res => res.json())
@@ -89,7 +95,6 @@ export default function ConnectionsSection({
       });
       const data = await res.json();
       if (data.success) {
-        // Increment free dates locally so they have remaining dates to use
         setEligibility(prev => prev ? { ...prev, freeDatesRemaining: prev.freeDatesRemaining + (pkg.sessionLimit || 1) } : null);
         setShowPaymentModal(false);
         onUpdateConnection(pendingConnId, "Approve");
@@ -103,6 +108,34 @@ export default function ConnectionsSection({
       alert("Error processing payment");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackModalConnId) return;
+    setSubmittingFeedback(true);
+    try {
+      const res = await fetch(`/api/auth/connections/${feedbackModalConnId}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: feedbackRating, feedback: feedbackText }),
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Thank you! Your feedback has been shared with your Relationship Manager.");
+        setFeedbackModalConnId(null);
+        setFeedbackText("");
+        setFeedbackRating(5);
+      } else {
+        alert("Failed to submit feedback: " + (data.message || "Unknown error"));
+        console.error("Backend error:", data);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error submitting feedback: " + err.message);
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -200,9 +233,14 @@ export default function ConnectionsSection({
                       <p className="text-[10px] text-rose-300 font-medium mb-3">
                         {conn.meetingMessage}
                       </p>
-                      <button onClick={() => onChat?.(conn.id)} className="w-full py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-                        <MessageCircle className="w-3 h-3" /> Chat with {otherPerson.name}
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button onClick={() => onChat?.(conn.id)} className="w-full py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+                          <MessageCircle className="w-3 h-3" /> Chat with {otherPerson.name}
+                        </button>
+                        <button onClick={() => setFeedbackModalConnId(conn.id)} className="w-full py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
+                          <Star className="w-3 h-3" /> Share Experience
+                        </button>
+                      </div>
                     </div>
                   ) : myStatus === "Pending" && conn.status !== "Rejected" ? (
                     <div className="flex flex-col gap-3 mt-2 relative z-10">
@@ -286,6 +324,60 @@ export default function ConnectionsSection({
                     <p className="text-slate-400 text-sm">No dating packages available right now.</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {feedbackModalConnId && (
+        <div className="fixed inset-0 z-[100] bg-[#0c1424]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#121b2b] border border-white/10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative">
+            <button onClick={() => setFeedbackModalConnId(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition z-10">
+              <X className="w-5 h-5" />
+            </button>
+            <div className="p-8">
+              <div className="w-16 h-16 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/20 shadow-inner">
+                <Star className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-black text-white mb-2">How was your date?</h2>
+              <p className="text-slate-400 mb-6 text-sm">
+                Share your experience privately with your Relationship Manager. This helps us find better matches for you!
+              </p>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-white mb-3">Rate your experience</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button 
+                        key={star} 
+                        onClick={() => setFeedbackRating(star)}
+                        className={`p-2 rounded-xl transition ${feedbackRating >= star ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 text-slate-500 border border-white/5 hover:bg-white/10'}`}
+                      >
+                        <Star className={`w-8 h-8 ${feedbackRating >= star ? 'fill-amber-400' : ''}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-white mb-2">Your Feedback</label>
+                  <textarea 
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Tell us what you liked, what could be better, or if you felt a connection..."
+                    className="w-full bg-[#0b1221] border border-white/10 rounded-xl p-4 text-white text-sm focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/50 outline-none h-32 resize-none custom-scrollbar"
+                  />
+                </div>
+
+                <button 
+                  onClick={handleFeedbackSubmit}
+                  disabled={submittingFeedback || !feedbackText.trim()}
+                  className="w-full py-3 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white rounded-xl font-bold transition shadow-lg"
+                >
+                  {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                </button>
               </div>
             </div>
           </div>
