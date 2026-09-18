@@ -253,9 +253,9 @@ router.post('/register', upload.fields([
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
 
-        role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' ? role : 'USER',
-        isVerified: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY'),
-        isApproved: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY'),
+        role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST' ? role : 'USER',
+        isVerified: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY' && role !== 'HOST'),
+        isApproved: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY' && role !== 'HOST'),
 
         idType: idType ? String(idType).trim() : null,
         idDocument: idDocument ? String(idDocument).trim() : null,
@@ -294,11 +294,12 @@ router.post('/register', upload.fields([
 
     const redirectUrl = getRoleRedirect(newUser.role);
 
-    if (newUser.role === 'MATCHMAKER' || newUser.role === 'BREAKUP_BUDDY') {
+    if (newUser.role === 'MATCHMAKER' || newUser.role === 'BREAKUP_BUDDY' || newUser.role === 'HOST') {
       return res.status(201).json({
         success: true,
         message: 'Registration successful! Your application has been sent for admin verification.',
         pendingApproval: true,
+        role: newUser.role,
       });
     }
 
@@ -367,9 +368,10 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY') && !user.isApproved) {
+    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST') && !user.isApproved) {
       return res.status(403).json({
         success: false,
+        pendingApproval: true,
         message: 'Your account is pending admin approval. You will be notified once approved.',
       });
     }

@@ -13,7 +13,7 @@ router.get('/pending', async (req, res) => {
   try {
     const pendingUsers = await prisma.user.findMany({
       where: {
-        role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY'] },
+        role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY', 'HOST'] },
         isApproved: false,
       },
       select: {
@@ -57,6 +57,59 @@ router.post('/approve/:id', async (req, res) => {
   } catch (error) {
     console.error('Error approving user:', error);
     return res.status(500).json({ success: false, message: 'Failed to approve application' });
+  }
+});
+
+// 3. GET /api/admin/events-overview
+router.get('/events-overview', async (req, res) => {
+  try {
+    const [events, bookings, totalUsers] = await Promise.all([
+      prisma.event.findMany({
+        include: {
+          host: {
+            select: { id: true, name: true, email: true, phone: true, city: true },
+          },
+          bookings: {
+            include: {
+              user: {
+                select: { id: true, name: true, email: true, phone: true, city: true },
+              },
+            },
+          },
+        },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.eventBooking.findMany({
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, phone: true, city: true },
+          },
+          event: {
+            select: { id: true, title: true, category: true, date: true, price: true, city: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count(),
+    ]);
+
+    const activeBookings = bookings.filter(b => b.status !== 'CANCELLED');
+    const totalRevenue = activeBookings.reduce((acc, b) => acc + (b.totalAmount || 0), 0);
+
+    return res.json({
+      success: true,
+      stats: {
+        totalEvents: events.length,
+        totalBookings: activeBookings.length,
+        totalRevenue,
+        totalUsers,
+      },
+      events,
+      recentBookings: bookings.slice(0, 20),
+    });
+  } catch (error) {
+    console.error('Error fetching admin events overview:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch events overview' });
   }
 });
 
