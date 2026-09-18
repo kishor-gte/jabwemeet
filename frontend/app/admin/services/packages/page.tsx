@@ -12,6 +12,7 @@ import {
   Heart,
   DollarSign,
   X,
+  Trash2,
 } from "lucide-react";
 
 export default function AdminPackagesPage() {
@@ -20,6 +21,33 @@ export default function AdminPackagesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDeletePackage(id: string, name: string) {
+    if (!window.confirm(`Are you sure you want to delete the package "${name}"? This will permanently remove it from available packages.`)) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/services/packages/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPackages((prev) => prev.filter((p) => p.id !== id));
+        if (modalOpen && editingPkg?.id === id) {
+          setModalOpen(false);
+        }
+      } else {
+        alert(data.message || "Failed to delete package");
+      }
+    } catch (e) {
+      alert("Error deleting package");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const [form, setForm] = useState({
     type: "RELATIONSHIP_MANAGER",
@@ -191,8 +219,19 @@ export default function AdminPackagesPage() {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-white/10 flex justify-end">
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
                 <button
+                  type="button"
+                  onClick={() => handleDeletePackage(pkg.id, pkg.name)}
+                  disabled={deletingId === pkg.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-semibold text-red-400 hover:text-red-300 transition disabled:opacity-50"
+                  title="Delete Package"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{deletingId === pkg.id ? "Deleting..." : "Delete"}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => openEdit(pkg)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 transition"
                 >
@@ -324,21 +363,34 @@ export default function AdminPackagesPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save Package"}
-                </button>
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
+                {editingPkg ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePackage(editingPkg.id, editingPkg.name)}
+                    disabled={deletingId === editingPkg.id}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-semibold transition disabled:opacity-50 text-xs"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{deletingId === editingPkg.id ? "Deleting..." : "Delete Plan"}</span>
+                  </button>
+                ) : <div />}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50"
+                  >
+                    {saving ? "Saving..." : "Save Package"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

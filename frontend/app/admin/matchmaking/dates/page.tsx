@@ -58,15 +58,15 @@ export default function AdminDatesSchedulingPage() {
       </div>
 
       <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-300 table-fixed">
             <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
               <tr>
-                <th className="px-5 py-3.5">Member Client</th>
-                <th className="px-4 py-3.5">Relationship Manager</th>
-                <th className="px-4 py-3.5">Scheduled Date & Time</th>
-                <th className="px-4 py-3.5">Meeting Mode</th>
-                <th className="px-4 py-3.5">Consent & Status</th>
+                <th className="w-[25%] px-5 py-3.5">Member Client</th>
+                <th className="w-[20%] px-4 py-3.5">Relationship Manager</th>
+                <th className="w-[22%] px-4 py-3.5">Scheduled Date & Time</th>
+                <th className="w-[18%] px-4 py-3.5">Meeting Mode</th>
+                <th className="w-[15%] px-4 py-3.5">Consent & Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-medium">
@@ -85,32 +85,36 @@ export default function AdminDatesSchedulingPage() {
               ) : (
                 dates.map((d) => (
                   <tr key={d.id} className="hover:bg-white/[0.02] transition">
-                    <td className="px-5 py-4">
-                      <div className="font-bold text-white text-sm">{d.client?.name}</div>
-                      <span className="text-[10px] text-slate-500">{d.client?.phone}</span>
+                    <td className="px-5 py-4 min-w-0">
+                      <div className="font-bold text-white text-sm truncate" title={d.client?.name}>{d.client?.name}</div>
+                      <span className="text-[10px] text-slate-500 block truncate" title={d.client?.phone}>{d.client?.phone}</span>
                     </td>
 
-                    <td className="px-4 py-4 text-purple-300 font-semibold">
-                      {d.matchmaker?.name || "Senior Matchmaker"}
+                    <td className="px-4 py-4 text-purple-300 font-semibold min-w-0">
+                      <div className="truncate" title={d.matchmaker?.name || "Senior Matchmaker"}>
+                        {d.matchmaker?.name || "Senior Matchmaker"}
+                      </div>
                     </td>
 
-                    <td className="px-4 py-4 text-slate-200">
-                      {new Date(d.date).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}{" "}
-                      at {d.time}
+                    <td className="px-4 py-4 text-slate-200 min-w-0">
+                      <div className="truncate">
+                        {new Date(d.date).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}{" "}
+                        at {d.time}
+                      </div>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <span className="px-2.5 py-0.5 rounded-full bg-white/5 font-semibold text-slate-300">
+                    <td className="px-4 py-4 min-w-0">
+                      <span className="px-2.5 py-0.5 rounded-full bg-white/5 font-semibold text-slate-300 block truncate" title={d.mode || "Venue Table"}>
                         {d.mode || "Venue Table"}
                       </span>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         d.status === "Scheduled"
                           ? "bg-blue-500/20 text-blue-400"
                           : d.status === "Completed"
