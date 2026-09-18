@@ -210,11 +210,6 @@ export default function AdminOverviewPage() {
     }
   }
 
-  function navigate(section: Section) {
-    setActiveSection(section);
-    setMobileOpen(false);
-  }
-
   // ── Loading ──
   if (loading) {
     return (
@@ -525,68 +520,7 @@ export default function AdminOverviewPage() {
                     {c.count}
                   </span>
                 </div>
-
-                {/* Recent RSVPs */}
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-white text-sm">Recent RSVPs</h3>
-                    <button onClick={() => navigate("bookings")} className="text-[11px] text-[#e06d53] hover:underline flex items-center gap-1">
-                      View all <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="space-y-2.5">
-                    {recentBookings.slice(0, 5).map((b) => (
-                      <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/3 hover:bg-white/5 transition">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
-                          <UserCheck className="w-4 h-4 text-blue-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-white text-xs truncate">{b.user?.name}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{b.event?.title}</p>
-                        </div>
-                        <StatusBadge status={b.status} />
-                      </div>
-                    ))}
-                    {recentBookings.length === 0 && <p className="text-slate-500 text-xs italic text-center py-4">No RSVPs yet.</p>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Pending approvals quick list */}
-              {pendingUsers.length > 0 && (
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-amber-400" />
-                      Pending Applications
-                    </h3>
-                    <button onClick={() => navigate("approvals")} className="text-[11px] text-[#e06d53] hover:underline flex items-center gap-1">
-                      Manage <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {pendingUsers.slice(0, 3).map((p) => (
-                      <div key={p.id} className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/15">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 font-bold text-amber-300 text-sm">
-                            {getInitials(p.name)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">{p.name}</p>
-                            <p className="text-[11px] text-slate-400 truncate">{p.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <RoleBadge role={p.role} />
-                          <button onClick={() => approveUser(p.id)} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition">
-                            Approve
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
