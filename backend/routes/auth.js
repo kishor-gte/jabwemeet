@@ -304,11 +304,12 @@ router.post('/register', upload.fields([
 
     const redirectUrl = getRoleRedirect(newUser.role);
 
-    if (newUser.role === 'MATCHMAKER' || newUser.role === 'BREAKUP_BUDDY') {
+    if (newUser.role === 'MATCHMAKER' || newUser.role === 'BREAKUP_BUDDY' || newUser.role === 'HOST') {
       return res.status(201).json({
         success: true,
         message: 'Registration successful! Your application has been sent for admin verification.',
         pendingApproval: true,
+        role: newUser.role,
       });
     }
 
@@ -377,9 +378,10 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY') && !user.isApproved) {
+    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST') && !user.isApproved) {
       return res.status(403).json({
         success: false,
+        pendingApproval: true,
         message: 'Your account is pending admin approval. You will be notified once approved.',
       });
     }

@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useEffect, useState } from "react";
 import {
   Users,
@@ -211,6 +210,7 @@ export default function AdminOverviewPage() {
     }
   }
 
+  // ── Loading ──
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">

@@ -26,6 +26,7 @@ export interface EventItem {
   date: string;
   price: number;
   maxAttendees?: number;
+  confirmedBookings?: number; // real-time count from backend
 }
 
 interface UpcomingEventsSectionProps {
@@ -212,8 +213,9 @@ export default function UpcomingEventsSection({
             const relativeTime = getRelativeTime(evt.date);
             const isLocalCity = evt.city?.toLowerCase() === (userCity || "").toLowerCase();
             const capacity = evt.maxAttendees || 40;
-            // Dynamic capacity estimate: capacity minus 4-8 spots
-            const spotsRemaining = isRegistered ? Math.max(1, capacity - 12) : Math.max(2, capacity - 11);
+            // Use real booking count from backend; +1 optimistically when user has just reserved
+            const bookedCount = (evt.confirmedBookings ?? 0) + (isRegistered ? 1 : 0);
+            const spotsRemaining = Math.max(0, capacity - bookedCount);
 
             return (
               <div
@@ -280,8 +282,10 @@ export default function UpcomingEventsSection({
                         <Users className="w-3.5 h-3.5 text-slate-400" />
                         Availability
                       </span>
-                      <span className="text-amber-300 font-medium text-xs">
-                        {spotsRemaining} of {capacity} spots open
+                      <span className={`font-medium text-xs ${spotsRemaining === 0 ? "text-red-400" : spotsRemaining <= 5 ? "text-amber-400" : "text-emerald-400"}`}>
+                        {spotsRemaining === 0
+                          ? "Sold Out"
+                          : `${spotsRemaining} of ${capacity} spots open`}
                       </span>
                     </div>
 

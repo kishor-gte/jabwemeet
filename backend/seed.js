@@ -287,9 +287,7 @@ async function seed() {
     }
   }
   console.log('✓ Seeded matchmaking requests.');
-
-    console.log('Initial Admin, Host, and Demo accounts seeded.');
-  } 
+  console.log('✓ Initial Admin, Host, and Demo accounts seeded.');
 
   // 9. Seed Breakup Buddy Requests & Sessions
   if (demoUser) {

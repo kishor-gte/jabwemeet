@@ -19,6 +19,7 @@ import MessagesView from "./components/MessagesView";
 import NotificationsView from "./components/NotificationsView";
 import PaymentsView from "./components/PaymentsView";
 import SettingsView from "./components/SettingsView";
+import CallHistoryView from "./components/CallHistoryView";
 
 interface UserProfile {
   id: string;
@@ -118,11 +119,28 @@ function DashboardContent() {
           }
 
           // Load user-specific interactive state
-          const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
-          if (savedRsvps) {
-            try {
-              setRegisteredEventIds(JSON.parse(savedRsvps));
-            } catch (e) {}
+          try {
+            const bookingRes = await fetch("/api/events/my-bookings", { credentials: "include" });
+            if (bookingRes.ok) {
+              const bookingData = await bookingRes.json();
+              if (bookingData.success && Array.isArray(bookingData.bookings)) {
+                const dbIds = bookingData.bookings.map((b: any) => b.eventId || b.event?.id);
+                setRegisteredEventIds(dbIds);
+                localStorage.setItem(`jwm_rsvps_${data.user.id}`, JSON.stringify(dbIds));
+              }
+            } else {
+              const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
+              if (savedRsvps) {
+                setRegisteredEventIds(JSON.parse(savedRsvps));
+              }
+            }
+          } catch (e) {
+            const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
+            if (savedRsvps) {
+              try {
+                setRegisteredEventIds(JSON.parse(savedRsvps));
+              } catch (err) {}
+            }
           }
 
           // Load real-time connections from backend
@@ -259,26 +277,68 @@ function DashboardContent() {
   };
 
   // Handle Event RSVP
-  const handleRegisterEvent = (evt: EventItem) => {
+  const handleRegisterEvent = async (evt: EventItem) => {
     if (!user || registeredEventIds.includes(evt.id)) return;
     const updated = [...registeredEventIds, evt.id];
     setRegisteredEventIds(updated);
+    // Optimistically decrement available spot count in events list
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === evt.id
+          ? { ...e, confirmedBookings: (e.confirmedBookings ?? 0) + 1 }
+          : e
+      )
+    );
     try {
       localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
     } catch (e) {}
+
+    // Synchronize to backend database in real-time
+    try {
+      const res = await fetch(`/api/events/${evt.id}/book`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spots: 1 }),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!data.success && res.status !== 401) {
+        console.warn("Reservation notice:", data.message);
+      }
+    } catch (err) {
+      console.error("Booking API error:", err);
+    }
 
     setReservationToast(`Confirmed spot for "${evt.title}"! Digital admission pass ready.`);
     setTimeout(() => setReservationToast(null), 4500);
   };
 
   // Handle Cancel Event RSVP
-  const handleCancelReservation = (eventId: string) => {
+  const handleCancelReservation = async (eventId: string) => {
     if (!user) return;
     const updated = registeredEventIds.filter((id) => id !== eventId);
     setRegisteredEventIds(updated);
+    // Optimistically increment available spot count back
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === eventId
+          ? { ...e, confirmedBookings: Math.max(0, (e.confirmedBookings ?? 1) - 1) }
+          : e
+      )
+    );
     try {
       localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
     } catch (e) {}
+
+    // Synchronize to backend database in real-time
+    try {
+      await fetch(`/api/events/${eventId}/cancel`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Cancel reservation API error:", err);
+    }
 
     setReservationToast("RSVP released. Spot is now open for other members.");
     setTimeout(() => setReservationToast(null), 3500);
@@ -704,6 +764,11 @@ function DashboardContent() {
               userEmail={user.email}
               onLogout={handleLogout}
             />
+          )}
+
+          {/* TAB 10: CALL HISTORY */}
+          {activeSection === "call-history" && (
+            <CallHistoryView />
           )}
         </main>
 

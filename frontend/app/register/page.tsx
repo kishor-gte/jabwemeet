@@ -205,7 +205,8 @@ function RegisterContent() {
 
         {role === "HOST" && !success && (
           <div className="mb-5 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
-            <strong>Event Manager Account:</strong> Create & host Singles Events, Speed Dating, Dance Dating, and Singles Travels. You will be redirected directly to your Event Manager Dashboard.
+            <strong>Event Manager Account:</strong> Create &amp; host Singles Events, Speed Dating, Dance Dating, and Singles Travels.{" "}
+            <span className="text-rose-200">Your application will be reviewed by the admin team before you can log in.</span>
           </div>
         )}
 
@@ -228,18 +229,37 @@ function RegisterContent() {
             </div>
             {pendingApproval ? (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-white">Application Submitted!</h2>
+                <h2 className="text-xl font-bold text-white">
+                  {role === "HOST" ? "Application Submitted! 🎉" : "Application Submitted!"}
+                </h2>
                 <p className="text-xs text-slate-300">
-                  Your Relationship Manager registration has been submitted for admin verification.
+                  {role === "HOST"
+                    ? "Your Event Manager (Host) account has been registered and is awaiting admin approval."
+                    : role === "MATCHMAKER"
+                    ? "Your Relationship Manager registration has been submitted for admin verification."
+                    : "Your Breakup Buddy registration has been submitted for admin verification."}
                 </p>
-                <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-amber-300 text-xs text-left leading-relaxed">
-                  <strong>Admin Verification:</strong> You can review and approve this Relationship Manager account at{" "}
-                  <Link href="/admin" className="underline font-bold text-amber-200">
-                    /admin
-                  </Link>. Once approved, you can log in directly at{" "}
-                  <Link href="/login" className="underline font-bold text-amber-200">
-                    /login
-                  </Link>.
+                <div className={`p-3 rounded-2xl text-xs text-left leading-relaxed border ${
+                  role === "HOST"
+                    ? "bg-rose-500/10 border-rose-500/25 text-rose-300"
+                    : "bg-amber-500/10 border-amber-500/25 text-amber-300"
+                }`}>
+                  <strong>Next Steps:</strong>
+                  <ul className="mt-1.5 space-y-1 list-disc list-inside">
+                    <li>Admin will review your application at{" "}
+                      <Link href="/admin" className="underline font-bold">
+                        /admin
+                      </Link>
+                    </li>
+                    <li>Once approved, you can log in at{" "}
+                      <Link href="/login" className="underline font-bold">
+                        /login
+                      </Link>
+                    </li>
+                    {role === "HOST" && (
+                      <li>You'll be redirected to your Event Manager Dashboard after login.</li>
+                    )}
+                  </ul>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center pt-2">
                   <Link
