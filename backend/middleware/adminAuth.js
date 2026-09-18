@@ -38,8 +38,8 @@ function requireAdmin() {
         return res.status(401).json({ success: false, message: 'Admin account not found' });
       }
 
-      if (staffMember.status === 'SUSPENDED' || staffMember.status === 'BLOCKED') {
-        return res.status(403).json({ success: false, message: 'Admin account has been suspended or blocked' });
+      if (staffMember.status !== 'ACTIVE') {
+        return res.status(403).json({ success: false, message: `Admin account has been ${staffMember.status.toLowerCase()} (access revoked)` });
       }
 
       // 3. Must have SUPER_ADMIN role

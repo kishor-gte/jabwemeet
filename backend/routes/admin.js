@@ -1962,6 +1962,15 @@ router.patch('/staff/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Staff member not found' });
     }
 
+    if (req.staff.id === id && status && status !== 'ACTIVE') {
+      return res.status(400).json({ success: false, message: 'You cannot deactivate or suspend your own Super Admin account.' });
+    }
+
+    const allowedStatuses = ['ACTIVE', 'DEACTIVATED', 'SUSPENDED'];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status. Allowed values: ACTIVE, DEACTIVATED, SUSPENDED' });
+    }
+
     const updates = [];
     const params = [];
     let pIdx = 1;

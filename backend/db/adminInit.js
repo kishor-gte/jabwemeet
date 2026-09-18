@@ -15,11 +15,13 @@ async function initAdminDb() {
       ADD COLUMN IF NOT EXISTS "internalNotes" TEXT;
     `);
 
-    // Ensure ALL ADMIN users have staffRole = 'SUPER_ADMIN' and status = 'ACTIVE'
+    // Ensure ADMIN users have default staffRole and status ONLY if unset (never overwrite deactivated/suspended statuses)
     await prisma.$executeRawUnsafe(`
       UPDATE "User" 
-      SET "staffRole" = 'SUPER_ADMIN', "status" = 'ACTIVE', "identityVerified" = true
-      WHERE "role" = 'ADMIN';
+      SET "staffRole" = COALESCE("staffRole", 'SUPER_ADMIN'),
+          "status" = COALESCE("status", 'ACTIVE'),
+          "identityVerified" = COALESCE("identityVerified", true)
+      WHERE "role" = 'ADMIN' AND ("staffRole" IS NULL OR "status" IS NULL OR "identityVerified" IS NULL);
     `);
 
     // 2. Extend Event table
@@ -299,88 +301,7 @@ async function initAdminDb() {
       }
     }
 
-    // 17. Seed sample coupons if table is empty
-    const couponCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "Coupon"`);
-    if (couponCount[0].count === 0) {
-      console.log('[AdminInit] Seeding starter platform coupons...');
-      const coupons = [
-        { id: 'cpn-welcome', code: 'JABWEMEET20', discountType: 'PERCENTAGE', discountAmount: 20, applicableService: 'ALL', minOrderAmount: 500, maxUses: 500, perUserLimit: 1, expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) },
-        { id: 'cpn-event500', code: 'MEET500', discountType: 'FIXED', discountAmount: 500, applicableService: 'EVENT', minOrderAmount: 1500, maxUses: 200, perUserLimit: 1, expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) },
-        { id: 'cpn-buddy15', code: 'BUDDYCARE', discountType: 'PERCENTAGE', discountAmount: 15, applicableService: 'BREAKUP_BUDDY', minOrderAmount: 700, maxUses: 150, perUserLimit: 2, expiryDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000) },
-      ];
-      for (const c of coupons) {
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO "Coupon" ("id", "code", "discountType", "discountAmount", "applicableService", "minOrderAmount", "maxUses", "usedCount", "perUserLimit", "startDate", "expiryDate", "isActive")
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, NOW(), $9, true)
-          ON CONFLICT ("code") DO NOTHING;
-        `, c.id, c.code, c.discountType, c.discountAmount, c.applicableService, c.minOrderAmount, c.maxUses, c.perUserLimit, c.expiryDate);
-      }
-    }
 
-    // 18. Check & seed initial event registrations & payments linking real users and events
-    const regCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "EventRegistration"`);
-    if (regCount[0].count === 0) {
-      console.log('[AdminInit] Seeding initial event registrations & transactions for real users...');
-      const users = await prisma.$queryRawUnsafe(`SELECT "id", "name", "email" FROM "User" WHERE "role" = 'USER' LIMIT 5`);
-      const events = await prisma.$queryRawUnsafe(`SELECT "id", "title", "price" FROM "Event" LIMIT 3`);
-
-      if (users.length > 0 && events.length > 0) {
-        for (let i = 0; i < Math.min(users.length, 4); i++) {
-          const u = users[i];
-          const e = events[i % events.length];
-          const regId = 'reg-' + (1000 + i);
-          const tktCode = 'JWM-' + (20000 + i);
-          const payId = 'pay-' + (5000 + i);
-          const price = e.price || 1200;
-
-          // Create payment
-          await prisma.$executeRawUnsafe(`
-            INSERT INTO "Payment" ("id", "userId", "type", "amount", "currency", "status", "gateway", "referenceId", "description")
-            VALUES ($1, $2, 'EVENT_TICKET', $3, 'INR', 'SUCCESS', 'Razorpay', $4, $5)
-            ON CONFLICT ("id") DO NOTHING;
-          `, payId, u.id, price, 'pay_ref_' + Math.random().toString(36).substring(4), 'Ticket for ' + e.title);
-
-          // Create registration
-          await prisma.$executeRawUnsafe(`
-            INSERT INTO "EventRegistration" ("id", "eventId", "userId", "ticketCode", "qrCode", "paymentStatus", "status", "checkedIn", "checkedInAt")
-            VALUES ($1, $2, $3, $4, $5, 'PAID', 'CONFIRMED', $6, $7)
-            ON CONFLICT ("id") DO NOTHING;
-          `, regId, e.id, u.id, tktCode, 'QR-' + tktCode, i === 0, i === 0 ? new Date() : null);
-
-          // Create invoice
-          await prisma.$executeRawUnsafe(`
-            INSERT INTO "Invoice" ("id", "userId", "paymentId", "invoiceNumber", "amount", "taxAmount", "status")
-            VALUES ($1, $2, $3, $4, $5, $6, 'PAID')
-            ON CONFLICT ("invoiceNumber") DO NOTHING;
-          `, 'inv-' + (8000 + i), u.id, payId, 'INV-2026-' + (3000 + i), price, Math.round(price * 0.18));
-        }
-      }
-    }
-
-    // 19. Seed initial sample safety reports and support tickets if empty
-    const reportCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "Report"`);
-    if (reportCount[0].count === 0) {
-      const users = await prisma.$queryRawUnsafe(`SELECT "id" FROM "User" WHERE "role" = 'USER' LIMIT 3`);
-      if (users.length >= 2) {
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO "Report" ("id", "reporterId", "reportedUserId", "category", "reason", "details", "status", "internalNotes")
-          VALUES ('rep-101', $1, $2, 'USER', 'Inappropriate profile description', 'User profile references third-party solicitation services.', 'OPEN', 'Profile under manual admin inspection.')
-          ON CONFLICT ("id") DO NOTHING;
-        `, users[0].id, users[1].id);
-      }
-    }
-
-    const ticketCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "SupportTicket"`);
-    if (ticketCount[0].count === 0) {
-      const users = await prisma.$queryRawUnsafe(`SELECT "id" FROM "User" WHERE "role" = 'USER' LIMIT 1`);
-      if (users.length >= 1) {
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO "SupportTicket" ("id", "userId", "ticketNumber", "category", "subject", "description", "priority", "status", "replies")
-          VALUES ('tkt-101', $1, 'TKT-2026-001', 'Ticket', 'Question about dietary preferences at Singles Mixer', 'Hello team, do you provide vegan appetizers at the Bangalore mixer?', 'LOW', 'OPEN', '[]'::jsonb)
-          ON CONFLICT ("ticketNumber") DO NOTHING;
-        `, users[0].id);
-      }
-    }
 
     // 20. Seed initial audit log entry
     const auditCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "AuditLog"`);

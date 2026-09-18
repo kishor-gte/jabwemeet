@@ -95,10 +95,30 @@ const NAV_SECTIONS = [
       { label: "Platform Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Admin Management", href: "/admin/staff", icon: Shield },
       { label: "Audit Logs", href: "/admin/audit-logs", icon: History },
-      { label: "System Settings", href: "/admin/settings", icon: Settings },
     ],
   },
 ];
+
+const ALL_NAV_HREFS = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
+
+function isNavItemActive(itemHref: string, currentPathname: string): boolean {
+  if (itemHref === "/admin") {
+    return currentPathname === "/admin";
+  }
+  if (currentPathname === itemHref) {
+    return true;
+  }
+  if (currentPathname.startsWith(itemHref + "/")) {
+    const hasMoreSpecific = ALL_NAV_HREFS.some(
+      (otherHref) =>
+        otherHref !== itemHref &&
+        (currentPathname === otherHref || currentPathname.startsWith(otherHref + "/")) &&
+        otherHref.length > itemHref.length
+    );
+    return !hasMoreSpecific;
+  }
+  return false;
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -327,7 +347,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <aside
           ref={sidebarRef}
           onScroll={handleSidebarScroll}
-          className="hidden lg:flex flex-col w-64 bg-[#0d1627] border-r border-white/10 shrink-0 h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          className="hidden lg:flex flex-col w-64 bg-[#0d1627] border-r border-white/10 shrink-0 h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden"
         >
           <div className="p-4 space-y-6">
             {NAV_SECTIONS.map((section, idx) => (
@@ -337,10 +358,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </h4>
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive =
-                    item.href === "/admin"
-                      ? pathname === "/admin"
-                      : pathname === item.href || pathname.startsWith(item.href + "/");
+                  const isActive = isNavItemActive(item.href, pathname);
 
                   return (
                     <Link
@@ -383,7 +401,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
               onClick={() => setMobileDrawerOpen(false)}
             />
-            <div className="relative w-72 max-w-[85vw] bg-[#0d1627] h-full flex flex-col z-10 border-r border-white/10 shadow-2xl overflow-y-auto">
+            <div
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              className="relative w-72 max-w-[85vw] bg-[#0d1627] h-full flex flex-col z-10 border-r border-white/10 shadow-2xl overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden"
+            >
               <div className="p-4 flex items-center justify-between border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center font-bold text-white text-xs">
@@ -407,10 +428,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </h4>
                     {section.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive =
-                        item.href === "/admin"
-                          ? pathname === "/admin"
-                          : pathname === item.href || pathname.startsWith(item.href + "/");
+                      const isActive = isNavItemActive(item.href, pathname);
 
                       return (
                         <Link

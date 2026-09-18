@@ -378,6 +378,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    // Block deactivated, suspended, or blocked accounts
+    if (user.status && user.status !== 'ACTIVE') {
+      return res.status(403).json({
+        success: false,
+        message: `Your account has been ${user.status.toLowerCase()}. Please contact platform administration.`,
+      });
+    }
+
     if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST') && !user.isApproved) {
       return res.status(403).json({
         success: false,
