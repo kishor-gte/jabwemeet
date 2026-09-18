@@ -63,7 +63,26 @@ export default function HomePage() {
   const [confirmPwFeedback, setConfirmPwFeedback] = useState("");
   const [dobFeedback, setDobFeedback] = useState("");
 
-  // Check user session on load
+  // Live Events state
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [selectedEventCategory, setSelectedEventCategory] = useState("All");
+  const [expandedItineraryId, setExpandedItineraryId] = useState<string | null>(null);
+  const [bookedEventSuccess, setBookedEventSuccess] = useState<string | null>(null);
+
+  const fetchLiveEvents = () => {
+    fetch("/api/events")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data?.events) {
+          setLiveEvents(data.events);
+        }
+      })
+      .catch((e) => console.error("Error fetching live events:", e))
+      .finally(() => setEventsLoading(false));
+  };
+
+  // Check user session & load live events on load
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
@@ -73,6 +92,8 @@ export default function HomePage() {
         }
       })
       .catch(() => {});
+
+    fetchLiveEvents();
   }, []);
 
   // Real-time email validation + debounced check-email
@@ -541,6 +562,261 @@ export default function HomePage() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* UPCOMING REAL-WORLD EVENTS SECTION */}
+      <section className="py-24 px-6 border-b border-white/10 bg-[radial-gradient(ellipse_at_top,rgba(224,109,83,0.08)_0%,transparent_70%)]" id="events">
+        <div className="max-w-6xl mx-auto space-y-10">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-[#e06d53]/15 text-[#e06d53] text-xs font-bold uppercase tracking-wider border border-[#e06d53]/30">
+              📅 Real-World Gatherings
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-bold font-serif text-white">
+              Upcoming Experiences & Events
+            </h2>
+            <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base">
+              Explore offline singles meetups, speed dating, dance dating, and singles travel trips created by verified event managers.
+            </p>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            {[
+              { id: "All", label: "All Events" },
+              { id: "Single events", label: "Single Events", icon: "🍸" },
+              { id: "Speed dating", label: "Speed Dating", icon: "⚡" },
+              { id: "Dance Dating", label: "Dance Dating", icon: "💃" },
+              { id: "Singles Travels", label: "Singles Travels", icon: "✈️" },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedEventCategory(cat.id)}
+                className={`px-5 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 border ${
+                  selectedEventCategory === cat.id
+                    ? "bg-[#e06d53] text-white border-[#e06d53] shadow-lg shadow-[#e06d53]/30"
+                    : "bg-[#131d2e] text-slate-300 border-white/10 hover:border-white/25 hover:text-white"
+                }`}
+              >
+                {cat.icon && <span>{cat.icon}</span>}
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Events Grid */}
+          {eventsLoading ? (
+            <div className="py-16 text-center text-slate-400 text-sm">
+              <div className="w-8 h-8 border-2 border-[#e06d53] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+              Loading upcoming events...
+            </div>
+          ) : liveEvents.filter((ev) => {
+              if (selectedEventCategory === "All") return true;
+              const cat = (ev.category || "").toLowerCase();
+              const filterCat = selectedEventCategory.toLowerCase();
+              if (filterCat === "single events") return cat.includes("single");
+              if (filterCat === "speed dating") return cat.includes("speed");
+              if (filterCat === "dance dating") return cat.includes("dance");
+              if (filterCat === "singles travels") return cat.includes("travel") || cat.includes("trip");
+              return cat === filterCat;
+            }).length === 0 ? (
+            <div className="p-12 rounded-3xl bg-[#131d2e] border border-white/10 text-center space-y-4 max-w-xl mx-auto">
+              <div className="text-4xl">🎟️</div>
+              <h3 className="text-lg font-bold text-white">No upcoming events in this category</h3>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                Be the first organizer to create and host an event in this category!
+              </p>
+              <Link
+                href="/host/dashboard"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold transition shadow-lg"
+              >
+                + Host an Event
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {liveEvents
+                .filter((ev) => {
+                  if (selectedEventCategory === "All") return true;
+                  const cat = (ev.category || "").toLowerCase();
+                  const filterCat = selectedEventCategory.toLowerCase();
+                  if (filterCat === "single events") return cat.includes("single");
+                  if (filterCat === "speed dating") return cat.includes("speed");
+                  if (filterCat === "dance dating") return cat.includes("dance");
+                  if (filterCat === "singles travels") return cat.includes("travel") || cat.includes("trip");
+                  return cat === filterCat;
+                })
+                .map((ev) => {
+                  const catLower = (ev.category || "").toLowerCase();
+                  const isSpeed = catLower.includes("speed");
+                  const isDance = catLower.includes("dance");
+                  const isTravel = catLower.includes("travel") || catLower.includes("trip");
+
+                  const badgeColor = isSpeed
+                    ? "bg-pink-500/15 text-pink-300 border-pink-500/30"
+                    : isDance
+                    ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                    : isTravel
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    : "bg-sky-500/15 text-sky-300 border-sky-500/30";
+
+                  const eventDate = new Date(ev.date);
+                  const dateStr = !isNaN(eventDate.getTime())
+                    ? eventDate.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "Upcoming";
+                  const timeStr = !isNaN(eventDate.getTime())
+                    ? eventDate.toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "";
+
+                  let endDateStr = "";
+                  if (ev.endDate) {
+                    const endD = new Date(ev.endDate);
+                    if (!isNaN(endD.getTime())) {
+                      endDateStr = endD.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={ev.id}
+                      className="rounded-3xl bg-[#131d2e] border border-white/10 hover:border-[#e06d53]/40 transition shadow-xl flex flex-col justify-between p-6 group hover:-translate-y-1 duration-300"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${badgeColor}`}>
+                            {ev.category}
+                          </span>
+                          <span className="text-emerald-400 font-extrabold text-sm">
+                            {ev.price && ev.price > 0 ? `$${ev.price}` : "Free"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="text-lg font-bold text-white group-hover:text-[#e06d53] transition">
+                            {ev.title}
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
+                            {ev.description}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-white/5 text-xs text-slate-300">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500">🗓️</span>
+                            <span>
+                              {dateStr} {timeStr ? `• ${timeStr}` : ""}
+                              {endDateStr && ` to ${endDateStr}`}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500">📍</span>
+                            <span>
+                              {ev.location}, <strong className="text-white">{ev.city}</strong>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                            <span>
+                              {(() => {
+                                const cap = ev.maxAttendees || 50;
+                                const booked = ev.confirmedBookings ?? 0;
+                                const left = Math.max(0, cap - booked);
+                                return left === 0
+                                  ? <span className="text-red-400 font-bold">🚫 Sold Out</span>
+                                  : left <= 5
+                                  ? <span className="text-amber-400 font-semibold">🔥 {left} of {cap} spots left</span>
+                                  : <span>👥 {left} of {cap} spots open</span>;
+                              })()}
+                            </span>
+                            {ev.host?.name && (
+                              <span className="text-slate-400">
+                                Host: <strong className="text-slate-200">{ev.host.name}</strong>
+                              </span>
+                            )}
+                          </div>
+
+                          {ev.ageRange && (
+                            <div className="inline-block px-2.5 py-0.5 rounded-lg bg-pink-500/10 text-[11px] text-pink-300 border border-pink-500/20">
+                              🎯 Age Range: <strong>{ev.ageRange}</strong>
+                            </div>
+                          )}
+
+                          {ev.itinerary && (
+                            <div className="pt-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedItineraryId(
+                                    expandedItineraryId === ev.id ? null : ev.id
+                                  )
+                                }
+                                className="text-[11px] text-[#e06d53] hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                {expandedItineraryId === ev.id ? "▲ Hide Itinerary" : "▼ View Travel Itinerary"}
+                              </button>
+                              {expandedItineraryId === ev.id && (
+                                <div className="mt-2 p-3 rounded-xl bg-black/30 border border-white/10 text-[11px] text-slate-300 whitespace-pre-line leading-relaxed">
+                                  {ev.itinerary}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-5 mt-4 border-t border-white/10">
+                        {bookedEventSuccess === ev.id ? (
+                          <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs text-center font-bold">
+                            ✓ RSVP Confirmed! Your spot is reserved.
+                          </div>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              if (!currentUser) {
+                                setShowRegisterModal(true);
+                                return;
+                              }
+                              // Optimistic UI update
+                              setBookedEventSuccess(ev.id);
+                              setTimeout(() => setBookedEventSuccess(null), 4000);
+                              // Persist booking to database
+                              try {
+                                const res = await fetch(`/api/events/${ev.id}/book`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ spots: 1 }),
+                                  credentials: "include",
+                                });
+                                const data = await res.json();
+                                if (!data.success && res.status !== 401) {
+                                  console.warn("Booking notice:", data.message);
+                                }
+                              } catch (e) {
+                                console.error("Booking API error:", e);
+                              }
+                            }}
+                            className="w-full py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs transition shadow-md shadow-[#e06d53]/25"
+                          >
+                            {currentUser ? "RSVP / Book Spot" : "Join to Reserve"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </section>
 

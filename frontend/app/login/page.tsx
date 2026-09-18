@@ -11,9 +11,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [pendingApproval, setPendingApproval] = useState(false);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setPendingApproval(false);
     setLoading(true);
 
     try {
@@ -27,6 +30,8 @@ export default function LoginPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         router.push(data.redirectUrl || "/dashboard");
+      } else if (res.status === 403 && data.pendingApproval) {
+        setPendingApproval(true);
       } else {
         setError(data.message || "Email/mobile or password is incorrect.");
       }
@@ -54,6 +59,23 @@ export default function LoginPage() {
         {error && (
           <div className="mb-5 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-sm">
             {error}
+          </div>
+        )}
+
+        {pendingApproval && (
+          <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-200">
+              <span>⏳</span> Account Pending Approval
+            </div>
+            <p className="leading-relaxed">
+              Your account is under review by the admin team. You will be able to log in once approved.
+            </p>
+            <p className="text-slate-400">
+              Admin can approve your account at{" "}
+              <Link href="/admin" className="text-amber-300 underline font-semibold">
+                /admin → Staff &amp; Host Approvals
+              </Link>
+            </p>
           </div>
         )}
 

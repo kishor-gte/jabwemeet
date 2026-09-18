@@ -75,6 +75,13 @@ model User {
   callLogsSent           CallLog[]       @relation("CallLogsCaller")
   callLogsReceived       CallLog[]       @relation("CallLogsReceiver")
 
+  // Event Bookings / Reservations
+  eventBookings          EventBooking[]
+
+  // Host Subscription & Payments
+  hostSubscriptions      HostSubscription[]
+  hostPayments           HostPayment[]
+
   @@index([email])
   @@index([phone])
 }
@@ -156,7 +163,7 @@ model PasswordReset {
 }
 
 model Event {
-  id           String    @id @default(cuid())
+  id           String         @id @default(cuid())
   title        String
   description  String
   category     String
@@ -164,13 +171,31 @@ model Event {
   city         String
   date         DateTime
   endDate      DateTime?
-  price        Float?    @default(0)
-  maxAttendees Int?      @default(50)
+  price        Float?         @default(0)
+  maxAttendees Int?           @default(50)
   ageRange     String?
   itinerary    String?
   hostId       String?
-  host         User?     @relation(fields: [hostId], references: [id])
-  createdAt    DateTime  @default(now())
+  host         User?          @relation(fields: [hostId], references: [id])
+  bookings     EventBooking[]
+  createdAt    DateTime       @default(now())
+}
+
+model EventBooking {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("CONFIRMED") // CONFIRMED, CHECKED_IN, CANCELLED
+  spots       Int      @default(1)
+  totalAmount Float?   @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
 }
 
 model BuddyRequest {
@@ -241,6 +266,7 @@ model BuddyReview {
   createdAt        DateTime @default(now())
 }
 
+
 model CallLog {
   id           String       @id @default(cuid())
   requestId    String
@@ -257,4 +283,37 @@ model CallLog {
   createdAt    DateTime     @default(now())
 }
 
+
+
+model HostSubscription {
+  id                String   @id @default(cuid())
+  hostId            String
+  host              User     @relation(fields: [hostId], references: [id])
+  plan              String   // STARTER, BASIC, PRO, UNLIMITED
+  maxEvents         Int
+  eventsUsed        Int      @default(0)
+  expiresAt         DateTime
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  amountPaid        Float    @default(0)
+  status            String   @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  createdAt         DateTime @default(now())
+
+  @@index([hostId])
+}
+
+model HostPayment {
+  id                String   @id @default(cuid())
+  hostId            String
+  host              User     @relation(fields: [hostId], references: [id])
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  plan              String
+  amount            Float
+  status            String   @default("CREATED") // CREATED, PAID, FAILED
+  createdAt         DateTime @default(now())
+
+  @@index([hostId])
+}
 

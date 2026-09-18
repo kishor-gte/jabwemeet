@@ -1551,7 +1551,7 @@ router.get('/pending', async (req, res) => {
   try {
     const pendingUsers = await prisma.user.findMany({
       where: {
-        role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY'] },
+        role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY', 'HOST'] },
         isApproved: false,
       },
       select: {
