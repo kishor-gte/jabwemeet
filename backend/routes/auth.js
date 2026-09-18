@@ -55,6 +55,8 @@ function getRoleRedirect(role) {
     case 'BREAKUP_BUDDY':
       return '/breakup-buddy/dashboard';
     case 'HOST':
+    case 'EVENT_MANAGER':
+    case 'EVENT_HOST':
       return '/host/dashboard';
     case 'USER':
     default:
@@ -179,6 +181,14 @@ router.post('/register', upload.fields([
       });
     }
 
+    // Normalize role
+    let normalizedRole = 'USER';
+    if (role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST') {
+      normalizedRole = role;
+    } else if (role === 'EVENT_MANAGER' || role === 'EVENT_HOST') {
+      normalizedRole = 'HOST';
+    }
+
     // Date of birth & Age validation (18+) - optional for Breakup Buddy, Matchmaker & Host
     let dob = null;
     if (dateOfBirth) {
@@ -193,13 +203,13 @@ router.post('/register', upload.fields([
       if (age < 18) {
         return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
       }
-    } else if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER' && role !== 'HOST') {
+    } else if (normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'HOST') {
       return res.status(400).json({ success: false, message: 'Date of birth is required.' });
     }
 
     // City validation - optional for Breakup Buddy, Matchmaker & Host
     let validCity = city && typeof city === 'string' ? city.trim() : null;
-    if (role !== 'BREAKUP_BUDDY' && role !== 'MATCHMAKER' && role !== 'HOST') {
+    if (normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'HOST') {
       if (!validCity || validCity.length < 2) {
         return res.status(400).json({ success: false, message: 'City is required.' });
       }
@@ -253,9 +263,9 @@ router.post('/register', upload.fields([
         gender: gender ? String(gender).trim() : null,
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
 
-        role: role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST' ? role : 'USER',
-        isVerified: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY' && role !== 'HOST'),
-        isApproved: (role !== 'MATCHMAKER' && role !== 'BREAKUP_BUDDY' && role !== 'HOST'),
+        role: normalizedRole,
+        isVerified: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY'),
+        isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY'),
 
         idType: idType ? String(idType).trim() : null,
         idDocument: idDocument ? String(idDocument).trim() : null,
@@ -674,6 +684,85 @@ router.put('/profile', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error updating profile:', error);
     return res.status(500).json({ success: false, message: 'Failed to update profile.' });
+  }
+});
+
+// Get connections for the logged-in user
+router.get('/connections', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const connections = await prisma.matchSuggestion.findMany({
+      where: {
+        OR: [
+          { clientId: userId },
+          { suggestedProfileId: userId }
+        ]
+      },
+      include: {
+        client: {
+          select: { id: true, name: true, profileImage: true, gender: true, city: true, dateOfBirth: true }
+        },
+        suggestedProfile: {
+          select: { id: true, name: true, profileImage: true, gender: true, city: true, dateOfBirth: true }
+        },
+        matchmaker: {
+          select: { id: true, name: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, connections });
+  } catch (error) {
+    console.error('Error fetching connections:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch connections' });
+  }
+});
+
+// Approve or reject a connection
+router.put('/connections/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // 'Approve' or 'Reject'
+    const userId = req.user.userId;
+
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (!connection) {
+      return res.status(404).json({ success: false, message: 'Connection not found' });
+    }
+
+    const updateData = {};
+    if (connection.clientId === userId) {
+      updateData.clientStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+    } else if (connection.suggestedProfileId === userId) {
+      updateData.suggestedStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+    } else {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Determine overall status
+    let overallStatus = connection.status;
+    if (action === 'Reject') {
+      overallStatus = 'Rejected';
+    } else if (action === 'Approve') {
+      const otherStatus = connection.clientId === userId ? connection.suggestedStatus : connection.clientStatus;
+      if (otherStatus === 'Approved') {
+        overallStatus = 'BothApproved';
+      } else {
+        overallStatus = connection.clientId === userId ? 'ClientApproved' : 'SuggestedApproved';
+      }
+    }
+    updateData.status = overallStatus;
+
+    const updated = await prisma.matchSuggestion.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({ success: true, connection: updated });
+  } catch (error) {
+    console.error('Error updating connection:', error);
+    res.status(500).json({ success: false, message: 'Failed to update connection' });
   }
 });
 

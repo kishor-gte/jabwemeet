@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import BuddyMessagesTab from "./BuddyMessagesTab";
+import VoiceCallOverlay from "@/components/VoiceCallOverlay";
+import { io, Socket } from "socket.io-client";
 
 export default function BreakupBuddyDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
   
+  // Call State
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{ requestId: string, callerName: string } | null>(null);
+  const [callWaiting, setCallWaiting] = useState<{ requestId: string, callerName: string } | null>(null);
+
   // Profile Settings State
   const [profilePhoto, setProfilePhoto] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -23,23 +31,35 @@ export default function BreakupBuddyDashboardPage() {
   // Real Data States
   const [dashboardData, setDashboardData] = useState({ newRequests: 0, upcomingSessions: 0, completedSessions: 0 });
   const [requests, setRequests] = useState<any[]>([]);
+  const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
+  const [acceptedSearch, setAcceptedSearch] = useState("");
   const [sessions, setSessions] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [earnings, setEarnings] = useState({ totalEarnings: 0, sessions: [] });
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [requestFilter, setRequestFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
 
   const fetchData = async () => {
     try {
-      const [dashRes, reqRes, sessRes, histRes, revRes, earnRes] = await Promise.all([
+      const [dashRes, reqRes, accRes, sessRes, histRes, revRes, earnRes] = await Promise.all([
         fetch('/api/buddy/dashboard', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/requests', { credentials: 'include' }).then(r => r.json()),
+        fetch('/api/buddy/accepted-users', { credentials: 'include' }).then(r => r.json()).catch(() => ({ success: false })),
         fetch('/api/buddy/sessions', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/history', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/reviews', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/earnings', { credentials: 'include' }).then(r => r.json()),
       ]);
       if (dashRes.success) setDashboardData(dashRes.data);
-      if (reqRes.success) setRequests(reqRes.data);
+      if (reqRes.success) {
+        setRequests(reqRes.data);
+        if (!accRes?.success) {
+          setAcceptedUsers(reqRes.data.filter((r: any) => r.status === "Accepted"));
+        }
+      }
+      if (accRes?.success) setAcceptedUsers(accRes.data);
       if (sessRes.success) setSessions(sessRes.data);
       if (histRes.success) setHistory(histRes.data);
       if (revRes.success) setReviews(revRes.data);
@@ -53,6 +73,143 @@ export default function BreakupBuddyDashboardPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    const s = io("http://localhost:5001", { withCredentials: true });
+    setSocket(s);
+
+    s.on("connect", () => {
+      s.emit("join-buddy-room", user.id);
+    });
+
+    s.on("incoming-call", (data) => {
+      setIncomingCall((currentCall) => {
+        if (currentCall) {
+          // Buddy is already on a call, set as call waiting instead of rejecting
+          setCallWaiting(data);
+          return currentCall; // keep existing
+        }
+        return data; // set new call
+      });
+    });
+
+    return () => {
+      s.disconnect();
+    };
+  }, [user]);
+
+  // Play gentle beep when call waiting arrives
+  useEffect(() => {
+    if (callWaiting) {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime); // higher pitch soft beep
+      
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05); // quiet
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime + 0.15);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.2);
+      
+      return () => {
+        audioCtx.close().catch(console.error);
+      };
+    }
+  }, [callWaiting]);
+
+  const handleAcceptWaiting = () => {
+    if (socket && incomingCall && callWaiting) {
+      socket.emit("end-call", { requestId: incomingCall.requestId });
+      setIncomingCall(callWaiting);
+      setCallWaiting(null);
+    }
+  };
+
+  const handleRejectWaiting = () => {
+    if (socket && callWaiting) {
+      socket.emit("reject-call", { requestId: callWaiting.requestId, reason: "busy" });
+      setCallWaiting(null);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    setActionLoadingId(requestId);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/buddy/requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "Accepted" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionMessage({ text: "✓ Request accepted! Session has been scheduled.", type: "success" });
+        await fetchData();
+      } else {
+        setActionMessage({ text: data.message || "Failed to accept request", type: "error" });
+      }
+    } catch (e) {
+      setActionMessage({ text: "Error connecting to server", type: "error" });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    if (!confirm("Are you sure you want to decline this request?")) return;
+    setActionLoadingId(requestId);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/buddy/requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "Rejected" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionMessage({ text: "Request declined.", type: "success" });
+        await fetchData();
+      } else {
+        setActionMessage({ text: data.message || "Failed to decline request", type: "error" });
+      }
+    } catch (e) {
+      setActionMessage({ text: "Error connecting to server", type: "error" });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleCompleteSession = async (sessionId: string) => {
+    setActionLoadingId(sessionId);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/buddy/sessions/${sessionId}/complete`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionMessage({ text: "✓ Session marked as completed! Payout added to earnings.", type: "success" });
+        await fetchData();
+      } else {
+        setActionMessage({ text: data.message || "Failed to complete session", type: "error" });
+      }
+    } catch (e) {
+      setActionMessage({ text: "Error updating session", type: "error" });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -125,85 +282,537 @@ export default function BreakupBuddyDashboardPage() {
     }
   };
 
-  const renderDashboardHome = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-2xl font-bold font-serif text-slate-800">Good Morning, {displayName.split(' ')[0] || 'Buddy'} 👋</h2>
-          <p className="text-slate-500 text-sm mt-1">Here's your session overview</p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">New Requests</p>
-          <p className="text-3xl font-bold text-teal-600">{dashboardData.newRequests}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Upcoming</p>
-          <p className="text-3xl font-bold text-sky-500">{dashboardData.upcomingSessions}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-center">
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Completed</p>
-          <p className="text-3xl font-bold text-slate-800">{dashboardData.completedSessions}</p>
-        </div>
-      </div>
-    </div>
-  );
+  const renderDashboardHome = () => {
+    const pendingRequests = requests.filter((r) => r.status === "Pending");
 
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-end">
+          <div>
+            <h2 className="text-2xl font-bold font-serif text-slate-800">
+              Good Day, {displayName.split(' ')[0] || 'Buddy'} 👋
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">Here's your Breakup Buddy session and request overview</p>
+          </div>
+        </div>
 
-  const renderRequests = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">New Requests</h2>
-      <p className="text-slate-500 text-sm mb-6 border-b border-slate-200 pb-4">Manage incoming booking requests from users.</p>
-      
-      {requests.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No pending requests at the moment.</div>
-      ) : (
-        requests.map((req: any) => (
-          <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-lg text-slate-800">{req.user?.name || 'User'}</h3>
-                <p className="text-sm text-slate-500">{req.sessionType || 'Chat'} Session • {req.topic || 'General'}</p>
-                <p className="text-sm text-teal-600 font-semibold mt-1">Requested on {new Date(req.createdAt).toLocaleDateString()}</p>
-              </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">PENDING</span>
+        {actionMessage && (
+          <div
+            className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm ${
+              actionMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-red-50 text-red-800 border border-red-200"
+            }`}
+          >
+            <span>{actionMessage.text}</span>
+            <button
+              onClick={() => setActionMessage(null)}
+              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button
+            onClick={() => setActiveTab("Requests")}
+            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm text-center transition group text-left cursor-pointer"
+          >
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">New Requests</p>
+            <div className="flex items-center justify-between">
+              <p className="text-3xl font-bold text-amber-600">{dashboardData.newRequests}</p>
+              <span className="text-xs font-bold text-amber-600 group-hover:translate-x-1 transition-transform">
+                View Requests →
+              </span>
             </div>
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <button className="flex-1 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition shadow-sm">Accept</button>
-              <button className="flex-1 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-sm font-semibold transition">Reject</button>
+          </button>
+          <button
+            onClick={() => setActiveTab("Accepted Users")}
+            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm text-center transition group text-left cursor-pointer"
+          >
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Accepted Users</p>
+            <div className="flex items-center justify-between">
+              <p className="text-3xl font-bold text-teal-600">{acceptedUsers.length}</p>
+              <span className="text-xs font-bold text-teal-600 group-hover:translate-x-1 transition-transform">
+                View Users →
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab("Sessions")}
+            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm text-center transition group text-left cursor-pointer"
+          >
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Upcoming Sessions</p>
+            <div className="flex items-center justify-between">
+              <p className="text-3xl font-bold text-sky-500">{dashboardData.upcomingSessions}</p>
+              <span className="text-xs font-bold text-sky-600 group-hover:translate-x-1 transition-transform">
+                View Schedule →
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab("History")}
+            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm text-center transition group text-left cursor-pointer"
+          >
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Completed Sessions</p>
+            <div className="flex items-center justify-between">
+              <p className="text-3xl font-bold text-slate-800">{dashboardData.completedSessions}</p>
+              <span className="text-xs font-bold text-slate-500 group-hover:translate-x-1 transition-transform">
+                View History →
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Quick Pending Requests on Dashboard */}
+        {pendingRequests.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 font-serif text-lg">Action Needed: Pending Requests</h3>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                {pendingRequests.length} Pending
+              </span>
+            </div>
+            <div className="space-y-3">
+              {pendingRequests.slice(0, 3).map((req: any) => (
+                <div
+                  key={req.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-3"
+                >
+                  <div>
+                    <h4 className="font-bold text-slate-800">{req.user?.name || "User"}</h4>
+                    <p className="text-xs text-slate-500">
+                      {req.sessionType || "1-on-1"} Session • Topic: "{req.topic || "General Discussion"}"
+                    </p>
+                    <p className="text-[11px] text-teal-600 font-medium mt-0.5">
+                      Requested {new Date(req.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={actionLoadingId === req.id}
+                      onClick={() => handleAcceptRequest(req.id)}
+                      className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 cursor-pointer"
+                    >
+                      {actionLoadingId === req.id ? "Accepting..." : "✓ Accept"}
+                    </button>
+                    <button
+                      disabled={actionLoadingId === req.id}
+                      onClick={() => handleRejectRequest(req.id)}
+                      className="px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                    >
+                      ✕ Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
+  const renderRequests = () => {
+    const filteredRequests =
+      requestFilter === "all"
+        ? requests
+        : requests.filter((r) => r.status === requestFilter);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold font-serif text-slate-800">Booking Requests</h2>
+            <p className="text-slate-500 text-sm mt-0.5">Manage and respond to user session requests</p>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+            {(["all", "Pending", "Accepted", "Rejected"] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setRequestFilter(filter)}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
+                  requestFilter === filter
+                    ? "bg-white text-teal-700 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {filter === "all" ? "All" : filter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {actionMessage && (
+          <div
+            className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm ${
+              actionMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-red-50 text-red-800 border border-red-200"
+            }`}
+          >
+            <span>{actionMessage.text}</span>
+            <button
+              onClick={() => setActionMessage(null)}
+              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {filteredRequests.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-2">
+            <p className="text-2xl">📩</p>
+            <p className="font-semibold text-slate-700">No {requestFilter !== "all" ? requestFilter.toLowerCase() : ""} requests found</p>
+            <p className="text-xs text-slate-400">Incoming requests will show up here automatically.</p>
+          </div>
+        ) : (
+          filteredRequests.map((req: any) => (
+            <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm">
+                    {req.user?.name ? req.user.name[0].toUpperCase() : "U"}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-800">{req.user?.name || "User"}</h3>
+                    <p className="text-sm text-slate-600 font-medium">
+                      {req.sessionType || "1-on-1 Call"} Session • Topic: "{req.topic || "General Discussion"}"
+                    </p>
+                    <p className="text-xs text-teal-600 font-semibold mt-1">
+                      Requested on {new Date(req.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  {req.status === "Pending" && (
+                    <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">
+                      PENDING
+                    </span>
+                  )}
+                  {req.status === "Accepted" && (
+                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full">
+                      ✓ ACCEPTED
+                    </span>
+                  )}
+                  {req.status === "Rejected" && (
+                    <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-full">
+                      ✕ DECLINED
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                {req.status === "Pending" ? (
+                  <>
+                    <button
+                      disabled={actionLoadingId === req.id}
+                      onClick={() => handleRejectRequest(req.id)}
+                      className="px-5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-sm font-bold transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {actionLoadingId === req.id ? "Processing..." : "Reject"}
+                    </button>
+                    <button
+                      disabled={actionLoadingId === req.id}
+                      onClick={() => handleAcceptRequest(req.id)}
+                      className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                    >
+                      {actionLoadingId === req.id ? (
+                        "Accepting..."
+                      ) : (
+                        <>
+                          <span>✓</span> Accept Request
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : req.status === "Accepted" ? (
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs text-emerald-700 font-semibold">
+                      ✓ Session created & added to upcoming sessions.
+                    </span>
+                    <button
+                      onClick={() => setActiveTab("Sessions")}
+                      className="text-xs font-bold text-teal-600 hover:underline cursor-pointer"
+                    >
+                      View in Sessions →
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">This request was declined.</span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  };
+
+  const renderAcceptedUsers = () => {
+    const filtered = acceptedUsers.filter((req) => {
+      const q = acceptedSearch.toLowerCase();
+      const name = (req.user?.name || "").toLowerCase();
+      const email = (req.user?.email || "").toLowerCase();
+      const city = (req.user?.city || "").toLowerCase();
+      const topic = (req.topic || "").toLowerCase();
+      const sessionType = (req.sessionType || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        city.includes(q) ||
+        topic.includes(q) ||
+        sessionType.includes(q)
+      );
+    });
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold font-serif text-slate-800">Accepted Users</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                {acceptedUsers.length} {acceptedUsers.length === 1 ? "Client" : "Clients"}
+              </span>
+            </div>
+            <p className="text-slate-500 text-sm mt-0.5">
+              All users whose session and consultation requests you have accepted.
+            </p>
+          </div>
+          <div className="w-full sm:w-72">
+            <input
+              type="text"
+              placeholder="Search by name, city, email or topic..."
+              value={acceptedSearch}
+              onChange={(e) => setAcceptedSearch(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 shadow-sm transition"
+            />
+          </div>
+        </div>
+
+        {actionMessage && (
+          <div
+            className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm ${
+              actionMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-red-50 text-red-800 border border-red-200"
+            }`}
+          >
+            <span>{actionMessage.text}</span>
+            <button
+              onClick={() => setActionMessage(null)}
+              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {filtered.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
+              👥
+            </div>
+            <h3 className="font-bold text-slate-800 text-lg">
+              {acceptedSearch ? "No matching accepted users" : "No accepted users yet"}
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              {acceptedSearch
+                ? "Try searching with a different name, city or topic."
+                : "When you accept booking requests from the 'Requests' tab, those clients and their consultation history will show up here."}
+            </p>
+            {!acceptedSearch && (
+              <button
+                onClick={() => setActiveTab("Requests")}
+                className="mt-2 px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Go to Requests Tab →
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filtered.map((req: any) => {
+              const u = req.user || {};
+              const age = u.dateOfBirth
+                ? Math.floor((new Date().getTime() - new Date(u.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+                : null;
+
+              return (
+                <div
+                  key={req.id}
+                  className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-4">
+                    {/* User Profile Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg overflow-hidden border border-teal-200 shadow-sm">
+                          {u.profileImage ? (
+                            <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
+                          ) : (
+                            u.name ? u.name[0].toUpperCase() : "👤"
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-base text-slate-800 flex items-center gap-1.5">
+                            {u.name || "User"}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                            {u.city && <span>📍 {u.city}</span>}
+                            {age && <span>• {age} yrs</span>}
+                            {u.gender && <span>• {u.gender}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold rounded-full">
+                        ✓ ACCEPTED
+                      </span>
+                    </div>
+
+                    {/* Booking Details */}
+                    <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs space-y-2">
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span className="font-semibold text-slate-700">Format:</span>
+                        <span className="font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+                          {req.sessionType || "1-on-1 Session"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-slate-700 block mb-0.5">Discussion Topic / Reason:</span>
+                        <p className="text-slate-600 italic bg-white p-2 rounded border border-slate-100">
+                          "{req.topic || "General emotional support & active listening"}"
+                        </p>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">
+                        <span>Requested: {new Date(req.createdAt).toLocaleDateString()}</span>
+                        <span>Accepted: {new Date(req.updatedAt || req.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Contact Details */}
+                    {(u.email || u.phone) && (
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {u.email && (
+                          <a
+                            href={`mailto:${u.email}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
+                          >
+                            ✉️ {u.email}
+                          </a>
+                        )}
+                        {u.phone && (
+                          <a
+                            href={`tel:${u.phone}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
+                          >
+                            📞 {u.phone}
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab("Messages")}
+                      className="flex-1 py-2 px-3 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold transition border border-teal-200 text-center cursor-pointer"
+                    >
+                      💬 Open Chat
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("Sessions")}
+                      className="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-sm text-center cursor-pointer"
+                    >
+                      📅 View Session
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const [sessionTab, setSessionTab] = useState("Active");
   const renderSessions = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Sessions</h2>
-      
+      <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold font-serif text-slate-800">Upcoming Sessions</h2>
+          <p className="text-slate-500 text-sm mt-0.5">Your scheduled consultations and emotional support sessions</p>
+        </div>
+      </div>
+
+      {actionMessage && (
+        <div
+          className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm ${
+            actionMessage.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              : "bg-red-50 text-red-800 border border-red-200"
+          }`}
+        >
+          <span>{actionMessage.text}</span>
+          <button
+            onClick={() => setActionMessage(null)}
+            className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No upcoming sessions.</div>
+        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-2">
+          <p className="text-2xl">📅</p>
+          <p className="font-semibold text-slate-700">No upcoming sessions</p>
+          <p className="text-xs text-slate-400">Accepted requests will appear here as scheduled sessions.</p>
+        </div>
       ) : (
         sessions.map((sess: any) => (
-          <div key={sess.id} className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between shadow-sm mb-4">
+          <div
+            key={sess.id}
+            className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm mb-4 gap-4"
+          >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl overflow-hidden">
-                {sess.user?.profileImage ? <img src={sess.user.profileImage} alt="User" /> : '👤'}
+              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl overflow-hidden font-bold text-teal-700">
+                {sess.user?.profileImage ? (
+                  <img src={sess.user.profileImage} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                  sess.user?.name ? sess.user.name[0].toUpperCase() : "👤"
+                )}
               </div>
               <div>
-                <h4 className="font-bold text-slate-800">{sess.user?.name || 'User'}</h4>
-                <p className="text-xs text-slate-500">{sess.sessionType || 'Video'} Call • {sess.durationMinutes} mins</p>
-                <p className="text-xs font-semibold text-teal-600 mt-0.5">{new Date(sess.scheduledAt).toLocaleString()}</p>
+                <h4 className="font-bold text-slate-800 text-base">{sess.user?.name || "User"}</h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  {sess.sessionType || "1-on-1"} Session • {sess.durationMinutes || 45} mins
+                </p>
+                <p className="text-xs font-semibold text-teal-600 mt-0.5">
+                  📅 {new Date(sess.scheduledAt).toLocaleString()}
+                </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition">Reschedule</button>
-              <button className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-lg shadow-sm transition">Join</button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab("Messages")}
+                className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold rounded-lg border border-teal-200 transition cursor-pointer"
+              >
+                💬 Open Chat
+              </button>
+              <button
+                disabled={actionLoadingId === sess.id}
+                onClick={() => handleCompleteSession(sess.id)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoadingId === sess.id ? "Updating..." : "✓ Mark Completed"}
+              </button>
             </div>
           </div>
         ))
@@ -213,55 +822,7 @@ export default function BreakupBuddyDashboardPage() {
 
 
   const renderMessages = () => (
-    <div className="h-full flex flex-col space-y-4">
-      <h2 className="text-2xl font-bold font-serif text-slate-800">Active Session</h2>
-      <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col shadow-sm overflow-hidden min-h-[400px]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold">P</div>
-            <div>
-              <p className="font-bold text-slate-800">Priya Sharma</p>
-              <p className="text-xs text-teal-600 flex items-center gap-1 font-medium"><span className="w-2 h-2 rounded-full bg-teal-500"></span> Online</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-mono text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">30:00</span>
-            <button className="px-4 py-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 text-xs font-bold transition">End Session</button>
-          </div>
-        </div>
-        
-        {/* Chat Area */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50/50">
-          <div className="flex justify-start">
-            <div className="bg-white border border-slate-200 shadow-sm rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
-              <p className="text-sm text-slate-700">Hi, I wanted to talk about my recent breakup...</p>
-              <p className="text-[10px] text-slate-400 mt-1">06:02 PM</p>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <div className="bg-teal-500 shadow-sm rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%] text-white">
-              <p className="text-sm">Hi Priya, I'm here for you. Take your time and share whenever you're ready.</p>
-              <p className="text-[10px] text-teal-100 mt-1 text-right">06:03 PM</p>
-            </div>
-          </div>
-          <div className="flex justify-start">
-            <div className="bg-white border border-slate-200 shadow-sm rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
-              <p className="text-sm text-slate-700">Thank you. It's just been really hard.</p>
-              <p className="text-[10px] text-slate-400 mt-1">06:04 PM</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex gap-2">
-            <input type="text" placeholder="Type your message..." className="flex-1 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition-colors" />
-            <button className="px-6 py-2 rounded-full bg-teal-500 hover:bg-teal-600 text-white text-sm font-bold shadow-sm transition">Send</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <BuddyMessagesTab acceptedUsers={acceptedUsers} />
   );
 
   const renderAvailability = () => (
@@ -543,31 +1104,42 @@ export default function BreakupBuddyDashboardPage() {
           <nav className="space-y-1 px-3">
             {[
               { id: 'Dashboard', icon: '🏠' },
-              { id: 'Requests', icon: '📩' },
-              { id: 'Sessions', icon: '📅' },
+              { id: 'Requests', icon: '📩', badge: requests.filter((r) => r.status === 'Pending').length },
+              { id: 'Accepted Users', icon: '👥', badge: acceptedUsers.length },
+              { id: 'Sessions', icon: '📅', badge: sessions.length },
               { id: 'Messages', icon: '💬' },
               { id: 'Availability', icon: '🕐' },
               { id: 'Reviews', icon: '⭐' },
               { id: 'Earnings', icon: '💰' },
               { id: 'History', icon: '📜' },
               { id: 'Settings', icon: '⚙️' },
-            ].map(item => (
+            ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === item.id ? 'bg-teal-50 text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  activeTab === item.id
+                    ? 'bg-teal-50 text-teal-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                }`}
               >
                 <span className="text-base grayscale opacity-80">{item.icon}</span>
-                {item.id}
+                <span className="flex-1 text-left">{item.id}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      activeTab === item.id ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
         </div>
         <div className="p-4 border-t border-slate-100">
-          <a href="/dashboard" className="block w-full text-center py-2 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-lg transition mb-2">
-            ← Exit to Main App
-          </a>
-          <button onClick={handleLogout} className="block w-full text-center py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+          <button onClick={handleLogout} className="block w-full text-center py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
             Log Out
           </button>
         </div>
@@ -598,6 +1170,7 @@ export default function BreakupBuddyDashboardPage() {
           <div className="max-w-5xl mx-auto">
             {activeTab === 'Dashboard' && renderDashboardHome()}
             {activeTab === 'Requests' && renderRequests()}
+            {activeTab === 'Accepted Users' && renderAcceptedUsers()}
             {activeTab === 'Sessions' && renderSessions()}
             {activeTab === 'Messages' && renderMessages()}
             {activeTab === 'Availability' && renderAvailability()}
@@ -608,6 +1181,45 @@ export default function BreakupBuddyDashboardPage() {
           </div>
         </main>
       </div>
+
+      {/* Incoming Call Overlay */}
+      {incomingCall && (
+        <VoiceCallOverlay
+          requestId={incomingCall.requestId}
+          role="BUDDY"
+          callerName={incomingCall.callerName}
+          onClose={() => setIncomingCall(null)}
+        />
+      )}
+
+      {/* Call Waiting Toast */}
+      {callWaiting && (
+        <div className="fixed top-4 right-4 z-[200] bg-[#131d2e] border border-white/20 rounded-2xl p-4 shadow-2xl flex flex-col gap-3 min-w-[300px] animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+              {callWaiting.callerName[0]}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Call Waiting...</p>
+              <p className="text-xs text-slate-400">{callWaiting.callerName}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRejectWaiting}
+              className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-xs font-semibold text-slate-300 hover:text-red-400 transition"
+            >
+              Reject
+            </button>
+            <button
+              onClick={handleAcceptWaiting}
+              className="flex-1 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold shadow-lg transition"
+            >
+              End Current & Accept
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

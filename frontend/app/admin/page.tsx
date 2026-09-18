@@ -1,183 +1,213 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import {
-  LayoutDashboard,
-  Calendar,
   Users,
-  UserCheck,
-  ShieldCheck,
-  LogOut,
-  Menu,
+  Calendar,
+  CreditCard,
+  HeartHandshake,
+  Heart,
+  ShieldAlert,
+  LifeBuoy,
+  FileCheck,
+  TrendingUp,
+  Plus,
+  ArrowUpRight,
+  Bell,
+  Sparkles,
+  Ticket,
+  DollarSign,
+  Building,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
+  Send,
   X,
   RefreshCw,
-  TrendingUp,
-  CheckCircle2,
-  Clock,
-  ChevronRight,
-  MapPin,
-  Ticket,
-  Activity,
-  Bell,
-  Heart,
-  Star,
-  BarChart3,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "overview" | "events" | "bookings" | "approvals" | "users";
+export default function AdminOverviewPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [range, setRange] = useState<string>("30d");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-interface AdminStats {
-  totalUsers: number;
-  totalEvents: number;
-  totalBookings: number;
-  totalRevenue: number;
-}
+  // Quick Action Modal States
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [modalLoading, setModalLoading] = useState<boolean>(false);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function RoleBadge({ role }: { role: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    HOST: { label: "Event Host", cls: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
-    MATCHMAKER: { label: "Rel. Manager", cls: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-    BREAKUP_BUDDY: { label: "Breakup Buddy", cls: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
-    ADMIN: { label: "Admin", cls: "bg-red-500/20 text-red-300 border-red-500/30" },
-    USER: { label: "Member", cls: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  };
-  const r = map[role] ?? { label: role, cls: "bg-white/10 text-white border-white/20" };
-  return (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${r.cls}`}>
-      {r.label}
-    </span>
-  );
-}
+  // Form states
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    category: "Singles Events",
+    city: "Mumbai",
+    location: "",
+    date: "",
+    price: 1200,
+    maxAttendees: 40,
+    description: "",
+  });
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    CONFIRMED: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-    CHECKED_IN: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-    CANCELLED: "bg-red-500/20 text-red-300 border-red-500/30",
-    PENDING: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  };
-  return (
-    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${map[status] ?? "bg-white/10 text-white border-white/10"}`}>
-      {status}
-    </span>
-  );
-}
+  const [packageForm, setPackageForm] = useState({
+    type: "RELATIONSHIP_MANAGER",
+    name: "",
+    price: 3999,
+    billingCycle: "MONTHLY",
+    durationDays: 30,
+    sessionLimit: 4,
+    description: "",
+  });
 
-function getInitials(name: string) {
-  return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
+  const [couponForm, setCouponForm] = useState({
+    code: "",
+    discountType: "PERCENTAGE",
+    discountAmount: 20,
+    applicableService: "ALL",
+    minOrderAmount: 500,
+    maxUses: 100,
+  });
 
-// ─── Sidebar nav ──────────────────────────────────────────────────────────────
-const NAV = [
-  {
-    group: "Admin",
-    items: [
-      { id: "overview", label: "Dashboard", icon: LayoutDashboard },
-      { id: "events", label: "Platform Events", icon: Calendar },
-      { id: "bookings", label: "Attendee RSVPs", icon: UserCheck },
-    ],
-  },
-  {
-    group: "Management",
-    items: [
-      { id: "approvals", label: "Staff & Host Approvals", icon: ShieldCheck },
-      { id: "users", label: "All Users", icon: Users },
-    ],
-  },
-  {
-    group: "Navigate To",
-    items: [
-      { id: "__member", label: "Member Dashboard", icon: Heart, href: "/dashboard" },
-      { id: "__host", label: "Host Dashboard", icon: Calendar, href: "/host/dashboard" },
-      { id: "__home", label: "Homepage", icon: Activity, href: "/" },
-    ],
-  },
-];
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-export default function AdminDashboardPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<Section>("overview");
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
-  const [eventsData, setEventsData] = useState<any[]>([]);
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
-  const [adminStats, setAdminStats] = useState<AdminStats>({ totalUsers: 0, totalEvents: 0, totalBookings: 0, totalRevenue: 0 });
-  const [dataLoading, setDataLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3500);
-  }
-
-  useEffect(() => {
-    async function init() {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        const data = await res.json();
-        if (data.success && data.user?.role === "ADMIN") {
-          setUser(data.user);
-          loadAll();
-        } else {
-          router.replace(data.user ? "/dashboard" : "/login");
-        }
-      } catch {
-        router.replace("/login");
-      } finally {
-        setLoading(false);
-      }
-    }
-    init();
-  }, [router]);
-
-  async function loadAll() {
-    setDataLoading(true);
-    await Promise.all([fetchPending(), fetchOverview()]);
-    setDataLoading(false);
-  }
-
-  async function fetchPending() {
-    try {
-      const res = await fetch("/api/admin/pending", { credentials: "include" });
-      const d = await res.json();
-      if (d.success) setPendingUsers(d.data);
-    } catch {}
-  }
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    message: "",
+    targetAudience: "All Users",
+  });
 
   async function fetchOverview() {
     try {
-      const res = await fetch("/api/admin/events-overview", { credentials: "include" });
-      const d = await res.json();
-      if (d.success) {
-        setEventsData(d.events || []);
-        setRecentBookings(d.recentBookings || []);
-        setAdminStats(d.stats);
+      setRefreshing(true);
+      const [ovRes, anRes] = await Promise.all([
+        fetch("/api/admin/overview", { credentials: "include" }),
+        fetch(`/api/admin/analytics?range=${range}`, { credentials: "include" }),
+      ]);
+      const ovData = await ovRes.json();
+      const anData = await anRes.json();
+
+      if (ovData.success) {
+        setStats(ovData.stats);
+        setAlerts(ovData.alerts || []);
       }
-    } catch {}
+      if (anData.success) {
+        setAnalytics(anData.data);
+      }
+    } catch (e) {
+      console.error("Failed to load admin overview", e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }
 
-  async function approveUser(id: string) {
+  useEffect(() => {
+    fetchOverview();
+  }, [range]);
+
+  // Handle Event Creation
+  async function handleCreateEvent(e: React.FormEvent) {
+    e.preventDefault();
+    setModalLoading(true);
     try {
-      const res = await fetch(`/api/admin/approve/${id}`, { method: "POST", credentials: "include" });
-      const d = await res.json();
-      if (d.success) {
-        setPendingUsers((prev) => prev.filter((u) => u.id !== id));
-        showToast("✅ Application approved successfully!");
-      } else showToast("❌ " + (d.message || "Failed to approve."));
-    } catch { showToast("❌ Network error."); }
+      const res = await fetch("/api/admin/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(eventForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionSuccess("Event published successfully to catalog!");
+        setActiveModal(null);
+        fetchOverview();
+      } else {
+        alert(data.message || "Failed to create event");
+      }
+    } catch (err) {
+      alert("Error creating event");
+    } finally {
+      setModalLoading(false);
+    }
   }
 
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    router.replace("/");
+  // Handle Package Creation
+  async function handleCreatePackage(e: React.FormEvent) {
+    e.preventDefault();
+    setModalLoading(true);
+    try {
+      const res = await fetch("/api/admin/services/packages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(packageForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionSuccess("Service package created successfully!");
+        setActiveModal(null);
+        fetchOverview();
+      } else {
+        alert(data.message || "Failed to create package");
+      }
+    } catch (err) {
+      alert("Error creating package");
+    } finally {
+      setModalLoading(false);
+    }
+  }
+
+  // Handle Coupon Creation
+  async function handleCreateCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    setModalLoading(true);
+    try {
+      const res = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(couponForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionSuccess("Discount coupon code generated!");
+        setActiveModal(null);
+        fetchOverview();
+      } else {
+        alert(data.message || "Failed to create coupon");
+      }
+    } catch (err) {
+      alert("Error creating coupon");
+    } finally {
+      setModalLoading(false);
+    }
+  }
+
+  // Handle Announcement
+  async function handleSendAnnouncement(e: React.FormEvent) {
+    e.preventDefault();
+    if (!confirm(`Are you sure you want to broadcast this announcement to ${announcementForm.targetAudience}?`)) return;
+
+    setModalLoading(true);
+    try {
+      const res = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(announcementForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionSuccess(data.message);
+        setActiveModal(null);
+        fetchOverview();
+      } else {
+        alert(data.message || "Failed to broadcast");
+      }
+    } catch (err) {
+      alert("Error sending announcement");
+    } finally {
+      setModalLoading(false);
+    }
   }
 
   function navigate(section: Section) {
@@ -188,307 +218,312 @@ export default function AdminDashboardPage() {
   // ── Loading ──
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b111e] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg mx-auto animate-pulse">A</div>
-          <p className="text-slate-400 text-sm">Verifying admin access…</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="h-20 bg-white/5 rounded-2xl" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-28 bg-white/5 rounded-2xl" />
+          ))}
         </div>
       </div>
     );
   }
-  if (!user) return null;
 
-  const confirmedRsvps = recentBookings.filter((b) => b.status !== "CANCELLED").length;
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // Sidebar content — same markup used for both desktop fixed + mobile drawer
-  // ════════════════════════════════════════════════════════════════════════════
-  const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#0d1526] text-slate-200 border-r border-white/10 select-none">
-
-      {/* Brand header */}
-      <div className="p-6 border-b border-white/10 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg shadow-[#e06d53]/25 group-hover:scale-105 transition">
-            J
+  return (
+    <div className="space-y-8 pb-12">
+      {/* HEADER & TOP BANNER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-[#121c2e] via-[#0f1728] to-[#121c2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            Platform Control Center
           </div>
-          <div>
-            <div className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-              Jab<span className="text-[#e06d53]">We</span>Meet
-            </div>
-            <div className="text-[10px] font-medium uppercase tracking-widest text-slate-400">
-              Admin Console
-            </div>
-          </div>
-        </Link>
-        <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            JabWeMeet Operations Command
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+            Real People. Real Places. Real Connections. Monitor live registrations, matchmaker pipelines, breakup buddy circles, and transactions.
+          </p>
+        </div>
 
-      {/* Nav */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
-        {NAV.map((group) => (
-          <div key={group.group}>
-            <div className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              {group.group}
-            </div>
-            <div className="space-y-1">
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.id;
-                // Badge counts
-                const badge =
-                  item.id === "approvals" && pendingUsers.length > 0 ? pendingUsers.length
-                    : item.id === "events" && eventsData.length > 0 ? eventsData.length
-                    : item.id === "bookings" && confirmedRsvps > 0 ? confirmedRsvps
-                    : null;
-
-                if ("href" in item && item.href) {
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition text-slate-300 hover:text-white hover:bg-white/5"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 text-slate-400" />
-                        <span>{item.label}</span>
-                      </div>
-                    </Link>
-                  );
-                }
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => navigate(item.id as Section)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
-                      isActive
-                        ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                        : "text-slate-300 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className={`w-4 h-4 ${isActive ? "text-[#e06d53]" : "text-slate-400"}`} />
-                      <span>{item.label}</span>
-                    </div>
-                    {badge !== null && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center ${
-                        item.id === "approvals"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                          : "bg-white/10 text-slate-300"
-                      }`}>
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Bottom — user card + logout */}
-      <div className="p-4 border-t border-white/10 bg-[#0a101d]">
-        <div className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-white/5 transition">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-red-500 to-[#e06d53] flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-md">
-              {getInitials(user.name)}
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
-                <span>{user.name}</span>
-                <ShieldCheck className="w-3.5 h-3.5 text-red-400 shrink-0" />
-              </div>
-              <div className="text-xs text-slate-400 truncate">{user.email}</div>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 relative z-10 shrink-0">
           <button
-            onClick={handleLogout}
-            title="Log out"
-            className="p-2 text-slate-400 hover:text-[#fca5a5] hover:bg-rose-500/10 rounded-lg transition shrink-0"
+            onClick={() => fetchOverview()}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition active:scale-95 disabled:opacity-50"
           >
-            <LogOut className="w-4 h-4" />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-red-400" : ""}`} />
+            <span>{refreshing ? "Refreshing..." : "Refresh Data"}</span>
           </button>
         </div>
       </div>
-    </div>
-  );
 
-  // ════════════════════════════════════════════════════════════════════════════
-  return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans">
+      {actionSuccess && (
+        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm flex items-center justify-between">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <span>{actionSuccess}</span>
+          </div>
+          <button onClick={() => setActionSuccess(null)} className="text-emerald-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-      {/* ── Desktop fixed sidebar ── */}
-      <aside className="hidden lg:block fixed inset-y-0 left-0 w-72 z-30">
-        {sidebarContent}
-      </aside>
+      {/* QUICK ACTIONS BAR */}
+      <div className="bg-[#0f1829] border border-white/10 rounded-2xl p-5 shadow-lg space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          Quick Actions
+        </h3>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setActiveModal("event")}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold shadow-md shadow-red-500/20 transition active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Create Event</span>
+          </button>
 
-      {/* ── Mobile drawer ── */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative w-72 max-w-[80vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
-            {sidebarContent}
+          <a
+            href="/admin/relationship-managers"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+          >
+            <HeartHandshake className="w-3.5 h-3.5 text-rose-400" />
+            <span>Manage RMs</span>
+          </a>
+
+          <a
+            href="/admin/breakup-buddies"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+          >
+            <Heart className="w-3.5 h-3.5 text-blue-400" />
+            <span>Manage Buddies</span>
+          </a>
+
+          <button
+            onClick={() => setActiveModal("package")}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+          >
+            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Create Package</span>
+          </button>
+
+          <button
+            onClick={() => setActiveModal("coupon")}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+          >
+            <Plus className="w-3.5 h-3.5 text-amber-400" />
+            <span>Create Coupon</span>
+          </button>
+
+          <button
+            onClick={() => setActiveModal("announcement")}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+          >
+            <Send className="w-3.5 h-3.5 text-purple-400" />
+            <span>Send Announcement</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ALERT CENTER */}
+      {alerts.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-400" />
+              <span>Admin Alert Center</span>
+            </h3>
+            <span className="text-xs text-slate-400">Direct navigation to active queues</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {alerts.map((a) => (
+              <a
+                key={a.id}
+                href={a.link}
+                className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 hover:border-white/20 transition flex items-center justify-between group shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
+                    a.count > 0 ? "bg-red-500/20 text-red-400" : "bg-white/5 text-slate-400"
+                  }`}>
+                    {a.count}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white group-hover:text-red-400 transition">
+                      {a.title}
+                    </h4>
+                    <span className="text-[10px] text-slate-400">{a.badge}</span>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-white transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </a>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ── Main content area (offset by sidebar on desktop) ── */}
-      <div className="lg:ml-72 flex flex-col min-h-screen">
-
-        {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-[#0b111e]/95 backdrop-blur-md border-b border-white/10 px-5 lg:px-8 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="lg:hidden p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="font-bold text-white text-base">
-                {activeSection === "overview" && "Dashboard Overview"}
-                {activeSection === "events" && "Platform Events"}
-                {activeSection === "bookings" && "Attendee RSVPs"}
-                {activeSection === "approvals" && "Staff & Host Approvals"}
-                {activeSection === "users" && "All Users"}
-              </h1>
-              <p className="text-[11px] text-slate-500 hidden sm:block">JabWeMeet Admin Control Center</p>
+      {/* REAL DATABASE KPI CARDS */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-white">Platform Key Performance Indicators</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* Total Users */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Total Users</span>
+              <Users className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.totalUsers || 0}</div>
+            <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+              <span>{stats?.activeUsers || 0} Active accounts</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {pendingUsers.length > 0 && (
+          {/* Verified Users */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Verified Members</span>
+              <FileCheck className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.verifiedUsers || 0}</div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              ID & Profile verified
+            </div>
+          </div>
+
+          {/* Upcoming Events */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Upcoming Events</span>
+              <Calendar className="w-4 h-4 text-rose-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.upcomingEvents || 0}</div>
+            <div className="text-[11px] text-slate-400 mt-1">Active on public schedule</div>
+          </div>
+
+          {/* Today's Registrations */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Today&apos;s Passes</span>
+              <Ticket className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.todayRegistrations || 0}</div>
+            <div className="text-[11px] text-emerald-400 mt-1">Real-time venue bookings</div>
+          </div>
+
+          {/* Total Revenue */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Total Revenue</span>
+              <CreditCard className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">
+              ₹{(stats?.totalRevenue || 0).toLocaleString("en-IN")}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">All processed transactions</div>
+          </div>
+
+          {/* Monthly Revenue */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Monthly Run-Rate</span>
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">
+              ₹{(stats?.monthlyRevenue || 0).toLocaleString("en-IN")}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">Current calendar month</div>
+          </div>
+
+          {/* RM Subscribers */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">RM Clients</span>
+              <HeartHandshake className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.rmSubscribers || 0}</div>
+            <div className="text-[11px] text-slate-400 mt-1">Assigned to Matchmakers</div>
+          </div>
+
+          {/* Open Support Tickets */}
+          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+            <div className="flex items-center justify-between text-slate-400 mb-2">
+              <span className="text-xs font-semibold uppercase">Support Cases</span>
+              <LifeBuoy className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.openSupportTickets || 0}</div>
+            <div className="text-[11px] text-slate-400 mt-1">Awaiting staff response</div>
+          </div>
+        </div>
+      </div>
+
+      {/* CHARTS & ANALYTICS SECTION */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-red-400" />
+            <span>Platform Analytics & Trends</span>
+          </h3>
+
+          <div className="flex items-center gap-1 bg-[#131d2e] p-1 rounded-xl border border-white/10 self-start sm:self-auto">
+            {["7d", "30d", "90d", "1y"].map((r) => (
               <button
-                onClick={() => navigate("approvals")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition"
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase transition ${
+                  range === r ? "bg-red-600 text-white shadow" : "text-slate-400 hover:text-white"
+                }`}
               >
-                <Bell className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{pendingUsers.length} Pending</span>
-                <span className="sm:hidden">{pendingUsers.length}</span>
+                {r}
               </button>
-            )}
-            <button
-              onClick={loadAll}
-              disabled={dataLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+            ))}
           </div>
-        </header>
+        </div>
 
-        {/* Toast */}
-        {toast && (
-          <div className="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl bg-[#182337] border border-white/15 text-white text-sm font-semibold shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
-            {toast}
-          </div>
-        )}
-
-        {/* ═══ PAGE CONTENT ═══════════════════════════════════════════════════ */}
-        <main className="flex-1 overflow-y-auto px-5 lg:px-8 py-8 space-y-8">
-
-          {/* ── OVERVIEW ─────────────────────────────────────────────────── */}
-          {activeSection === "overview" && (
-            <div className="space-y-8">
-
-              {/* Greeting */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs font-bold text-red-400 mb-2">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Platform Superadmin
-                  </div>
-                  <h2 className="text-2xl font-extrabold text-white tracking-tight">
-                    Welcome back, {user.name.split(" ")[0]}!
-                  </h2>
-                  <p className="text-sm text-slate-400 mt-0.5">
-                    Real-time oversight of events, bookings, and partner applications.
-                  </p>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Users", value: adminStats.totalUsers, icon: Users, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", sub: "Registered platform-wide" },
-                  { label: "Active Events", value: adminStats.totalEvents, icon: Calendar, color: "text-[#fca5a5]", bg: "bg-[#e06d53]/10 border-[#e06d53]/20", sub: "Singles, Speed, Dance, Travel" },
-                  { label: "Confirmed RSVPs", value: adminStats.totalBookings, icon: Ticket, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", sub: "Active attendee bookings" },
-                  { label: "Gross Revenue", value: `₹${adminStats.totalRevenue.toLocaleString("en-IN")}`, icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", sub: "Total ticket sales GMV" },
-                ].map((s) => (
-                  <div key={s.label} className={`rounded-2xl bg-[#131d2e] border ${s.bg} p-5 space-y-3`}>
-                    <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center`}>
-                      <s.icon className={`w-4.5 h-4.5 ${s.color}`} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue by Category Breakdown */}
+          <div className="p-6 rounded-3xl bg-[#0d1627] border border-white/10 shadow-xl space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Revenue by Product Stream ({range.toUpperCase()})
+            </h4>
+            <div className="space-y-3 pt-2">
+              {analytics?.revenueByCategory?.length === 0 ? (
+                <p className="text-xs text-slate-500 italic py-8 text-center">No transaction records in this timeframe.</p>
+              ) : (
+                analytics?.revenueByCategory?.map((item: any) => (
+                  <div key={item.type} className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-slate-300">{item.type.replace("_", " ")}</span>
+                      <span className="text-emerald-400 font-bold">₹{item.total.toLocaleString("en-IN")} ({item.transactions} orders)</span>
                     </div>
-                    <div>
-                      <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
-                      <p className="text-xs font-semibold text-slate-300 mt-0.5">{s.label}</p>
-                      <p className="text-[10px] text-slate-500">{s.sub}</p>
+                    <div className="w-full h-2.5 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                        style={{ width: `${Math.min(100, Math.max(15, (item.total / (stats?.totalRevenue || 1)) * 100))}%` }}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Pending alert */}
-              {pendingUsers.length > 0 && (
-                <div className="rounded-2xl bg-amber-500/10 border border-amber-500/25 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
-                      <Clock className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-amber-200 text-sm">
-                        {pendingUsers.length} Application{pendingUsers.length > 1 ? "s" : ""} Awaiting Review
-                      </p>
-                      <p className="text-xs text-amber-400">
-                        Host and partner accounts need admin approval before they can log in.
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => navigate("approvals")} className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition shrink-0">
-                    Review Now →
-                  </button>
-                </div>
+                ))
               )}
+            </div>
+          </div>
 
-              {/* Two-col preview */}
-              <div className="grid lg:grid-cols-2 gap-6">
-
-                {/* Recent events */}
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-white text-sm">Recent Events</h3>
-                    <button onClick={() => navigate("events")} className="text-[11px] text-[#e06d53] hover:underline flex items-center gap-1">
-                      View all <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+          {/* Top Cities Distribution */}
+          <div className="p-6 rounded-3xl bg-[#0d1627] border border-white/10 shadow-xl space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Geographical Distribution (Top Cities)
+            </h4>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              {analytics?.cityDistribution?.map((c: any) => (
+                <div key={c.city} className="p-3.5 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span className="text-xs font-bold text-white capitalize">{c.city}</span>
                   </div>
-                  <div className="space-y-2.5">
-                    {eventsData.slice(0, 5).map((evt) => {
-                      const booked = (evt.bookings || []).filter((b: any) => b.status !== "CANCELLED").length;
-                      return (
-                        <div key={evt.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/3 hover:bg-white/5 transition">
-                          <div className="w-8 h-8 rounded-lg bg-[#e06d53]/15 flex items-center justify-center shrink-0">
-                            <Calendar className="w-4 h-4 text-[#e06d53]" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-white text-xs truncate">{evt.title}</p>
-                            <p className="text-[11px] text-slate-400">{evt.category} · {evt.city}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-xs font-bold text-amber-300">{evt.price > 0 ? `₹${evt.price}` : "Free"}</p>
-                            <p className="text-[10px] text-slate-500">{booked}/{evt.maxAttendees}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {eventsData.length === 0 && <p className="text-slate-500 text-xs italic text-center py-4">No events yet.</p>}
-                  </div>
+                  <span className="text-xs font-extrabold text-slate-300 px-2 py-0.5 rounded-full bg-white/10">
+                    {c.count}
+                  </span>
                 </div>
 
                 {/* Recent RSVPs */}
@@ -553,265 +588,379 @@ export default function AdminDashboardPage() {
                 </div>
               )}
             </div>
-          )}
-
-          {/* ── EVENTS ───────────────────────────────────────────────────── */}
-          {activeSection === "events" && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Platform Events</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">{eventsData.length} event{eventsData.length !== 1 ? "s" : ""} published</p>
-                </div>
-                <Link href="/host/dashboard" className="self-start sm:self-auto px-4 py-2 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold transition shadow-md">
-                  + Create Event
-                </Link>
-              </div>
-
-              {eventsData.length === 0 ? (
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-16 text-center">
-                  <Calendar className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400 text-sm">No events published yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {eventsData.map((evt) => {
-                    const booked = (evt.bookings || []).filter((b: any) => b.status !== "CANCELLED").length;
-                    const fillPct = Math.min(100, (booked / (evt.maxAttendees || 50)) * 100);
-                    return (
-                      <div key={evt.id} className="rounded-2xl bg-[#131d2e] border border-white/10 hover:border-white/20 transition p-5 flex flex-col md:flex-row md:items-center gap-5">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/25">{evt.category}</span>
-                            {evt.host && <span className="text-[10px] text-slate-400">by <strong className="text-slate-200">{evt.host.name}</strong></span>}
-                          </div>
-                          <h3 className="font-bold text-white text-sm">{evt.title}</h3>
-                          <div className="flex flex-wrap gap-3 mt-1.5 text-[11px] text-slate-400">
-                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{evt.city} · {evt.location}</span>
-                            <span>📅 {new Date(evt.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                            <span className="font-bold text-amber-300">{evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Free"}</span>
-                          </div>
-                        </div>
-                        <div className="shrink-0 w-full md:w-44 space-y-1.5">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-slate-400">Capacity</span>
-                            <span className="font-bold text-white">{booked}/{evt.maxAttendees}</span>
-                          </div>
-                          <div className="h-1.5 bg-[#0b111e] rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${fillPct >= 90 ? "bg-red-500" : fillPct >= 60 ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${fillPct}%` }} />
-                          </div>
-                          <p className="text-[10px] text-slate-500">{Math.round(fillPct)}% filled</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── BOOKINGS ─────────────────────────────────────────────────── */}
-          {activeSection === "bookings" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">Attendee RSVPs</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{recentBookings.length} reservation{recentBookings.length !== 1 ? "s" : ""} across all events</p>
-              </div>
-
-              {/* Status chips */}
-              <div className="flex flex-wrap gap-3">
-                {(["CONFIRMED", "CHECKED_IN", "CANCELLED"] as const).map((s) => {
-                  const cnt = recentBookings.filter((b) => b.status === s).length;
-                  return (
-                    <div key={s} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#131d2e] border border-white/10 text-xs font-semibold">
-                      <StatusBadge status={s} />
-                      <span className="text-white">{cnt}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {recentBookings.length === 0 ? (
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-16 text-center">
-                  <UserCheck className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400 text-sm">No RSVPs recorded yet.</p>
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
-                      <thead>
-                        <tr className="bg-[#0b111e] text-slate-400 text-[10px] uppercase tracking-widest border-b border-white/10">
-                          <th className="px-5 py-3.5">Attendee</th>
-                          <th className="px-5 py-3.5">Event</th>
-                          <th className="px-5 py-3.5">Spots</th>
-                          <th className="px-5 py-3.5">Amount</th>
-                          <th className="px-5 py-3.5">Status</th>
-                          <th className="px-5 py-3.5">Booked At</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {recentBookings.map((b) => (
-                          <tr key={b.id} className="hover:bg-white/[0.02] transition">
-                            <td className="px-5 py-3.5">
-                              <p className="font-bold text-white">{b.user?.name}</p>
-                              <p className="text-[11px] text-slate-500">{b.user?.email}</p>
-                            </td>
-                            <td className="px-5 py-3.5">
-                              <p className="font-semibold text-white">{b.event?.title}</p>
-                              <p className="text-[11px] text-slate-500">{b.event?.category} · {b.event?.city}</p>
-                            </td>
-                            <td className="px-5 py-3.5 font-bold text-white">{b.spots}</td>
-                            <td className="px-5 py-3.5 font-bold text-amber-300">₹{(b.totalAmount || 0).toLocaleString("en-IN")}</td>
-                            <td className="px-5 py-3.5"><StatusBadge status={b.status} /></td>
-                            <td className="px-5 py-3.5 text-slate-400">
-                              {new Date(b.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── APPROVALS ────────────────────────────────────────────────── */}
-          {activeSection === "approvals" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">Staff & Host Approvals</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Review and approve pending Host, Relationship Manager, and Breakup Buddy accounts
-                </p>
-              </div>
-
-              {pendingUsers.length === 0 ? (
-                <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-16 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="w-7 h-7 text-emerald-400" />
-                  </div>
-                  <h3 className="text-white font-bold text-lg mb-1">All Clear!</h3>
-                  <p className="text-slate-400 text-sm">No pending applications right now.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingUsers.map((p) => (
-                    <div key={p.id} className="rounded-2xl bg-[#131d2e] border border-white/10 hover:border-white/20 transition p-6">
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-5">
-                        <div className="flex-1 min-w-0 space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center font-bold text-amber-300 text-sm shrink-0">
-                              {getInitials(p.name)}
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-white text-base leading-tight">{p.name}</h3>
-                              <RoleBadge role={p.role} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-slate-400">
-                            <span>📧 {p.email}</span>
-                            <span>📞 {p.phone}</span>
-                            <span>🕐 Applied {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                          </div>
-                          {(p.govIdProof || p.addressProof || p.eduCertificate || p.workExperience || p.idDocument) && (
-                            <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                              <p className="w-full text-[10px] text-slate-500 font-bold uppercase tracking-wider">Submitted Documents</p>
-                              {p.govIdProof && <a href={`/uploads/${p.govIdProof}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">📄 Govt ID</a>}
-                              {p.addressProof && <a href={`/uploads/${p.addressProof}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">📄 Address Proof</a>}
-                              {p.eduCertificate && <a href={`/uploads/${p.eduCertificate}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">📄 Education</a>}
-                              {p.workExperience && <a href={`/uploads/${p.workExperience}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">📄 Work Exp</a>}
-                              {p.idDocument && <a href={`/uploads/${p.idDocument}`} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">📄 {p.idType || "ID"}</a>}
-                            </div>
-                          )}
-                        </div>
-                        <div className="shrink-0">
-                          <button onClick={() => approveUser(p.id)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition shadow-lg">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Approve
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── ALL USERS ─────────────────────────────────────────────────── */}
-          {activeSection === "users" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">All Users</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{adminStats.totalUsers} account{adminStats.totalUsers !== 1 ? "s" : ""} registered on the platform</p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { role: "USER", label: "Members", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-                  { role: "HOST", label: "Event Hosts", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
-                  { role: "MATCHMAKER", label: "Rel. Managers", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-                  { role: "BREAKUP_BUDDY", label: "Breakup Buddies", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
-                ].map((r) => (
-                  <div key={r.role} className={`rounded-2xl ${r.bg} border ${r.border} p-4 text-center space-y-1`}>
-                    <RoleBadge role={r.role} />
-                    <p className="text-xs text-slate-400">{r.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-2xl bg-[#131d2e] border border-white/10 overflow-hidden">
-                <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-                  <h3 className="font-bold text-white text-sm">Active Attendees</h3>
-                  <span className="text-[11px] text-slate-400">{recentBookings.length} booking records</span>
-                </div>
-                {recentBookings.length === 0 ? (
-                  <div className="p-10 text-center">
-                    <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                    <p className="text-slate-500 text-xs">No booking activity yet.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
-                      <thead>
-                        <tr className="bg-[#0b111e] text-slate-400 text-[10px] uppercase tracking-widest border-b border-white/10">
-                          <th className="px-5 py-3.5">Name</th>
-                          <th className="px-5 py-3.5">Email</th>
-                          <th className="px-5 py-3.5">Phone</th>
-                          <th className="px-5 py-3.5">City</th>
-                          <th className="px-5 py-3.5">Last Booking</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {Array.from(new Map(recentBookings.map((b) => [b.user?.id, b])).values()).map((b) => (
-                          <tr key={b.user?.id} className="hover:bg-white/[0.02] transition">
-                            <td className="px-5 py-3.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-[10px] shrink-0">
-                                  {getInitials(b.user?.name || "?")}
-                                </div>
-                                <span className="font-bold text-white">{b.user?.name}</span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-3.5 text-slate-400">{b.user?.email}</td>
-                            <td className="px-5 py-3.5 text-slate-400">{b.user?.phone}</td>
-                            <td className="px-5 py-3.5 text-slate-400">{b.user?.city || "—"}</td>
-                            <td className="px-5 py-3.5 text-slate-500">
-                              {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </main>
+          </div>
+        </div>
       </div>
+
+      {/* CREATE EVENT MODAL */}
+      {activeModal === "event" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-xl bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h3 className="text-lg font-bold text-white">Create New Real-World Event</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateEvent} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Event Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rooftop Singles Mixer & Cocktails"
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Category *</label>
+                  <select
+                    value={eventForm.category}
+                    onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  >
+                    <option value="Singles Events">Singles Mixer</option>
+                    <option value="Speed Dating">Speed Dating</option>
+                    <option value="Blind Dates">Blind Date</option>
+                    <option value="Dance Dates">Dance Date</option>
+                    <option value="Singles Travel">Singles Travel</option>
+                    <option value="Breakup Community">Breakup Community</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">City *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Mumbai, Bangalore"
+                    value={eventForm.city}
+                    onChange={(e) => setEventForm({ ...eventForm, city: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Venue Location *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sky Lounge, Indiranagar"
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={eventForm.date}
+                    onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Ticket Price (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={eventForm.price}
+                    onChange={(e) => setEventForm({ ...eventForm, price: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Capacity</label>
+                  <input
+                    type="number"
+                    min="5"
+                    value={eventForm.maxAttendees}
+                    onChange={(e) => setEventForm({ ...eventForm, maxAttendees: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Event Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Detailed breakdown of the experience, dress code, icebreakers..."
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition disabled:opacity-50"
+                >
+                  {modalLoading ? "Publishing..." : "Publish Event"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE PACKAGE MODAL */}
+      {activeModal === "package" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h3 className="text-lg font-bold text-white">Create Service Package</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePackage} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Service Type</label>
+                  <select
+                    value={packageForm.type}
+                    onChange={(e) => setPackageForm({ ...packageForm, type: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  >
+                    <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
+                    <option value="BREAKUP_BUDDY">Breakup Buddy</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Package Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. VIP Harmony Circle"
+                    value={packageForm.name}
+                    onChange={(e) => setPackageForm({ ...packageForm, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={packageForm.price}
+                    onChange={(e) => setPackageForm({ ...packageForm, price: Number(e.target.value) })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
+                  <select
+                    value={packageForm.billingCycle}
+                    onChange={(e) => setPackageForm({ ...packageForm, billingCycle: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="PER_SESSION">Per Session</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={packageForm.description}
+                  onChange={(e) => setPackageForm({ ...packageForm, description: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50"
+                >
+                  {modalLoading ? "Creating..." : "Save Package"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE COUPON MODAL */}
+      {activeModal === "coupon" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h3 className="text-lg font-bold text-white">Create Promotional Coupon</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCoupon} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Coupon Code</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. SUMMERLOVE25"
+                  value={couponForm.code}
+                  onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white uppercase font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Discount Type</label>
+                  <select
+                    value={couponForm.discountType}
+                    onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  >
+                    <option value="PERCENTAGE">Percentage (%)</option>
+                    <option value="FIXED">Flat Amount (₹)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Discount Amount</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={couponForm.discountAmount}
+                    onChange={(e) => setCouponForm({ ...couponForm, discountAmount: Number(e.target.value) })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="px-6 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition disabled:opacity-50"
+                >
+                  {modalLoading ? "Saving..." : "Create Coupon"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SEND ANNOUNCEMENT MODAL */}
+      {activeModal === "announcement" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h3 className="text-lg font-bold text-white">Broadcast Platform Announcement</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendAnnouncement} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Target Audience</label>
+                <select
+                  value={announcementForm.targetAudience}
+                  onChange={(e) => setAnnouncementForm({ ...announcementForm, targetAudience: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                >
+                  <option value="All Users">All Verified Users</option>
+                  <option value="Event Attendees">Upcoming Event Attendees</option>
+                  <option value="RM Subscribers">Relationship Manager Subscribers</option>
+                  <option value="Buddy Subscribers">Breakup Buddy Community</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Headline / Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. New Singles Mixers Announced for Bangalore & Mumbai!"
+                  value={announcementForm.title}
+                  onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Message Content *</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Compose notification text..."
+                  value={announcementForm.message}
+                  onChange={(e) => setAnnouncementForm({ ...announcementForm, message: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="px-6 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{modalLoading ? "Broadcasting..." : "Send Announcement"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -15,6 +15,8 @@ function RegisterContent() {
     const urlRole = searchParams.get("role");
     if (urlRole === "MATCHMAKER" || urlRole === "BREAKUP_BUDDY" || urlRole === "USER" || urlRole === "HOST") {
       setRole(urlRole);
+    } else if (urlRole === "EVENT_MANAGER" || urlRole === "EVENT_HOST") {
+      setRole("HOST");
     }
   }, [searchParams]);
 
@@ -118,8 +120,12 @@ function RegisterContent() {
           setPendingApproval(true);
           setSuccess(true);
         } else {
-          setRedirectTarget(data.redirectUrl || (role === "HOST" ? "/host/dashboard" : "/dashboard"));
+          const target = data.redirectUrl || (role === "HOST" ? "/host/dashboard" : "/dashboard");
+          setRedirectTarget(target);
           setSuccess(true);
+          setTimeout(() => {
+            router.push(target);
+          }, 800);
         }
       } else {
         setError(data.message || "Registration failed. Please check your inputs.");
@@ -272,7 +278,7 @@ function RegisterContent() {
                   onClick={() => router.push(redirectTarget)}
                   className="w-full py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-semibold text-xs transition shadow-lg"
                 >
-                  CONTINUE TO DASHBOARD
+                  {role === "HOST" ? "CONTINUE TO EVENT MANAGER DASHBOARD" : "CONTINUE TO DASHBOARD"}
                 </button>
               </div>
             )}

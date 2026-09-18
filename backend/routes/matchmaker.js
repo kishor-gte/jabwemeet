@@ -183,6 +183,8 @@ router.get('/requests', async (req, res) => {
     const where = {};
     if (status && status !== 'all') {
       where.status = status;
+    } else {
+      where.status = { not: 'Approved' };
     }
 
     const requests = await prisma.matchmakingRequest.findMany({
@@ -288,6 +290,51 @@ router.get('/requests', async (req, res) => {
   }
 });
 
+// GET /api/matchmaker/clients
+// Fetch all clients assigned to this matchmaker
+router.get('/clients', async (req, res) => {
+  try {
+    const matchmakerId = req.user.userId;
+
+    const assignedClients = await prisma.user.findMany({
+      where: {
+        assignedManagerId: matchmakerId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        profileImage: true,
+        dateOfBirth: true,
+        city: true,
+        gender: true,
+        relationshipIntent: true,
+        isVerified: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const formattedClients = assignedClients.map(c => {
+      const age = c.dateOfBirth ? Math.floor((new Date() - new Date(c.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+      return {
+        ...c,
+        age,
+        status: c.isVerified ? 'Active' : 'In Progress'
+      };
+    });
+
+    return res.json({
+      success: true,
+      clients: formattedClients,
+    });
+  } catch (error) {
+    console.error('Error fetching assigned clients:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load clients' });
+  }
+});
+
 // PATCH /api/matchmaker/requests/:id
 // Update request status (e.g. Approved, Rejected) and sync client's assignedManagerId
 router.patch('/requests/:id', async (req, res) => {
@@ -380,6 +427,213 @@ router.delete('/requests/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting request:', error);
     return res.status(500).json({ success: false, message: 'Failed to delete request' });
+  }
+});
+
+// GET /api/matchmaker/clients/:id/compatibility
+// Check AI compatibility with other active users
+router.get('/clients/:id/compatibility', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!client) {
+      return res.status(404).json({ success: false, message: 'Client not found' });
+    }
+
+    // Fetch all other users (for demo, just fetch everyone else)
+      const oppositeGender = client.gender?.toLowerCase() === 'male' ? 'Female' : 
+                             client.gender?.toLowerCase() === 'female' ? 'Male' : undefined;
+
+      const whereClause = {
+        id: { not: id },
+        role: 'USER',
+      };
+
+      if (oppositeGender) {
+        // Prisma might not support mode: 'insensitive' on sqlite, but this is postgres so it does. 
+        // For simplicity, we can do a simple equals since data is likely 'Male' or 'Female'.
+        // To be safe against case issues, let's just use the exact string, assuming standard casing.
+      }
+
+      const otherUsers = await prisma.user.findMany({
+        where: oppositeGender ? {
+          id: { not: id },
+          role: 'USER',
+          gender: {
+            equals: oppositeGender,
+            mode: 'insensitive'
+          }
+        } : {
+          id: { not: id },
+          role: 'USER',
+          gender: { not: client.gender }
+        },
+      select: {
+        id: true,
+        name: true,
+        gender: true,
+        city: true,
+        dateOfBirth: true,
+        relationshipIntent: true,
+        profileImage: true,
+      },
+      take: 15
+    });
+
+    if (otherUsers.length === 0) {
+      return res.json({ success: true, matches: [] });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      // Mock response if no API key
+      const mockMatches = otherUsers.slice(0, 3).map((u, i) => ({
+        id: u.id,
+        name: u.name,
+        profileImage: u.profileImage,
+        score: 95 - (i * 5),
+        reason: 'Mock compatibility reason due to missing GEMINI_API_KEY.'
+      }));
+      return res.json({ success: true, matches: mockMatches });
+    }
+
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const clientProfile = `Name: ${client.name}, Gender: ${client.gender}, City: ${client.city}, Intent: ${client.relationshipIntent}`;
+    const candidates = otherUsers.map(u => `ID: ${u.id}, Name: ${u.name}, Gender: ${u.gender}, City: ${u.city}, Intent: ${u.relationshipIntent}`).join('\n');
+
+    const prompt = `
+You are an expert matchmaker AI. Analyze the compatibility between the following client and a list of candidates.
+Return the top 3 most compatible candidates as a JSON array.
+Each object in the array should have:
+- "id": The ID of the candidate
+- "score": A compatibility score from 0 to 100
+- "reason": A short 1-sentence reason for why they match well.
+
+Client:
+${clientProfile}
+
+Candidates:
+${candidates}
+
+Respond ONLY with valid JSON (an array of objects).
+`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+
+    const matchesJson = JSON.parse(response.text);
+
+    // Merge in profile images
+    const enrichedMatches = matchesJson.map(m => {
+      const u = otherUsers.find(ou => ou.id === m.id);
+      return {
+        ...m,
+        name: u?.name || 'Unknown',
+        profileImage: u?.profileImage || null
+      };
+    });
+
+    const existingConns = await prisma.matchSuggestion.findMany({ where: { OR: [ { clientId: id }, { suggestedProfileId: id } ] } }); const finalMatches = enrichedMatches.map(m => ({ ...m, isConnected: existingConns.some(c => (c.clientId === id && c.suggestedProfileId === m.id) || (c.clientId === m.id && c.suggestedProfileId === id)) })); return res.json({ success: true, matches: finalMatches });
+
+  } catch (error) {
+    console.error('Error in AI compatibility:', error);
+    return res.status(500).json({ success: false, message: 'AI compatibility check failed' });
+  }
+});
+
+// Create a new MatchSuggestion
+router.post('/suggestions', async (req, res) => {
+  try {
+    const { clientId, suggestedProfileId, matchmakerId } = req.body;
+    
+    // Check if already suggested
+    const existing = await prisma.matchSuggestion.findFirst({
+      where: {
+        OR: [
+          { clientId, suggestedProfileId },
+          { clientId: suggestedProfileId, suggestedProfileId: clientId }
+        ]
+      }
+    });
+
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'These profiles have already been connected.' });
+    }
+
+    const suggestion = await prisma.matchSuggestion.create({
+      data: {
+        matchmakerId,
+        clientId,
+        suggestedProfileId,
+        status: 'Pending',
+        clientStatus: 'Pending',
+        suggestedStatus: 'Pending'
+      }
+    });
+
+    res.json({ success: true, suggestion });
+  } catch (error) {
+    console.error('Error creating suggestion:', error);
+    res.status(500).json({ success: false, message: 'Failed to create connection request.' });
+  }
+});
+
+// Get all suggestions created by the matchmaker
+router.get('/connections', async (req, res) => {
+  try {
+    // Ideally use req.user.id but for this matchmaker route we might rely on the token or pass ID.
+    // In this codebase, it seems matchmaker is assumed or we can pass matchmakerId. Let's just fetch all or pass ?matchmakerId=...
+    const { matchmakerId } = req.query;
+    if (!matchmakerId) {
+      return res.status(400).json({ success: false, message: 'matchmakerId required' });
+    }
+
+    const connections = await prisma.matchSuggestion.findMany({
+      where: { matchmakerId },
+      include: {
+        client: { select: { id: true, name: true, profileImage: true, phone: true } },
+        suggestedProfile: { select: { id: true, name: true, profileImage: true, phone: true } }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    res.json({ success: true, connections });
+  } catch (error) {
+    console.error('Error fetching connections:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch connections' });
+  }
+});
+
+// Set a date for a BothApproved connection
+router.put('/connections/:id/date', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { meetingDate, meetingMessage, meetingLocation, meetingVenue } = req.body;
+
+    const connection = await prisma.matchSuggestion.update({
+      where: { id },
+      data: {
+        status: 'DateFixed',
+        meetingDate: new Date(meetingDate),
+        meetingLocation,
+        meetingVenue,
+        meetingMessage: meetingMessage || 'Your first date is on us! Try it for free!'
+      }
+    });
+
+    res.json({ success: true, connection });
+  } catch (error) {
+    console.error('Error setting date:', error);
+    res.status(500).json({ success: false, message: 'Failed to set date.' });
   }
 });
 

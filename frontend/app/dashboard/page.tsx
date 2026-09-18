@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Menu, LogOut, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
+import { Menu, LogOut, ShieldCheck, AlertCircle, RefreshCw, Megaphone, X } from "lucide-react";
 
 import DashboardSidebar from "./components/DashboardSidebar";
 import DashboardHeader from "./components/DashboardHeader";
@@ -33,6 +33,16 @@ interface UserProfile {
   dateOfBirth?: string;
 }
 
+interface AnnouncementItem {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  targetAudience: string;
+  sentBy: string;
+  sentAt: string;
+}
+
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,6 +50,8 @@ function DashboardContent() {
   // Dynamic user & event state
   const [user, setUser] = useState<UserProfile | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -128,19 +140,18 @@ function DashboardContent() {
             }
           }
 
-          const savedConns = localStorage.getItem(`jwm_conns_${data.user.id}`);
-          if (savedConns) {
-            try {
-              setConnections(JSON.parse(savedConns));
-            } catch (e) {}
-          }
-
-          const savedServices = localStorage.getItem(`jwm_services_${data.user.id}`);
-          if (savedServices) {
-            try {
-              setServiceRequests(JSON.parse(savedServices));
-            } catch (e) {}
-          }
+          // Load real-time connections from backend
+          try {
+            const connRes = await fetch("/api/auth/connections", {
+              credentials: "include",
+            });
+            if (connRes.ok) {
+              const connData = await connRes.json();
+              if (connData.success && Array.isArray(connData.connections)) {
+                setConnections(connData.connections);
+              }
+            }
+          } catch (e) {}
 
           // Load real-time matchmaking status from backend
           try {
@@ -181,6 +192,17 @@ function DashboardContent() {
         } catch (e) {
           setEvents([]);
         }
+
+        // Fetch platform announcements & broadcasts
+        try {
+          const notifRes = await fetch("/api/notifications");
+          if (notifRes.ok) {
+            const notifData = await notifRes.json();
+            if (notifData.success && Array.isArray(notifData.announcements)) {
+              setAnnouncements(notifData.announcements);
+            }
+          }
+        } catch (e) {}
       } catch (err) {
         console.error("Failed to load dashboard:", err);
         setError("Unable to load dashboard data right now. Please check your connection.");
@@ -280,19 +302,24 @@ function DashboardContent() {
     setTimeout(() => setReservationToast(null), 3500);
   };
 
-  // Handle Connecting with a Peer
-  const handleAddConnection = (newConn: ConnectionItem) => {
-    if (!user) return;
-    const exists = connections.some((c) => c.id === newConn.id);
-    if (exists) return;
-    const updated = [...connections, newConn];
-    setConnections(updated);
+  // Handle Update Connection
+  const handleUpdateConnection = async (id: string, action: "Approve" | "Reject") => {
     try {
-      localStorage.setItem(`jwm_conns_${user.id}`, JSON.stringify(updated));
-    } catch (e) {}
-
-    setReservationToast(`Connection request sent to ${newConn.name}!`);
-    setTimeout(() => setReservationToast(null), 4000);
+      const res = await fetch(`/api/auth/connections/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConnections(connections.map(c => c.id === id ? { ...c, ...data.connection } : c));
+        setReservationToast(action === 'Approve' ? 'Connection Approved!' : 'Passed on connection.');
+        setTimeout(() => setReservationToast(null), 4000);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Handle Requesting Premium Services
@@ -433,6 +460,7 @@ function DashboardContent() {
         connectionsCount={connections.length}
         notificationsCount={
           registeredEvents.length +
+          announcements.length +
           (serviceRequests.relationshipManager ? 1 : 0) +
           (serviceRequests.breakupBuddy ? 1 : 0)
         }
@@ -451,6 +479,55 @@ function DashboardContent() {
           {/* TAB 1: MAIN DASHBOARD OVERVIEW */}
           {activeSection === "dashboard" && (
             <>
+              {/* Broadcast Announcement Banner */}
+              {announcements.length > 0 && !dismissedAnnouncement && (
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-500/20 via-[#162238] to-[#101a2c] border border-amber-500/40 p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+                  <div className="flex items-start sm:items-center gap-3.5">
+                    <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 shadow-inner">
+                      <Megaphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-200 border border-amber-500/40 tracking-wider">
+                          Platform Announcement
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {new Date(announcements[0].sentAt).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-white mt-1">
+                        {announcements[0].title}
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
+                        {announcements[0].message}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+                    <button
+                      onClick={() => {
+                        setActiveSection("notifications");
+                        window.history.replaceState(null, "", "/dashboard?tab=notifications");
+                      }}
+                      className="text-xs font-bold text-amber-200 hover:text-white px-3.5 py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-500/40 transition cursor-pointer"
+                    >
+                      View in Notifications
+                    </button>
+                    <button
+                      onClick={() => setDismissedAnnouncement(true)}
+                      title="Dismiss announcement banner"
+                      className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Dynamic Header Greeting */}
               <DashboardHeader
                 user={user}
@@ -527,11 +604,12 @@ function DashboardContent() {
 
               {/* Dynamic Connections Section */}
               <ConnectionsSection
+                userId={user.id}
                 connections={connections}
                 userCity={user.city}
                 registeredEventsCount={registeredEvents.length}
                 onExploreEvents={() => scrollToElement("events")}
-                onAddConnection={handleAddConnection}
+                onUpdateConnection={handleUpdateConnection}
               />
 
               {/* Dynamic Activity & Notifications */}
@@ -542,6 +620,11 @@ function DashboardContent() {
                 registeredEvents={registeredEvents}
                 serviceRequests={serviceRequests}
                 connectionRequestsCount={connections.length}
+                announcements={announcements}
+                onViewAllNotifications={() => {
+                  setActiveSection("notifications");
+                  window.history.replaceState(null, "", "/dashboard?tab=notifications");
+                }}
               />
             </>
           )}
@@ -580,6 +663,7 @@ function DashboardContent() {
           {/* TAB 4: MY CONNECTIONS */}
           {activeSection === "connections" && (
             <ConnectionsSection
+              userId={user.id}
               connections={connections}
               userCity={user.city}
               registeredEventsCount={registeredEvents.length}
@@ -587,7 +671,7 @@ function DashboardContent() {
                 setActiveSection("events");
                 window.history.replaceState(null, "", "/dashboard?tab=events");
               }}
-              onAddConnection={handleAddConnection}
+              onUpdateConnection={handleUpdateConnection}
             />
           )}
 
@@ -610,6 +694,7 @@ function DashboardContent() {
               registeredEvents={registeredEvents}
               hasRelationshipManagerReq={serviceRequests.relationshipManager}
               hasBreakupBuddyReq={serviceRequests.breakupBuddy}
+              announcements={announcements}
             />
           )}
 

@@ -329,7 +329,16 @@ export default function RelationshipManagerPage() {
         connectionsCount={badgeCounts.connectionsCount}
         notificationsCount={badgeCounts.notificationsCount}
         onSelectSection={(sec) => {
-          router.push(sec === "dashboard" ? "/dashboard" : `/dashboard?tab=${sec}`);
+          if (sec === "dashboard") {
+            const dashUrl = currentUser?.role === 'ADMIN' ? '/admin' :
+                            currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
+                            currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
+                            currentUser?.role === 'HOST' ? '/host/dashboard' :
+                            '/dashboard';
+            router.push(dashUrl);
+          } else {
+            router.push(`/dashboard?tab=${sec}`);
+          }
         }}
         onLogout={handleLogout}
         mobileOpen={mobileSidebarOpen}
@@ -342,7 +351,13 @@ export default function RelationshipManagerPage() {
         <div className="bg-[#0d1526]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href={
+                currentUser?.role === 'ADMIN' ? '/admin' :
+                currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
+                currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
+                currentUser?.role === 'HOST' ? '/host/dashboard' :
+                '/dashboard'
+              }
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-[#e06d53]" />

@@ -265,7 +265,7 @@ router.get("/my-matchmaking-requests", authenticateToken, async (req, res) => {
 router.post("/buddy-request", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { buddyId, sessionFormat, preferredMode, notes } = req.body;
+    const { buddyId, sessionFormat, notes } = req.body;
 
     if (!buddyId) {
       return res
@@ -286,12 +286,14 @@ router.post("/buddy-request", authenticateToken, async (req, res) => {
         });
     }
 
+    const format = sessionFormat === "Voice Call" ? "Voice Call" : "Chat";
+
     const request = await prisma.buddyRequest.create({
       data: {
         userId,
         buddyId,
-        sessionType: preferredMode || "Private Voice Call",
-        topic: notes ? `${sessionFormat} | ${notes}` : sessionFormat,
+        sessionType: format,
+        topic: notes ? notes.trim() : `1-on-1 ${format} Support Session`,
         status: "Pending",
       },
     });
@@ -309,4 +311,230 @@ router.post("/buddy-request", authenticateToken, async (req, res) => {
   }
 });
 
+// 6. GET /api/services/my-buddy-requests
+// Fetch all buddy requests made by the logged-in user
+router.get("/my-buddy-requests", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const requests = await prisma.buddyRequest.findMany({
+      where: { userId },
+      include: {
+        buddy: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            email: true,
+            phone: true,
+            city: true,
+            profilePhoto: true,
+            shortBio: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json({
+      success: true,
+      data: requests,
+    });
+  } catch (error) {
+    console.error("Error fetching user buddy requests:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user buddy requests.",
+    });
+  }
+});
+// 7. GET /api/services/buddy-chat/:requestId — fetch messages (user side)
+router.get("/buddy-chat/:requestId", authenticateToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user.userId;
+
+    const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const messages = await prisma.buddyMessage.findMany({
+      where: { requestId },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ 
+      success: true, 
+      data: messages, 
+      timeUsedSeconds: request.timeUsedSeconds, 
+      chatLimitSeconds: request.chatLimitSeconds,
+      voiceCallSeconds: request.voiceCallSeconds,
+      voiceCallLimitSeconds: request.voiceCallLimitSeconds
+    });
+  } catch (error) {
+    console.error('Error fetching chat messages:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  }
+});
+
+// 7b. POST /api/services/buddy-away/:requestId — instantly mark away
+router.post("/buddy-away/:requestId", authenticateToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    await prisma.buddyPresence.updateMany({
+      where: { requestId, role: 'USER' },
+      data: { lastSeen: new Date(Date.now() - 60000) }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// 7c. POST /api/services/buddy-subscribe/:requestId — Dummy Payment Success
+router.post("/buddy-subscribe/:requestId", authenticateToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { type, durationSeconds } = req.body || { type: 'chat', durationSeconds: 3600 }; // fallback 1 hour
+    
+    // Reset limits upon dummy payment
+    const updateData = {};
+    if (type === 'voice') {
+      updateData.voiceCallSeconds = 0;
+      updateData.voiceCallLimitSeconds = durationSeconds;
+    } else {
+      updateData.timeUsedSeconds = 0;
+      updateData.chatLimitSeconds = durationSeconds;
+    }
+
+    await prisma.buddyRequest.update({
+      where: { id: requestId },
+      data: updateData
+    });
+
+    const updatedRequest = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+
+    res.json({ 
+      success: true, 
+      message: "Payment successful and limits upgraded",
+      data: updatedRequest
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// 8. POST /api/services/buddy-chat/:requestId — send message (user side)
+router.post("/buddy-chat/:requestId", authenticateToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { text } = req.body;
+    const userId = req.user.userId;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ success: false, message: 'Message text required' });
+    }
+
+    const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const message = await prisma.buddyMessage.create({
+      data: {
+        requestId,
+        senderId: userId,
+        senderRole: 'USER',
+        text: text.trim(),
+      },
+    });
+    res.json({ success: true, data: message });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ success: false, message: 'Failed to send message' });
+  }
+});
+
+// 9. POST /api/services/buddy-presence/:requestId — heartbeat (user side)
+router.post("/buddy-presence/:requestId", authenticateToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user.userId;
+
+    let request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await prisma.buddyPresence.upsert({
+      where: { requestId_role: { requestId, role: 'USER' } },
+      update: { lastSeen: new Date() },
+      create: { requestId, role: 'USER', lastSeen: new Date() },
+    });
+
+    const buddyPresence = await prisma.buddyPresence.findUnique({
+      where: { requestId_role: { requestId, role: 'BUDDY' } },
+    });
+    const threshold = new Date(Date.now() - 15000); // 15s threshold
+    const buddyActive = buddyPresence && buddyPresence.lastSeen > threshold;
+
+    if (buddyActive && request.timeUsedSeconds < request.chatLimitSeconds) {
+      request = await prisma.buddyRequest.update({
+        where: { id: requestId },
+        data: { timeUsedSeconds: { increment: 5 } }
+      });
+    }
+
+    res.json({ success: true, data: { bothActive: buddyActive, timeUsedSeconds: request.timeUsedSeconds, chatLimitSeconds: request.chatLimitSeconds } });
+  } catch (error) {
+    console.error('Presence error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// 10. GET /api/services/buddy-presence/:requestId — check presence (user side)
+router.get("/buddy-presence/:requestId", authenticateToken, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user.userId;
+
+    const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+    if (!request || request.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const threshold = new Date(Date.now() - 30000);
+    const [userPresence, buddyPresence] = await Promise.all([
+      prisma.buddyPresence.findUnique({ where: { requestId_role: { requestId, role: 'USER' } } }),
+      prisma.buddyPresence.findUnique({ where: { requestId_role: { requestId, role: 'BUDDY' } } }),
+    ]);
+
+    const userActive = userPresence && userPresence.lastSeen > threshold;
+    const buddyActive = buddyPresence && buddyPresence.lastSeen > threshold;
+
+    res.json({ success: true, data: { userActive: !!userActive, buddyActive: !!buddyActive, bothActive: !!(userActive && buddyActive) } });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// 11. GET /api/notifications
+// Fetch active platform announcements & broadcasts for users
+router.get("/notifications", async (req, res) => {
+  try {
+    const announcements = await prisma.$queryRawUnsafe(`
+      SELECT "id", "title", "message", "type", "targetAudience", "sentBy", "sentAt"
+      FROM "NotificationAnnouncement"
+      ORDER BY "sentAt" DESC
+      LIMIT 25
+    `);
+    return res.json({ success: true, announcements });
+  } catch (error) {
+    console.error("Error fetching user announcements:", error);
+    return res.status(500).json({ success: false, announcements: [] });
+  }
+});
+
 module.exports = router;
+
