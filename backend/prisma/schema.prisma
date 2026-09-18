@@ -72,6 +72,8 @@ model User {
   buddyReviewsGiven      BuddyReview[]   @relation("BuddyReviewsUser")
   buddyReviewsReceived   BuddyReview[]   @relation("BuddyReviewsBuddy")
   buddyMessagesSent      BuddyMessage[]
+  callLogsSent           CallLog[]       @relation("CallLogsCaller")
+  callLogsReceived       CallLog[]       @relation("CallLogsReceiver")
 
   @@index([email])
   @@index([phone])
@@ -103,7 +105,7 @@ model MatchSuggestion {
   meetingVenue         String?
   meetingMessage       String?
   createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  updatedAt            DateTime  @default(now()) @updatedAt
 }
 
 model Appointment {
@@ -189,6 +191,7 @@ model BuddyRequest {
   
   messages         BuddyMessage[]
   presences        BuddyPresence[]
+  callLogs         CallLog[]
 }
 
 model BuddyMessage {
@@ -237,4 +240,21 @@ model BuddyReview {
   comment          String?
   createdAt        DateTime @default(now())
 }
+
+model CallLog {
+  id           String       @id @default(cuid())
+  requestId    String
+  request      BuddyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  callerId     String
+  caller       User         @relation("CallLogsCaller", fields: [callerId], references: [id])
+  receiverId   String
+  receiver     User         @relation("CallLogsReceiver", fields: [receiverId], references: [id])
+  callerRole   String       // "USER" or "BUDDY"
+  status       String       // "MISSED", "COMPLETED", "REJECTED", "BUSY"
+  durationSec  Int          @default(0)
+  startedAt    DateTime     @default(now())
+  endedAt      DateTime?
+  createdAt    DateTime     @default(now())
+}
+
 

@@ -19,6 +19,7 @@ import MessagesView from "./components/MessagesView";
 import NotificationsView from "./components/NotificationsView";
 import PaymentsView from "./components/PaymentsView";
 import SettingsView from "./components/SettingsView";
+import CallHistoryView from "./components/CallHistoryView";
 
 interface UserProfile {
   id: string;
@@ -653,6 +654,11 @@ function DashboardContent() {
               userEmail={user.email}
               onLogout={handleLogout}
             />
+          )}
+
+          {/* TAB 10: CALL HISTORY */}
+          {activeSection === "call-history" && (
+            <CallHistoryView />
           )}
         </main>
 

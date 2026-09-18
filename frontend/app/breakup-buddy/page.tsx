@@ -52,6 +52,8 @@ interface BreakupBuddy {
   createdAt: string;
 }
 
+import { io } from "socket.io-client";
+
 export default function BreakupBuddyPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -63,6 +65,7 @@ export default function BreakupBuddyPage() {
   // Calling State
   const [activeCallReqId, setActiveCallReqId] = useState<string | null>(null);
   const [activeCallBuddyId, setActiveCallBuddyId] = useState<string | null>(null);
+  const [userIncomingCall, setUserIncomingCall] = useState<{ requestId: string; callerName: string } | null>(null);
   const [selectedExpertise, setSelectedExpertise] = useState("all");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -122,7 +125,23 @@ export default function BreakupBuddyPage() {
         }
       })
       .catch(() => {});
+  }, []);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    const s = io("http://localhost:5001", { withCredentials: true });
+    s.on("connect", () => {
+      s.emit("join-user-room", currentUser.id);
+    });
+    s.on("incoming-call", (data) => {
+      setUserIncomingCall(data);
+    });
+    return () => {
+      s.disconnect();
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
     // 2. Fetch approved Breakup Buddies from backend API
     fetch("/api/services/breakup-buddies")
       .then((res) => res.json())
@@ -797,17 +816,31 @@ export default function BreakupBuddyPage() {
         </div>
       )}
 
-      {/* Voice Call Overlay */}
+      {/* Voice Call Overlay (Outgoing) */}
       {activeCallReqId && activeCallBuddyId && (
         <VoiceCallOverlay
+          key={activeCallReqId}
           requestId={activeCallReqId}
           buddyId={activeCallBuddyId}
           role="USER"
+          isInitiator={true}
           callerName={currentUser?.name}
           onClose={() => {
             setActiveCallReqId(null);
             setActiveCallBuddyId(null);
           }}
+        />
+      )}
+
+      {/* Voice Call Overlay (Incoming) */}
+      {userIncomingCall && (
+        <VoiceCallOverlay
+          key={userIncomingCall.requestId}
+          requestId={userIncomingCall.requestId}
+          role="USER"
+          isInitiator={false}
+          callerName={userIncomingCall.callerName}
+          onClose={() => setUserIncomingCall(null)}
         />
       )}
     </div>

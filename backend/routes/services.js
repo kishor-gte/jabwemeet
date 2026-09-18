@@ -354,7 +354,7 @@ router.get("/buddy-chat/:requestId", authenticateToken, async (req, res) => {
     const userId = req.user.userId;
 
     const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
-    if (!request || request.userId !== userId) {
+    if (!request || (request.userId !== userId && request.buddyId !== userId)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -536,5 +536,61 @@ router.get("/notifications", async (req, res) => {
   }
 });
 
+// 12. GET /api/services/call-history
+// Fetch call history for logged in user
+router.get("/call-history", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const logs = await prisma.callLog.findMany({
+      where: {
+        OR: [
+          { callerId: userId },
+          { receiverId: userId }
+        ]
+      },
+      include: {
+        caller: {
+          select: { id: true, name: true, email: true, phone: true, profilePhoto: true, displayName: true }
+        },
+        receiver: {
+          select: { id: true, name: true, email: true, phone: true, profilePhoto: true, displayName: true }
+        },
+        request: {
+          select: { id: true, topic: true, sessionType: true, buddyId: true }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100
+    });
+
+    const formattedLogs = logs.map(log => {
+      const isOutgoing = log.callerId === userId;
+      const otherUser = isOutgoing ? log.receiver : log.caller;
+      return {
+        id: log.id,
+        requestId: log.requestId,
+        type: isOutgoing ? "Outgoing" : "Incoming",
+        status: log.status, // "MISSED", "COMPLETED", "REJECTED", "BUSY"
+        durationSec: log.durationSec,
+        startedAt: log.startedAt,
+        endedAt: log.endedAt,
+        buddy: {
+          id: otherUser.id,
+          name: otherUser.displayName || otherUser.name,
+          phone: otherUser.phone,
+          profilePhoto: otherUser.profilePhoto
+        },
+        request: log.request
+      };
+    });
+
+    return res.json({ success: true, data: formattedLogs });
+  } catch (error) {
+    console.error("Error fetching call history:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch call history." });
+  }
+});
+
 module.exports = router;
+
 
