@@ -62,6 +62,8 @@ function DashboardContent() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [messageAnnouncements, setMessageAnnouncements] = useState<AnnouncementItem[]>([]);
   const [serviceRequests, setServiceRequests] = useState<{
     relationshipManager: boolean;
     breakupBuddy: boolean;
@@ -196,6 +198,45 @@ function DashboardContent() {
 
     loadDashboard();
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch(`/api/auth/messages/unread?t=${Date.now()}`, { 
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache"
+          }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setUnreadMessagesCount(data.count);
+          if (data.senders && data.senders.length > 0) {
+            const msgs = data.senders.map((senderName: string, idx: number) => ({
+              id: `unread-msg-${idx}`,
+              title: `New Message from ${senderName}`,
+              message: `You got a message from ${senderName}, please open that check it out.`,
+              type: 'MESSAGE',
+              targetAudience: 'USER',
+              sentBy: 'System',
+              sentAt: new Date().toISOString()
+            }));
+            setMessageAnnouncements(msgs);
+          } else {
+            setMessageAnnouncements([]);
+          }
+        }
+      } catch (e) {}
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 3000); // Polling faster for better UX
+    return () => clearInterval(interval);
+  }, [user]);
+
 
   async function handleLogout() {
     try {
@@ -402,9 +443,11 @@ function DashboardContent() {
         notificationsCount={
           registeredEvents.length +
           announcements.length +
+          messageAnnouncements.length +
           (serviceRequests.relationshipManager ? 1 : 0) +
           (serviceRequests.breakupBuddy ? 1 : 0)
         }
+        unreadMessagesCount={unreadMessagesCount}
         onSelectSection={(sec) => {
           setActiveSection(sec);
           window.history.replaceState(null, "", `/dashboard?tab=${sec}`);
@@ -551,7 +594,10 @@ function DashboardContent() {
                 registeredEventsCount={registeredEvents.length}
                 onExploreEvents={() => scrollToElement("events")}
                 onUpdateConnection={handleUpdateConnection}
-              onChat={() => setActiveSection('messages')}
+                onChat={(connId) => {
+                  window.history.replaceState(null, "", `/dashboard?tab=messages&requestId=${connId}`);
+                  setActiveSection("messages");
+                }}
               />
 
               {/* Dynamic Activity & Notifications */}
@@ -562,7 +608,7 @@ function DashboardContent() {
                 registeredEvents={registeredEvents}
                 serviceRequests={serviceRequests}
                 connectionRequestsCount={connections.length}
-                announcements={announcements}
+                announcements={[...messageAnnouncements, ...announcements]}
                 onViewAllNotifications={() => {
                   setActiveSection("notifications");
                   window.history.replaceState(null, "", "/dashboard?tab=notifications");
@@ -614,7 +660,10 @@ function DashboardContent() {
                 window.history.replaceState(null, "", "/dashboard?tab=events");
               }}
               onUpdateConnection={handleUpdateConnection}
-              onChat={() => setActiveSection('messages')}
+              onChat={(connId) => {
+                window.history.replaceState(null, "", `/dashboard?tab=messages&requestId=${connId}`);
+                setActiveSection("messages");
+              }}
             />
           )}
 
@@ -637,7 +686,7 @@ function DashboardContent() {
               registeredEvents={registeredEvents}
               hasRelationshipManagerReq={serviceRequests.relationshipManager}
               hasBreakupBuddyReq={serviceRequests.breakupBuddy}
-              announcements={announcements}
+              announcements={[...messageAnnouncements, ...announcements]}
             />
           )}
 

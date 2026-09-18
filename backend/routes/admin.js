@@ -2070,4 +2070,35 @@ router.patch('/settings', async (req, res) => {
   }
 });
 
+// Fetch Admin Earnings (10% of Dating Packages)
+router.get('/earnings', async (req, res) => {
+  try {
+    const packages = await prisma.$queryRawUnsafe(`
+      SELECT p.*, u."name" as "userName", u."email" as "userEmail"
+      FROM "Payment" p
+      JOIN "User" u ON p."userId" = u."id"
+      WHERE p."type" = 'DATING_PACKAGE' AND p."status" = 'SUCCESS'
+      ORDER BY p."createdAt" DESC
+    `);
+    
+    // Map to 10% cut
+    const earnings = packages.map(pkg => ({
+      id: pkg.id,
+      createdAt: pkg.createdAt,
+      sourceAmount: pkg.amount,
+      amount: pkg.amount * 0.10, // 10% cut
+      userName: pkg.userName,
+      userEmail: pkg.userEmail,
+      type: 'Admin Revenue Share (10%)'
+    }));
+
+    const totalEarned = earnings.reduce((sum, e) => sum + e.amount, 0);
+
+    res.json({ success: true, earnings, totalEarned });
+  } catch (error) {
+    console.error('Error fetching admin earnings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch admin earnings' });
+  }
+});
+
 module.exports = router;

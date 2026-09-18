@@ -153,13 +153,15 @@ export default function AdminPackagesPage() {
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    pkg.type === "RELATIONSHIP_MANAGER"
-                      ? "bg-purple-500/20 text-purple-300"
-                      : "bg-blue-500/20 text-blue-300"
-                  }`}>
-                    {pkg.type === "RELATIONSHIP_MANAGER" ? "Matchmaking" : "Breakup Buddy"}
-                  </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      pkg.type === "RELATIONSHIP_MANAGER"
+                        ? "bg-purple-500/20 text-purple-300"
+                        : pkg.type === "DATING"
+                        ? "bg-rose-500/20 text-rose-300"
+                        : "bg-blue-500/20 text-blue-300"
+                    }`}>
+                      {pkg.type === "RELATIONSHIP_MANAGER" ? "Matchmaking" : pkg.type === "DATING" ? "Dating Package" : "Breakup Buddy"}
+                    </span>
                   <span className={`w-2 h-2 rounded-full ${pkg.isActive ? "bg-emerald-400" : "bg-slate-500"}`} />
                 </div>
 
@@ -228,6 +230,7 @@ export default function AdminPackagesPage() {
                   >
                     <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
                     <option value="BREAKUP_BUDDY">Breakup Buddy</option>
+                    <option value="DATING">Dating Package</option>
                   </select>
                 </div>
                 <div>

@@ -443,15 +443,7 @@ export default function RelationshipManagerPage() {
                       <Mail className="w-3.5 h-3.5 text-emerald-400" />
                       {assignedManager.email}
                     </span>
-                    {assignedManager.phone && (
-                      <>
-                        <span>•</span>
-                        <span className="flex items-center gap-1.5">
-                          <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                          {assignedManager.phone}
-                        </span>
-                      </>
-                    )}
+
                   </div>
                 </div>
               </div>

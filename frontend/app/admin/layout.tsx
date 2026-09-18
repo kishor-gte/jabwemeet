@@ -69,6 +69,7 @@ const NAV_SECTIONS = [
   {
     title: "Finance & Billing",
     items: [
+      { label: "My Earnings", href: "/admin/earnings", icon: CreditCard },
       { label: "Payments & Revenue", href: "/admin/payments", icon: CreditCard },
       { label: "Refund Requests", href: "/admin/payments/refunds", icon: RotateCcw },
       { label: "Invoices", href: "/admin/payments/invoices", icon: Receipt },

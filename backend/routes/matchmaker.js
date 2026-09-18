@@ -637,4 +637,25 @@ router.put('/connections/:id/date', async (req, res) => {
   }
 });
 
+// Fetch RM Earnings
+router.get('/earnings', async (req, res) => {
+  try {
+    const { matchmakerId } = req.query;
+    if (!matchmakerId) {
+      return res.status(400).json({ success: false, message: 'matchmakerId required' });
+    }
+
+    const earnings = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "Payment" 
+      WHERE "userId" = $1 AND "type" = 'RM_EARNING_DATING' 
+      ORDER BY "createdAt" DESC
+    `, matchmakerId);
+
+    res.json({ success: true, earnings });
+  } catch (error) {
+    console.error('Error fetching earnings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch earnings' });
+  }
+});
+
 module.exports = router;

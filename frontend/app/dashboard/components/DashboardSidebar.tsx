@@ -39,6 +39,7 @@ interface DashboardSidebarProps {
   myEventsCount: number;
   connectionsCount: number;
   notificationsCount: number;
+  unreadMessagesCount?: number;
   onSelectSection: (section: string) => void;
   onLogout: () => void;
   mobileOpen: boolean;
@@ -52,6 +53,7 @@ export default function DashboardSidebar({
   myEventsCount,
   connectionsCount,
   notificationsCount,
+  unreadMessagesCount = 0,
   onSelectSection,
   onLogout,
   mobileOpen,
@@ -263,14 +265,21 @@ export default function DashboardSidebar({
                 onSelectSection("messages");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
                 activeSection === "messages"
                   ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
                   : "text-slate-300 hover:text-white hover:bg-white/5"
               }`}
             >
-              <MessageCircle className="w-4 h-4 text-slate-400" />
-              <span>Messages</span>
+              <div className="flex items-center gap-3">
+                <MessageCircle className="w-4 h-4 text-slate-400" />
+                <span>Messages</span>
+              </div>
+              {unreadMessagesCount > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {unreadMessagesCount}
+                </span>
+              )}
             </button>
 
             <button

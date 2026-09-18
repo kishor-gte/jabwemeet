@@ -20,35 +20,9 @@ interface MessagesViewProps {
   connections?: any[];
 }
 
-<<<<<<< HEAD
 export default function MessagesView({ userName, userId, connections = [] }: MessagesViewProps) {
-  const [conversations, setConversations] = useState([
-    {
-      id: "conv-1",
-      name: "JabWeMeet Support & Matchmaking Desk",
-      role: "Relationship Specialist",
-      unread: 1,
-      lastMessage: "Welcome to JabWeMeet! Let us know if you need help with introductions.",
-      time: "10:30 AM",
-      messages: [
-        {
-          sender: "them",
-          text: `Hello ${userName.split(" ")[0]}! Welcome to JabWeMeet. Your account is verified and ready for curated introductions.`,
-          time: "10:28 AM",
-        },
-        {
-          sender: "them",
-          text: "Welcome to JabWeMeet! Let us know if you need help with introductions.",
-          time: "10:30 AM",
-        },
-      ],
-    },
-  ]);
-=======
-export default function MessagesView({ userName }: MessagesViewProps) {
   const searchParams = useSearchParams();
   const initialRequestId = searchParams.get('requestId');
->>>>>>> 8c970fdf7b685ef2ef7ba4308b727a02afe31748
 
   const [requests, setRequests] = useState<any[]>([]);
   const [activeReqId, setActiveReqId] = useState<string | null>(initialRequestId);
@@ -61,13 +35,11 @@ export default function MessagesView({ userName }: MessagesViewProps) {
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success">("idle");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-
   useEffect(() => {
     fetchRequests();
     const interval = setInterval(fetchRequests, 10000);
     return () => clearInterval(interval);
   }, []);
-
 
   const handlePayment = async (durationSeconds: number) => {
     setPaymentStatus("processing");
@@ -99,15 +71,47 @@ export default function MessagesView({ userName }: MessagesViewProps) {
       const data = await res.json();
       if (data.success) {
         setRequests(data.data);
-        if (!activeReqId && data.data.length > 0) {
-          setActiveReqId(data.data[0].id);
-        }
       }
     } catch (e) {}
   };
 
+  // Combine buddy requests and connections into a unified list
+  const activeChats = [
+    ...requests.map(req => ({
+      id: req.id,
+      type: "buddy" as const,
+      name: req.buddy.displayName || req.buddy.name,
+      subtitle: "Breakup Buddy",
+      initial: (req.buddy.displayName ? req.buddy.displayName[0] : req.buddy.name[0]),
+      raw: req,
+    })),
+    ...connections.filter(c => c.status === "DateFixed" || c.status === "BothApproved").map(conn => {
+      const isClient = conn.client.id === userId;
+      const otherPerson = isClient ? conn.suggestedProfile : conn.client;
+      return {
+        id: conn.id,
+        type: "connection" as const,
+        name: otherPerson.name,
+        subtitle: "Match Connection",
+        initial: otherPerson.name[0],
+        raw: conn,
+      };
+    })
+  ];
+
+  const activeChat = activeChats.find(c => c.id === activeReqId);
+
   useEffect(() => {
-    if (!activeReqId) return;
+    // If activeReqId is invalid or null but we have chats, select the first one
+    if ((!activeReqId || !activeChats.find(c => c.id === activeReqId)) && activeChats.length > 0) {
+      // Prioritize selecting the initial request id if it exists in chats, else the first
+      const initMatch = activeChats.find(c => c.id === initialRequestId);
+      setActiveReqId(initMatch ? initMatch.id : activeChats[0].id);
+    }
+  }, [requests, connections, activeReqId, initialRequestId, activeChats]);
+
+  useEffect(() => {
+    if (!activeReqId || !activeChat) return;
     fetchMessages();
     sendPresence(); // Call immediately on mount
     
@@ -117,7 +121,9 @@ export default function MessagesView({ userName }: MessagesViewProps) {
     // Visibility change to instantly pause when changing tabs
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        navigator.sendBeacon(`/api/services/buddy-away/${activeReqId}`);
+        if (activeChat.type === "buddy") {
+          navigator.sendBeacon(`/api/services/buddy-away/${activeReqId}`);
+        }
       } else {
         sendPresence();
       }
@@ -128,29 +134,50 @@ export default function MessagesView({ userName }: MessagesViewProps) {
       clearInterval(msgInterval);
       clearInterval(presenceInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      navigator.sendBeacon(`/api/services/buddy-away/${activeReqId}`);
+      if (activeChat.type === "buddy") {
+        navigator.sendBeacon(`/api/services/buddy-away/${activeReqId}`);
+      }
     };
-  }, [activeReqId]);
+  }, [activeReqId, activeChat?.type]);
 
   const fetchMessages = async () => {
-    if (!activeReqId) return;
+    if (!activeReqId || !activeChat) return;
     try {
-      const res = await fetch(`/api/services/buddy-chat/${activeReqId}`, { credentials: "include" });
-      const data = await res.json();
-      if (data.success) {
-        setMessages(data.data);
-        if (data.chatLimitSeconds) setChatLimitSeconds(data.chatLimitSeconds);
-        if (data.timeUsedSeconds !== undefined) {
-          const limit = data.chatLimitSeconds || 900;
-          setTimerSeconds(Math.max(0, limit - data.timeUsedSeconds));
+      if (activeChat.type === "buddy") {
+        const res = await fetch(`/api/services/buddy-chat/${activeReqId}?t=${Date.now()}`, { 
+          credentials: "include", cache: 'no-store' 
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessages(data.data);
+          if (data.chatLimitSeconds) setChatLimitSeconds(data.chatLimitSeconds);
+          if (data.timeUsedSeconds !== undefined) {
+            const limit = data.chatLimitSeconds || 900;
+            setTimerSeconds(Math.max(0, limit - data.timeUsedSeconds));
+          }
+          scrollToBottom();
         }
-        scrollToBottom();
+      } else if (activeChat.type === "connection") {
+        const res = await fetch(`/api/auth/connections/${activeReqId}/messages?t=${Date.now()}`, { 
+          credentials: "include", cache: 'no-store' 
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessages(data.messages.map((m: any) => ({
+            id: m.id,
+            text: m.content,
+            senderRole: m.senderId === userId ? "USER" : "OTHER",
+            createdAt: m.createdAt
+          })));
+          scrollToBottom();
+        }
       }
     } catch (e) {}
   };
 
   const sendPresence = async () => {
-    if (!activeReqId) return;
+    if (!activeReqId || !activeChat) return;
+    if (activeChat.type !== "buddy") return; // Presence only for buddy chat
     try {
       const res = await fetch(`/api/services/buddy-presence/${activeReqId}`, { 
         method: 'POST',
@@ -170,7 +197,7 @@ export default function MessagesView({ userName }: MessagesViewProps) {
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (bothActive && timerSeconds > 0 && !showSubscription) {
+    if (activeChat?.type === "buddy" && bothActive && timerSeconds > 0 && !showSubscription) {
       interval = setInterval(() => {
         setTimerSeconds(prev => {
           if (prev <= 1) {
@@ -182,14 +209,14 @@ export default function MessagesView({ userName }: MessagesViewProps) {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [bothActive, timerSeconds, showSubscription]);
+  }, [bothActive, timerSeconds, showSubscription, activeChat?.type]);
 
   // Force show subscription if timer hits 0 on load or any other time
   useEffect(() => {
-    if (timerSeconds === 0 && !showSubscription && paymentStatus === "idle") {
+    if (activeChat?.type === "buddy" && timerSeconds === 0 && !showSubscription && paymentStatus === "idle") {
       setShowSubscription(true);
     }
-  }, [timerSeconds, showSubscription, paymentStatus]);
+  }, [timerSeconds, showSubscription, paymentStatus, activeChat?.type]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -197,17 +224,28 @@ export default function MessagesView({ userName }: MessagesViewProps) {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeReqId || timerSeconds === 0) return;
+    if (!newMessage.trim() || !activeReqId || !activeChat) return;
+    if (activeChat.type === "buddy" && timerSeconds === 0) return;
 
     try {
       const text = newMessage;
       setNewMessage(""); // Optimistic clear
-      await fetch(`/api/services/buddy-chat/${activeReqId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ text })
-      });
+      
+      if (activeChat.type === "buddy") {
+        await fetch(`/api/services/buddy-chat/${activeReqId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ text })
+        });
+      } else {
+        await fetch(`/api/auth/connections/${activeReqId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ content: text })
+        });
+      }
       fetchMessages();
     } catch (e) {}
   };
@@ -217,8 +255,6 @@ export default function MessagesView({ userName }: MessagesViewProps) {
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
-
-  const activeReq = requests.find(r => r.id === activeReqId);
 
   return (
     <div className="space-y-6 relative">
@@ -239,30 +275,32 @@ export default function MessagesView({ userName }: MessagesViewProps) {
         {/* Sidebar */}
         <div className="border-r border-white/10 flex flex-col bg-[#0f172a]">
           <div className="p-4 border-b border-white/10">
-            <h3 className="text-sm font-bold text-white mb-2">Accepted Requests</h3>
+            <h3 className="text-sm font-bold text-white mb-2">Active Chats</h3>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {requests.length === 0 ? (
+            {activeChats.length === 0 ? (
               <p className="text-xs text-slate-500 text-center mt-4">No active chats</p>
             ) : (
-              requests.map((req) => (
+              activeChats.map((chat) => (
                 <button
-                  key={req.id}
-                  onClick={() => setActiveReqId(req.id)}
+                  key={chat.id}
+                  onClick={() => setActiveReqId(chat.id)}
                   className={`w-full text-left p-3 rounded-2xl transition flex items-center gap-3 ${
-                    activeReqId === req.id
+                    activeReqId === chat.id
                       ? "bg-[#e06d53]/15 border border-[#e06d53]/30"
                       : "hover:bg-white/5"
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-sm shrink-0">
-                    {req.buddy.displayName ? req.buddy.displayName[0] : req.buddy.name[0]}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0 ${
+                    chat.type === 'buddy' ? 'bg-gradient-to-br from-[#e06d53] to-amber-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                  }`}>
+                    {chat.initial}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white truncate">{req.buddy.displayName || req.buddy.name}</span>
+                      <span className="text-xs font-bold text-white truncate">{chat.name}</span>
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5">Breakup Buddy</p>
+                    <p className="text-[11px] text-slate-400 truncate mt-0.5">{chat.subtitle}</p>
                   </div>
                 </button>
               ))
@@ -272,39 +310,43 @@ export default function MessagesView({ userName }: MessagesViewProps) {
 
         {/* Active Chat Thread */}
         <div className="md:col-span-2 flex flex-col h-[550px] bg-[#131d2e] relative">
-          {activeReq ? (
+          {activeChat ? (
             <>
               {/* Header */}
               <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#162238]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center font-bold text-white text-sm">
-                    {activeReq.buddy.displayName ? activeReq.buddy.displayName[0] : activeReq.buddy.name[0]}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${
+                    activeChat.type === 'buddy' ? 'bg-gradient-to-br from-rose-500 to-amber-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                  }`}>
+                    {activeChat.initial}
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <h4 className="text-sm font-bold text-white">{activeReq.buddy.displayName || activeReq.buddy.name}</h4>
+                      <h4 className="text-sm font-bold text-white">{activeChat.name}</h4>
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
-                    <p className="text-[11px] text-slate-400">Breakup Buddy</p>
+                    <p className="text-[11px] text-slate-400">{activeChat.subtitle}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4">
-                    {chatLimitSeconds > 900 ? (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                        <span className="text-xs font-bold">Premium Active</span>
-                      </div>
-                    ) : (
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${timerSeconds < 300 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
-                        <Clock className="w-3.5 h-3.5" />
-                        <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)}</span>
-                      </div>
-                    )}
-                    <span className={`text-[11px] font-medium flex items-center gap-1 ${bothActive ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    <span className={`w-2 h-2 rounded-full ${bothActive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                    {bothActive ? 'Live' : 'Paused (Buddy Away)'}
-                  </span>
-                </div>
+                {activeChat.type === "buddy" && (
+                  <div className="flex items-center gap-4">
+                      {chatLimitSeconds > 900 ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                          <span className="text-xs font-bold">Premium Active</span>
+                        </div>
+                      ) : (
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${timerSeconds < 300 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
+                          <Clock className="w-3.5 h-3.5" />
+                          <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)}</span>
+                        </div>
+                      )}
+                      <span className={`text-[11px] font-medium flex items-center gap-1 ${bothActive ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className={`w-2 h-2 rounded-full ${bothActive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                      {bothActive ? 'Live' : 'Paused (Buddy Away)'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Messages Area */}
@@ -344,13 +386,13 @@ export default function MessagesView({ userName }: MessagesViewProps) {
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={timerSeconds === 0 ? "Time's up! Subscription required." : "Type your message..."}
-                  disabled={timerSeconds === 0}
+                  placeholder={activeChat.type === 'buddy' && timerSeconds === 0 ? "Time's up! Subscription required." : "Type your message..."}
+                  disabled={activeChat.type === 'buddy' && timerSeconds === 0}
                   className="flex-1 bg-[#131d2e] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  disabled={timerSeconds === 0}
+                  disabled={activeChat.type === 'buddy' && timerSeconds === 0}
                   className="px-5 py-2.5 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold shadow-lg transition flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <span>Send</span>
@@ -367,7 +409,7 @@ export default function MessagesView({ userName }: MessagesViewProps) {
       </div>
 
       {/* Subscription Paywall Modal */}
-      {showSubscription && (
+      {showSubscription && activeChat?.type === 'buddy' && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-2xl w-full p-8 shadow-2xl relative transition-all duration-300">
             {paymentStatus === "success" ? (
@@ -391,7 +433,7 @@ export default function MessagesView({ userName }: MessagesViewProps) {
                   </div>
                   <h2 className="text-2xl font-bold text-white">Time Limit Reached</h2>
                 <p className="text-sm text-slate-400 max-w-md mx-auto">
-                  Your current chat time with {activeReq?.buddy.displayName || 'your buddy'} has ended. Subscribe to a plan to continue your session securely.
+                  Your current chat time with {activeChat?.name || 'your buddy'} has ended. Subscribe to a plan to continue your session securely.
                 </p>
                 </div>
 

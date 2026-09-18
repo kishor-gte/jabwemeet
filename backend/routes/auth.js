@@ -764,8 +764,6 @@ router.put('/connections/:id', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // Get messages for a connection
 router.get('/connections/:id/messages', authenticateToken, async (req, res) => {
   try {
@@ -776,6 +774,16 @@ router.get('/connections/:id/messages', authenticateToken, async (req, res) => {
     if (!connection || (connection.clientId !== userId && connection.suggestedProfileId !== userId)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
+
+    // Mark messages as read
+    await prisma.connectionMessage.updateMany({
+      where: {
+        suggestionId: id,
+        senderId: { not: userId },
+        isRead: false
+      },
+      data: { isRead: true }
+    });
 
     const messages = await prisma.connectionMessage.findMany({
       where: { suggestionId: id },
@@ -817,3 +825,115 @@ router.post('/connections/:id/messages', authenticateToken, async (req, res) => 
     res.status(500).json({ success: false, message: 'Failed to send message' });
   }
 });
+
+// Get unread messages state
+router.get('/messages/unread', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const unreadMessages = await prisma.connectionMessage.findMany({
+      where: {
+        suggestion: {
+          OR: [
+            { clientId: userId },
+            { suggestedProfileId: userId }
+          ]
+        },
+        senderId: { not: userId },
+        isRead: false
+      },
+      select: {
+        suggestionId: true,
+        sender: { select: { name: true } }
+      }
+    });
+
+    const unreadByConnection = {};
+    unreadMessages.forEach(m => {
+      unreadByConnection[m.suggestionId] = (unreadByConnection[m.suggestionId] || 0) + 1;
+    });
+
+    res.json({ 
+      success: true, 
+      count: unreadMessages.length,
+      unreadByConnection,
+      senders: [...new Set(unreadMessages.map(m => m.sender.name))]
+    });
+  } catch (error) {
+    console.error('Error fetching unread:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch unread' });
+  }
+});
+
+// Check Dating Eligibility & Packages
+router.get('/dating-eligibility', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const approvedMatchesCount = await prisma.matchSuggestion.count({
+      where: {
+        OR: [
+          { clientId: userId, clientStatus: 'Approved' },
+          { suggestedProfileId: userId, suggestedStatus: 'Approved' }
+        ]
+      }
+    });
+
+    const packages = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
+    `);
+
+    res.json({
+      success: true,
+      approvedMatchesCount,
+      freeDatesRemaining: Math.max(0, 1 - approvedMatchesCount),
+      packages
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Process Payment
+router.post('/payments/package', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { packageId, amount } = req.body;
+    
+    const paymentId = 'PAY-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
+      VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'STRIPE', NOW())
+    `, paymentId, userId, parseFloat(amount));
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user && user.assignedManagerId) {
+      const rmEarning = parseFloat(amount) * 0.90;
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
+        VALUES ($1, $2, $3, 'RM_EARNING_DATING', 'SUCCESS', 'INTERNAL', NOW())
+      `, 'EARN-' + Math.random().toString(36).substring(2, 9).toUpperCase(), user.assignedManagerId, rmEarning);
+    }
+
+    res.json({ success: true, paymentId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Fetch User Payments
+router.get('/payments', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const payments = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "Payment" WHERE "userId" = $1 ORDER BY "createdAt" DESC
+    `, userId);
+    res.json({ success: true, payments });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+module.exports = router;
+
