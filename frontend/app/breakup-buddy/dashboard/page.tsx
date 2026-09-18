@@ -13,8 +13,8 @@ export default function BreakupBuddyDashboardPage() {
   
   // Call State
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [incomingCall, setIncomingCall] = useState<{ requestId: string, callerName: string } | null>(null);
-  const [callWaiting, setCallWaiting] = useState<{ requestId: string, callerName: string } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{ requestId: string, callerName: string, autoAccept?: boolean } | null>(null);
+  const [callWaiting, setCallWaiting] = useState<{ requestId: string, callerName: string, autoAccept?: boolean } | null>(null);
 
   // Profile Settings State
   const [profilePhoto, setProfilePhoto] = useState("");
@@ -35,6 +35,8 @@ export default function BreakupBuddyDashboardPage() {
   const [acceptedSearch, setAcceptedSearch] = useState("");
   const [sessions, setSessions] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [callLogs, setCallLogs] = useState<any[]>([]);
+  const [buddyActiveCall, setBuddyActiveCall] = useState<{ requestId: string; targetUserId: string; targetName?: string; callerName: string } | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
   const [earnings, setEarnings] = useState({ totalEarnings: 0, sessions: [] });
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function BreakupBuddyDashboardPage() {
 
   const fetchData = async () => {
     try {
-      const [dashRes, reqRes, accRes, sessRes, histRes, revRes, earnRes] = await Promise.all([
+      const [dashRes, reqRes, accRes, sessRes, histRes, revRes, earnRes, callLogRes] = await Promise.all([
         fetch('/api/buddy/dashboard', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/requests', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/accepted-users', { credentials: 'include' }).then(r => r.json()).catch(() => ({ success: false })),
@@ -51,6 +53,7 @@ export default function BreakupBuddyDashboardPage() {
         fetch('/api/buddy/history', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/reviews', { credentials: 'include' }).then(r => r.json()),
         fetch('/api/buddy/earnings', { credentials: 'include' }).then(r => r.json()),
+        fetch('/api/buddy/call-logs', { credentials: 'include' }).then(r => r.json()).catch(() => ({ success: false })),
       ]);
       if (dashRes.success) setDashboardData(dashRes.data);
       if (reqRes.success) {
@@ -64,6 +67,7 @@ export default function BreakupBuddyDashboardPage() {
       if (histRes.success) setHistory(histRes.data);
       if (revRes.success) setReviews(revRes.data);
       if (earnRes.success) setEarnings(earnRes.data);
+      if (callLogRes?.success && Array.isArray(callLogRes.data)) setCallLogs(callLogRes.data);
     } catch(e) {}
   };
 
@@ -85,11 +89,15 @@ export default function BreakupBuddyDashboardPage() {
     s.on("incoming-call", (data) => {
       setIncomingCall((currentCall) => {
         if (currentCall) {
-          // Buddy is already on a call, set as call waiting instead of rejecting
+          if (currentCall.requestId === data.requestId) {
+            // Same call event duplicate, ignore
+            return currentCall;
+          }
+          // Buddy is ALREADY on a call with a different user, set call waiting for 2nd caller
           setCallWaiting(data);
-          return currentCall; // keep existing
+          return currentCall;
         }
-        return data; // set new call
+        return data; // set first incoming call
       });
     });
 
@@ -126,9 +134,13 @@ export default function BreakupBuddyDashboardPage() {
   }, [callWaiting]);
 
   const handleAcceptWaiting = () => {
-    if (socket && incomingCall && callWaiting) {
-      socket.emit("end-call", { requestId: incomingCall.requestId });
-      setIncomingCall(callWaiting);
+    const currentActiveReqId = incomingCall ? incomingCall.requestId : (buddyActiveCall ? buddyActiveCall.requestId : null);
+    if (socket && currentActiveReqId) {
+      socket.emit("end-call", { requestId: currentActiveReqId });
+    }
+    setBuddyActiveCall(null);
+    if (callWaiting) {
+      setIncomingCall({ ...callWaiting, autoAccept: true });
       setCallWaiting(null);
     }
   };
@@ -718,7 +730,20 @@ export default function BreakupBuddyDashboardPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <button
+                      onClick={() =>
+                        setBuddyActiveCall({
+                          requestId: req.id,
+                          targetUserId: u.id,
+                          targetName: u.name || "User",
+                          callerName: displayName || user?.name || "Breakup Buddy",
+                        })
+                      }
+                      className="flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm text-center cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                    >
+                      📞 Call User
+                    </button>
                     <button
                       onClick={() => setActiveTab("Messages")}
                       className="flex-1 py-2 px-3 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold transition border border-teal-200 text-center cursor-pointer"
@@ -998,6 +1023,145 @@ export default function BreakupBuddyDashboardPage() {
   );
 
 
+  const renderCallLogs = () => {
+    const totalCalls = callLogs.length;
+    const missedCalls = callLogs.filter((c: any) => c.status === "MISSED").length;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold font-serif text-slate-800">Call Logs & History</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                {totalCalls} Total
+              </span>
+            </div>
+            <p className="text-slate-500 text-sm mt-0.5">
+              Complete call history for all voice consultations with your clients.
+            </p>
+          </div>
+
+          <button
+            onClick={fetchData}
+            className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer"
+          >
+            🔄 Refresh Log
+          </button>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-xl font-bold">
+              📞
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-slate-800">{totalCalls}</p>
+              <p className="text-xs text-slate-500 font-semibold">Total Calls</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-xl font-bold">
+              📵
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-rose-600">{missedCalls}</p>
+              <p className="text-xs text-slate-500 font-semibold">Missed Calls</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center text-xl font-bold">
+              ⏱️
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-sky-600">
+                {Math.round(callLogs.reduce((acc, c) => acc + (c.durationSec || 0), 0) / 60)} mins
+              </p>
+              <p className="text-xs text-slate-500 font-semibold">Total Call Duration</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Call Log List */}
+        {callLogs.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl mx-auto">
+              📞
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">No Call History Yet</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Call history details will appear here when you or your clients start voice calls.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {callLogs.map((log: any) => {
+              const isMissed = log.status === "MISSED";
+              const u = log.user || {};
+
+              return (
+                <div
+                  key={log.id}
+                  className={`bg-white border rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                    isMissed ? "border-rose-200 bg-rose-50/30" : "border-slate-200 hover:border-teal-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-800 font-bold text-base flex items-center justify-center shrink-0 border border-teal-200">
+                      {u.name ? u.name[0].toUpperCase() : "U"}
+                    </div>
+
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-800 text-sm">{u.name || "User"}</span>
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                            isMissed
+                              ? "bg-rose-100 text-rose-700 border border-rose-200"
+                              : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                          }`}
+                        >
+                          {isMissed ? "MISSED CALL" : log.status}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500 px-2 py-0.5 rounded bg-slate-100">
+                          {log.type}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                        <span>📅 {new Date(log.startedAt).toLocaleString()}</span>
+                        <span>•</span>
+                        <span>⏱️ {isMissed ? "No connection" : `${Math.floor((log.durationSec || 0) / 60)}m ${(log.durationSec || 0) % 60}s`}</span>
+                        {u.phone && <span>• 📞 {u.phone}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setBuddyActiveCall({
+                        requestId: log.requestId,
+                        targetUserId: u.id,
+                        targetName: u.name || "User",
+                        callerName: displayName || user?.name || "Breakup Buddy",
+                      })
+                    }
+                    className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-end sm:self-center cursor-pointer shrink-0"
+                  >
+                    📞 Call User
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderSettings = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
@@ -1106,6 +1270,7 @@ export default function BreakupBuddyDashboardPage() {
               { id: 'Dashboard', icon: '🏠' },
               { id: 'Requests', icon: '📩', badge: requests.filter((r) => r.status === 'Pending').length },
               { id: 'Accepted Users', icon: '👥', badge: acceptedUsers.length },
+              { id: 'Call Log', icon: '📞', badge: callLogs.filter((c) => c.status === 'MISSED').length },
               { id: 'Sessions', icon: '📅', badge: sessions.length },
               { id: 'Messages', icon: '💬' },
               { id: 'Availability', icon: '🕐' },
@@ -1171,6 +1336,7 @@ export default function BreakupBuddyDashboardPage() {
             {activeTab === 'Dashboard' && renderDashboardHome()}
             {activeTab === 'Requests' && renderRequests()}
             {activeTab === 'Accepted Users' && renderAcceptedUsers()}
+            {activeTab === 'Call Log' && renderCallLogs()}
             {activeTab === 'Sessions' && renderSessions()}
             {activeTab === 'Messages' && renderMessages()}
             {activeTab === 'Availability' && renderAvailability()}
@@ -1182,12 +1348,31 @@ export default function BreakupBuddyDashboardPage() {
         </main>
       </div>
 
+      {/* Outgoing Call Overlay initiated by Breakup Buddy */}
+      {buddyActiveCall && (
+        <VoiceCallOverlay
+          key={buddyActiveCall.requestId}
+          requestId={buddyActiveCall.requestId}
+          targetUserId={buddyActiveCall.targetUserId}
+          role="BUDDY"
+          isInitiator={true}
+          targetName={buddyActiveCall.targetName}
+          callerName={buddyActiveCall.callerName}
+          onClose={() => {
+            setBuddyActiveCall(null);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Incoming Call Overlay */}
       {incomingCall && (
         <VoiceCallOverlay
+          key={incomingCall.requestId}
           requestId={incomingCall.requestId}
           role="BUDDY"
           callerName={incomingCall.callerName}
+          autoAccept={incomingCall.autoAccept}
           onClose={() => setIncomingCall(null)}
         />
       )}

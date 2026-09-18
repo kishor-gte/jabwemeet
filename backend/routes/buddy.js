@@ -460,4 +460,54 @@ router.get('/presence/:requestId', async (req, res) => {
   }
 });
 
+// GET /api/buddy/call-logs — fetch call log history for Breakup Buddy
+router.get('/call-logs', async (req, res) => {
+  try {
+    const buddyId = req.user.userId;
+    const logs = await prisma.callLog.findMany({
+      where: {
+        OR: [
+          { callerId: buddyId },
+          { receiverId: buddyId }
+        ]
+      },
+      include: {
+        caller: {
+          select: { id: true, name: true, email: true, phone: true, profilePhoto: true, city: true }
+        },
+        receiver: {
+          select: { id: true, name: true, email: true, phone: true, profilePhoto: true, city: true }
+        },
+        request: {
+          select: { id: true, topic: true, sessionType: true, voiceCallSeconds: true, voiceCallLimitSeconds: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+
+    const formattedLogs = logs.map(log => {
+      const isOutgoing = log.callerId === buddyId;
+      const otherUser = isOutgoing ? log.receiver : log.caller;
+      return {
+        id: log.id,
+        requestId: log.requestId,
+        type: isOutgoing ? 'Outgoing' : 'Incoming',
+        status: log.status,
+        durationSec: log.durationSec,
+        startedAt: log.startedAt,
+        endedAt: log.endedAt,
+        user: otherUser,
+        request: log.request
+      };
+    });
+
+    res.json({ success: true, data: formattedLogs });
+  } catch (error) {
+    console.error('Fetch call logs error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch call logs' });
+  }
+});
+
 module.exports = router;
+

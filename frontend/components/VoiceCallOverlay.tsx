@@ -6,13 +6,29 @@ import { Phone, PhoneOff, Mic, MicOff, Clock, Lock } from "lucide-react";
 
 interface VoiceCallOverlayProps {
   requestId: string;
-  buddyId?: string; // Only needed if role === 'USER' initiating call
+  buddyId?: string; // Target buddy if role === 'USER' initiating call
+  targetUserId?: string; // Target user if role === 'BUDDY' initiating call
   role: "USER" | "BUDDY";
-  callerName?: string;
+  isInitiator?: boolean; // True if this overlay initiated the call
+  autoAccept?: boolean; // True if receiver should auto-accept upon mount (e.g. from call waiting transition)
+  callerName?: string; // Name of caller to send over socket
+  targetName?: string; // Name of person being called to display on caller screen
+  initialCallLogId?: string;
   onClose: () => void;
 }
 
-export default function VoiceCallOverlay({ requestId, buddyId, role, callerName, onClose }: VoiceCallOverlayProps) {
+export default function VoiceCallOverlay({
+  requestId,
+  buddyId,
+  targetUserId,
+  role,
+  isInitiator = false,
+  autoAccept = false,
+  callerName,
+  targetName,
+  initialCallLogId,
+  onClose,
+}: VoiceCallOverlayProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<"connecting" | "ringing" | "connected" | "ended">("connecting");
   const [isMuted, setIsMuted] = useState(false);
@@ -20,6 +36,7 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
   const [voiceLimit, setVoiceLimit] = useState(300);
   const [showSubscription, setShowSubscription] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success">("idle");
+  const callLogIdRef = useRef<string | undefined>(initialCallLogId);
 
   const localAudioRef = useRef<HTMLAudioElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -32,7 +49,7 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
       try {
         const res = await fetch(`/api/services/buddy-chat/${requestId}`, { credentials: "include" });
         const data = await res.json();
-        if (data.success && data.voiceCallLimitSeconds) {
+        if (data.success && data.voiceCallLimitSeconds !== undefined) {
           setVoiceLimit(data.voiceCallLimitSeconds);
           setTimerSeconds(Math.max(0, data.voiceCallLimitSeconds - (data.voiceCallSeconds || 0)));
         }
@@ -48,16 +65,52 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
     s.on("connect", () => {
       s.emit("join-request-room", requestId);
 
-      if (role === "USER" && buddyId) {
+      if (isInitiator) {
         setStatus("ringing");
-        s.emit("initiate-call", { requestId, buddyId, callerName });
+        s.emit("initiate-call", {
+          requestId,
+          buddyId,
+          targetUserId,
+          callerName,
+          callerRole: role,
+        });
       } else {
-        setStatus("ringing"); // Buddy is receiving
+        setStatus("ringing"); // Receiver side
+        if (autoAccept) {
+          s.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
+        }
       }
     });
 
-    s.on("call-accepted", async () => {
-      if (role === "USER") {
+    s.on("call-initiated", (data) => {
+      if (data?.callLogId) {
+        callLogIdRef.current = data.callLogId;
+      }
+      if (data?.remainingSeconds !== undefined) {
+        setTimerSeconds(data.remainingSeconds);
+      }
+      if (data?.voiceCallLimitSeconds !== undefined) {
+        setVoiceLimit(data.voiceCallLimitSeconds);
+      }
+    });
+
+    s.on("timer-tick", (data) => {
+      if (data?.remainingSeconds !== undefined) {
+        setTimerSeconds(data.remainingSeconds);
+      }
+      if (data?.voiceCallLimitSeconds !== undefined) {
+        setVoiceLimit(data.voiceCallLimitSeconds);
+      }
+    });
+
+    s.on("call-accepted", async (data) => {
+      if (data?.remainingSeconds !== undefined) {
+        setTimerSeconds(data.remainingSeconds);
+      }
+      if (data?.voiceCallLimitSeconds !== undefined) {
+        setVoiceLimit(data.voiceCallLimitSeconds);
+      }
+      if (isInitiator) {
         await startWebRTC(s, true);
       }
     });
@@ -65,7 +118,7 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
     s.on("call-rejected", (data) => {
       setStatus("ended");
       if (data?.reason === "busy") {
-        alert("The Breakup Buddy is currently busy on another call. Please try again later.");
+        alert("The line is currently busy. Please try again later.");
         onClose();
       } else if (data?.reason === "limit-reached") {
         setShowSubscription(true);
@@ -85,13 +138,13 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
     });
 
     s.on("webrtc-offer", async (offer) => {
-      if (role === "BUDDY") {
+      if (!isInitiator) {
         await handleOffer(s, offer);
       }
     });
 
     s.on("webrtc-answer", async (answer) => {
-      if (role === "USER" && peerConnectionRef.current) {
+      if (isInitiator && peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
       }
     });
@@ -108,12 +161,12 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
     };
   }, []);
 
-  // Web Audio API Ringtone Generator
+  // Web Audio API Ringtone Generator (for Receiver)
   useEffect(() => {
     let audioCtx: AudioContext | null = null;
     let intervalId: NodeJS.Timeout;
 
-    if (status === "ringing") {
+    if (status === "ringing" && !isInitiator) {
       audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       
       const playRing = () => {
@@ -125,7 +178,7 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
         osc1.type = "sine";
         osc2.type = "sine";
         osc1.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
-        osc2.frequency.setValueAtTime(480, audioCtx.currentTime); // slightly off for phone ring dissonance
+        osc2.frequency.setValueAtTime(480, audioCtx.currentTime); // dissonance
 
         gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
         gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.1);
@@ -150,7 +203,7 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
       if (intervalId) clearInterval(intervalId);
       if (audioCtx) audioCtx.close().catch(console.error);
     };
-  }, [status]);
+  }, [status, isInitiator]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -233,13 +286,13 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
   };
 
   const endCall = () => {
-    if (socket) socket.emit("end-call", { requestId });
+    if (socket) socket.emit("end-call", { requestId, callLogId: callLogIdRef.current });
     cleanup();
     onClose();
   };
 
   const acceptCall = () => {
-    if (socket) socket.emit("accept-call", { requestId });
+    if (socket) socket.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
   };
 
   const toggleMute = () => {
@@ -370,23 +423,27 @@ export default function VoiceCallOverlay({ requestId, buddyId, role, callerName,
       
       <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-8 max-w-sm w-full flex flex-col items-center text-center shadow-2xl">
         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-3xl mb-4 relative animate-pulse">
-          {callerName ? callerName[0] : "B"}
+          {isInitiator
+            ? (targetName ? targetName[0].toUpperCase() : (role === "USER" ? "B" : "U"))
+            : (callerName ? callerName[0].toUpperCase() : (role === "USER" ? "B" : "U"))}
         </div>
         
         <h3 className="text-xl font-bold text-white mb-1">
-          {callerName || (role === "USER" ? "Breakup Buddy" : "User")}
+          {isInitiator
+            ? (targetName || (role === "USER" ? "Breakup Buddy" : "User"))
+            : (callerName || (role === "USER" ? "Breakup Buddy" : "User"))}
         </h3>
         
         <p className="text-sm text-slate-400 mb-8">
-          {status === "ringing" && role === "USER" && "Calling..."}
-          {status === "ringing" && role === "BUDDY" && "Incoming Voice Call..."}
+          {status === "ringing" && isInitiator && "Calling..."}
+          {status === "ringing" && !isInitiator && "Incoming Voice Call..."}
           {status === "connected" && voiceLimit > 300 && <span className="text-emerald-400 font-bold">Premium Active</span>}
           {status === "connected" && voiceLimit <= 300 && <span className="text-emerald-400 font-mono">{formatTime(timerSeconds)} remaining</span>}
           {status === "ended" && "Call Ended"}
         </p>
 
         <div className="flex items-center gap-6">
-          {status === "ringing" && role === "BUDDY" ? (
+          {status === "ringing" && !isInitiator ? (
             <>
               <button 
                 onClick={endCall}

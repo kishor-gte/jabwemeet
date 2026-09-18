@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { io } from "socket.io-client";
+import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 import {
   LayoutDashboard,
   Calendar,
@@ -18,6 +20,7 @@ import {
   X,
   Sparkles,
   ShieldCheck,
+  PhoneCall,
 } from "lucide-react";
 
 interface UserProfile {
@@ -57,6 +60,28 @@ export default function DashboardSidebar({
   mobileOpen,
   onCloseMobile,
 }: DashboardSidebarProps) {
+  const [incomingCall, setIncomingCall] = useState<{
+    requestId: string;
+    callLogId?: string;
+    callerName: string;
+    callerRole: "USER" | "BUDDY";
+    callerId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user || !user.id || user.id === "guest") return;
+    const s = io("http://localhost:5001", { withCredentials: true });
+    s.on("connect", () => {
+      s.emit("join-user-room", user.id);
+    });
+    s.on("incoming-call", (data) => {
+      setIncomingCall(data);
+    });
+    return () => {
+      s.disconnect();
+    };
+  }, [user?.id]);
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -275,6 +300,21 @@ export default function DashboardSidebar({
 
             <button
               onClick={() => {
+                onSelectSection("call-history");
+                onCloseMobile();
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+                activeSection === "call-history"
+                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <PhoneCall className="w-4 h-4 text-indigo-400" />
+              <span>Call History</span>
+            </button>
+
+            <button
+              onClick={() => {
                 onSelectSection("notifications");
                 onCloseMobile();
               }}
@@ -378,6 +418,18 @@ export default function DashboardSidebar({
             {navContent}
           </div>
         </div>
+      )}
+
+      {/* Global Incoming Voice Call Overlay for User Dashboard */}
+      {incomingCall && (
+        <VoiceCallOverlay
+          requestId={incomingCall.requestId}
+          initialCallLogId={incomingCall.callLogId}
+          role="USER"
+          isInitiator={false}
+          callerName={incomingCall.callerName}
+          onClose={() => setIncomingCall(null)}
+        />
       )}
     </>
   );

@@ -160,6 +160,7 @@ export default function ClientsPage() {
                                       const errData = await res.json();
                                       throw new Error(errData.message || "Failed to create");
                                     }
+
                                     setMatches(matches.map(m => m.id === match.id ? { ...m, isConnected: true } : m));
                                     alert(`Connection request sent to ${activeClient.name} and ${match.name}!`);
                                   } catch (err: any) {
