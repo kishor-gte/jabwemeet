@@ -1194,6 +1194,37 @@ router.patch('/services/packages/:id', async (req, res) => {
   }
 });
 
+router.delete('/services/packages/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "ServicePackage" WHERE "id" = $1 LIMIT 1
+    `, id);
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Package not found' });
+    }
+
+    await prisma.$executeRawUnsafe(`
+      DELETE FROM "ServicePackage" WHERE "id" = $1
+    `, id);
+
+    await logAudit(req, {
+      action: 'SERVICE_PACKAGE_DELETE',
+      targetType: 'SERVICE_PACKAGE',
+      targetId: id,
+      before: existing[0],
+      reason: 'Admin deleted service package',
+    });
+
+    return res.json({ success: true, message: 'Package deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting package:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete package' });
+  }
+});
+
+
 router.get('/services/subscriptions', async (req, res) => {
   try {
     const subscriptions = await prisma.$queryRawUnsafe(`
@@ -1929,6 +1960,15 @@ router.patch('/staff/:id', async (req, res) => {
     const existing = existingRows[0];
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+
+    if (req.staff.id === id && status && status !== 'ACTIVE') {
+      return res.status(400).json({ success: false, message: 'You cannot deactivate or suspend your own Super Admin account.' });
+    }
+
+    const allowedStatuses = ['ACTIVE', 'DEACTIVATED', 'SUSPENDED'];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status. Allowed values: ACTIVE, DEACTIVATED, SUSPENDED' });
     }
 
     const updates = [];

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Menu, LogOut, ShieldCheck, AlertCircle, RefreshCw, Megaphone, X } from "lucide-react";
+import { Menu, LogOut, ShieldCheck, AlertCircle, RefreshCw, Megaphone, X, ArrowLeft, Shield } from "lucide-react";
 
 import DashboardSidebar from "./components/DashboardSidebar";
 import DashboardHeader from "./components/DashboardHeader";
@@ -479,6 +480,15 @@ function DashboardContent() {
         </div>
 
         <div className="flex items-center gap-2">
+          {user.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold shadow-md shadow-red-500/25 border border-red-400/30 transition group"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Admin</span>
+            </Link>
+          )}
           <span className="text-xs font-semibold text-slate-300 hidden sm:inline truncate max-w-[120px]">
             {user.name}
           </span>
@@ -520,6 +530,34 @@ function DashboardContent() {
       {/* Main Content Area (Offset for Desktop Sidebar) */}
       <div className="lg:pl-72 flex-1 flex flex-col min-w-0">
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10 flex-1">
+          {/* Admin Mode Top Banner & Back Navigation (Exclusively for Admins) */}
+          {user.role === "ADMIN" && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-red-950/40 via-[#182337] to-[#101928] border border-red-500/30 shadow-2xl backdrop-blur-sm">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0 shadow-inner">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs sm:text-sm font-black text-white tracking-tight">Administrator Preview Mode</span>
+                    <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+                      SUPER_ADMIN
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    You are previewing the member dashboard as an administrator. You can return to the control center anytime.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/admin"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs shadow-lg shadow-red-500/30 border border-red-400/30 transition shrink-0 group transform hover:-translate-y-0.5"
+              >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                <span>Back to Admin Dashboard</span>
+              </Link>
+            </div>
+          )}
           {/* TAB 1: MAIN DASHBOARD OVERVIEW */}
           {activeSection === "dashboard" && (
             <>

@@ -158,59 +158,79 @@ export default function AdminAuditLogsPage() {
             <p className="text-sm font-semibold text-slate-400">No audit logs matching this criteria</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
-                <tr className="bg-white/[0.02] border-b border-white/10 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                  <th className="py-4 px-5">Timestamp</th>
-                  <th className="py-4 px-4">Operator / Staff</th>
-                  <th className="py-4 px-4">Action</th>
-                  <th className="py-4 px-4">Resource Target</th>
-                  <th className="py-4 px-4">Reason / Notes</th>
-                  <th className="py-4 px-5 text-right">Details</th>
+                <tr className="bg-white/[0.02] border-b border-white/10 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-3 w-[15%]">Timestamp</th>
+                  <th className="py-3.5 px-3 w-[20%]">Operator / Staff</th>
+                  <th className="py-3.5 px-3 w-[18%]">Action</th>
+                  <th className="py-3.5 px-3 w-[16%]">Resource</th>
+                  <th className="py-3.5 px-3 w-[21%]">Reason / Notes</th>
+                  <th className="py-3.5 px-3 w-[10%] text-right">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-xs">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-white/[0.02] transition">
-                    <td className="py-4 px-5 font-mono text-slate-400 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-500" />
-                        {new Date(log.createdAt).toLocaleString()}
+                    <td className="py-3 px-3 w-[15%]">
+                      <div className="flex items-start gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="font-mono text-slate-200 text-xs block whitespace-nowrap">
+                            {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                          <span className="font-mono text-slate-500 text-[10px] block">
+                            {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs">
+                    <td className="py-3 px-3 w-[20%]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center font-bold text-[11px] shrink-0">
                           {log.actorName ? log.actorName.charAt(0).toUpperCase() : "A"}
                         </div>
-                        <div>
-                          <p className="font-bold text-white text-xs">{log.actorName || "Super Admin"}</p>
-                          <span className="text-[10px] text-slate-500 font-mono">{log.actorEmail}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-white text-xs truncate" title={log.actorName || "Super Admin"}>
+                            {log.actorName || "Super Admin"}
+                          </p>
+                          <span className="text-[10px] text-slate-500 font-mono truncate block" title={log.actorEmail}>
+                            {log.actorEmail}
+                          </span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                    <td className="py-3 px-3 w-[18%]">
+                      <span
+                        className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 truncate max-w-full"
+                        title={formatActionName(log.action)}
+                      >
                         {formatActionName(log.action)}
                       </span>
                     </td>
-                    <td className="py-4 px-4">
-                      <div>
-                        <span className="font-bold text-white">{log.targetType}</span>
-                        <p className="text-[10px] text-slate-500 font-mono">ID: {log.targetId}</p>
+                    <td className="py-3 px-3 w-[16%]">
+                      <div className="min-w-0">
+                        <span className="font-bold text-white text-xs block truncate" title={log.targetType}>
+                          {log.targetType}
+                        </span>
+                        <p className="text-[10px] text-slate-500 font-mono truncate" title={log.targetId}>
+                          {log.targetId ? (log.targetId.length > 14 ? log.targetId.slice(0, 12) + "..." : log.targetId) : "—"}
+                        </p>
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-slate-300 max-w-xs truncate">
-                      {log.reason || "—"}
+                    <td className="py-3 px-3 w-[21%]">
+                      <p className="text-slate-300 text-xs truncate" title={log.reason || "No notes"}>
+                        {log.reason || "—"}
+                      </p>
                     </td>
-                    <td className="py-4 px-5 text-right">
+                    <td className="py-3 px-3 w-[10%] text-right">
                       <button
                         onClick={() => setSelectedLog(log)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-200 hover:text-white border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl transition"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-300 hover:text-white border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition shrink-0"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        View Diff
+                        <Eye className="w-3 h-3" />
+                        <span>Diff</span>
                       </button>
                     </td>
                   </tr>

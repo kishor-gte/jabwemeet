@@ -28,6 +28,12 @@ model User {
   isVerified         Boolean   @default(true)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  status             String?   @default("ACTIVE")
+  staffRole          String?   @default("SUPER_ADMIN")
+  identityVerified   Boolean?  @default(false)
+  mobileVerified     Boolean?  @default(true)
+  lastActiveAt       DateTime? @default(now())
+  internalNotes      String?
   events             Event[]
 
   // Breakup Buddy Fields

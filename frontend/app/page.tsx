@@ -97,20 +97,41 @@ export default function HomePage() {
       .catch((e) => console.error("Error fetching testimonials:", e));
   };
 
+  // Public CMS Content state
+  const [cmsContent, setCmsContent] = useState<any>({
+    heroHeadline: "",
+    heroSubheadline: "",
+    aboutText: "",
+    safetyPledge: "",
+    announcementBanner: "",
+  });
+
+  const fetchCmsContent = () => {
+    fetch("/api/services/content")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data?.content) {
+          setCmsContent(data.content);
+        }
+      })
+      .catch((e) => console.error("Error fetching CMS content:", e));
+  };
+
   // Check user session & load live events on load
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.success && data?.user) {
-            setCurrentUser(data.user);
-          }
-        })
-        .catch(() => {});
-  
-      fetchLiveEvents();
-      fetchTestimonials();
-    }, []);
+      .then((data) => {
+        if (data?.success && data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+
+    fetchLiveEvents();
+    fetchTestimonials();
+    fetchCmsContent();
+  }, []);
 
   // Real-time email validation + debounced check-email
   useEffect(() => {
@@ -336,9 +357,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white">
-      {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0b111e]/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      {/* TOP ANNOUNCEMENT & NAVBAR */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        {cmsContent.announcementBanner && (
+          <div className="w-full bg-gradient-to-r from-[#e06d53] via-rose-600 to-[#b8432a] text-white text-xs py-2 px-4 text-center font-semibold shadow-md flex items-center justify-center gap-2">
+            <span>📢 {cmsContent.announcementBanner}</span>
+          </div>
+        )}
+        <nav className="bg-[#0b111e]/90 backdrop-blur-md border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg">
               J
@@ -410,6 +437,7 @@ export default function HomePage() {
           </div>
         </div>
       </nav>
+      </div>
 
       {/* HERO SECTION */}
       <header className="pt-40 pb-28 px-6 text-center relative overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(224,109,83,0.15)_0%,transparent_60%)] border-b border-white/10">
@@ -419,10 +447,16 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight font-serif">
-            Not another dating app.<br />
-            <span className="bg-gradient-to-r from-white via-slate-200 to-[#e06d53] bg-clip-text text-transparent">
-              A reason to meet.
-            </span>
+            {cmsContent.heroHeadline ? (
+              <span>{cmsContent.heroHeadline}</span>
+            ) : (
+              <>
+                Not another dating app.<br />
+                <span className="bg-gradient-to-r from-white via-slate-200 to-[#e06d53] bg-clip-text text-transparent">
+                  A reason to meet.
+                </span>
+              </>
+            )}
           </h1>
 
           <p className="text-base sm:text-lg uppercase tracking-widest font-semibold text-slate-300">
@@ -430,8 +464,7 @@ export default function HomePage() {
           </p>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
-            Tired of endless swiping and conversations that never become real meetings?
-            JabWeMeet creates opportunities to meet people offline through curated events, experiences and genuine human connections.
+            {cmsContent.heroSubheadline || "Tired of endless swiping and conversations that never become real meetings? JabWeMeet creates opportunities to meet people offline through curated events, experiences and genuine human connections."}
           </p>
 
           <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
@@ -550,8 +583,8 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl font-bold font-serif mt-2">
               A place to meet people in the real world.
             </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto mt-3">
-              JabWeMeet is a real-world connection platform designed around shared experiences instead of endless online chatting.
+            <p className="text-slate-600 max-w-2xl mx-auto mt-3 leading-relaxed whitespace-pre-line">
+              {cmsContent.aboutText || "JabWeMeet is a real-world connection platform designed around shared experiences instead of endless online chatting."}
             </p>
           </div>
 
@@ -1092,6 +1125,15 @@ export default function HomePage() {
             Meet confidently. Connect safely.
           </h2>
 
+          {cmsContent.safetyPledge && (
+            <div className="max-w-2xl mx-auto p-4 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-sm leading-relaxed whitespace-pre-line text-left">
+              <p className="font-semibold text-emerald-400 mb-1 flex items-center gap-1.5">
+                🛡️ Platform Trust & Safety Pledge:
+              </p>
+              <p>{cmsContent.safetyPledge}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-left pt-4">
             {[
               "Verified members",
@@ -1172,7 +1214,7 @@ export default function HomePage() {
               <span className="font-extrabold text-xl text-white">Jab<span className="text-[#e06d53]">We</span>Meet</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              JabWeMeet brings people together through real-world experiences, singles events, speed dating, blind dates, dance experiences, social travel and genuine human connections.
+              {cmsContent.aboutText || "JabWeMeet brings people together through real-world experiences, singles events, speed dating, blind dates, dance experiences, social travel and genuine human connections."}
             </p>
           </div>
           <div>
@@ -1744,6 +1786,12 @@ export default function HomePage() {
               ✕
             </button>
             <h2 className="text-2xl font-bold font-serif text-white mb-4">JabWeMeet Safety Pledge</h2>
+            {cmsContent.safetyPledge && (
+              <div className="mb-4 p-4 rounded-xl bg-[#182337] border border-emerald-500/30 text-emerald-300 text-xs leading-relaxed whitespace-pre-line">
+                <p className="font-semibold text-emerald-400 mb-1">Official Platform Pledge:</p>
+                <p>{cmsContent.safetyPledge}</p>
+              </div>
+            )}
             <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
               <p><strong>1. Strict Verification:</strong> Every attendee must verify their mobile number and identity.</p>
               <p><strong>2. Safe Public Venues:</strong> All events take place in vetted public cafes, restaurants, and lounges.</p>
