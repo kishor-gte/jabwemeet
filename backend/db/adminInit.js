@@ -121,6 +121,7 @@ async function initAdminDb() {
         "price" DOUBLE PRECISION NOT NULL,
         "billingCycle" VARCHAR(50) DEFAULT 'MONTHLY',
         "durationDays" INTEGER DEFAULT 30,
+        "durationHours" INTEGER DEFAULT 1,
         "sessionLimit" INTEGER DEFAULT 4,
         "callLimit" INTEGER DEFAULT 8,
         "chatLimit" INTEGER DEFAULT 100,
@@ -129,6 +130,7 @@ async function initAdminDb() {
         "isActive" BOOLEAN DEFAULT true,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE "ServicePackage" ADD COLUMN IF NOT EXISTS "durationHours" INTEGER DEFAULT 1;
     `);
 
     // 8. Subscription table

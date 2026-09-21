@@ -55,6 +55,7 @@ export default function AdminPackagesPage() {
     price: 3999,
     billingCycle: "MONTHLY",
     durationDays: 30,
+    durationHours: 1,
     sessionLimit: 4,
     callLimit: 8,
     chatLimit: 100,
@@ -89,6 +90,7 @@ export default function AdminPackagesPage() {
       price: 3999,
       billingCycle: "MONTHLY",
       durationDays: 30,
+      durationHours: 1,
       sessionLimit: 4,
       callLimit: 8,
       chatLimit: 100,
@@ -106,6 +108,7 @@ export default function AdminPackagesPage() {
       price: pkg.price,
       billingCycle: pkg.billingCycle || "MONTHLY",
       durationDays: pkg.durationDays || 30,
+      durationHours: pkg.durationHours || 1,
       sessionLimit: pkg.sessionLimit || 4,
       callLimit: pkg.callLimit || 8,
       chatLimit: pkg.chatLimit || 100,
@@ -204,18 +207,37 @@ export default function AdminPackagesPage() {
                 <p className="text-xs text-slate-400 line-clamp-2">{pkg.description}</p>
 
                 <div className="pt-2 border-t border-white/5 space-y-1 text-xs text-slate-300">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Duration:</span>
-                    <span>{pkg.durationDays} days</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Sessions:</span>
-                    <span className="font-bold text-white">{pkg.sessionLimit} sessions</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Consultation Calls:</span>
-                    <span>{pkg.callLimit} calls</span>
-                  </div>
+                  {pkg.type === "BREAKUP_BUDDY" ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Duration:</span>
+                        <span className="font-bold text-indigo-400">{pkg.durationHours || 1} {pkg.durationHours === 1 ? "Hour" : "Hours"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Call Quota:</span>
+                        <span className="font-bold text-emerald-400">Unlimited</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Chat Quota:</span>
+                        <span className="font-bold text-emerald-400">Unlimited</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Duration:</span>
+                        <span>{pkg.durationDays} days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Sessions:</span>
+                        <span className="font-bold text-white">{pkg.sessionLimit} sessions</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Consultation Calls:</span>
+                        <span>{pkg.callLimit} calls</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -277,6 +299,7 @@ export default function AdminPackagesPage() {
                   <input
                     type="text"
                     required
+                    placeholder="e.g. 1 Hour Pass / 24 Hours Pass"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
@@ -284,74 +307,109 @@ export default function AdminPackagesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
-                  />
+              {form.type === "BREAKUP_BUDDY" ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        value={form.price}
+                        onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Duration (Hours)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={form.durationHours || 1}
+                        onChange={(e) => setForm({ ...form, durationHours: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2 font-medium">
+                    <span>✨</span>
+                    <span>During these <strong>{form.durationHours || 1} hours</strong>, both <strong>Calls and Chats are 100% Unlimited</strong>.</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
-                  <select
-                    value={form.billingCycle}
-                    onChange={(e) => setForm({ ...form, billingCycle: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
-                  >
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="PER_SESSION">Per Session</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Validity (Days)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.durationDays}
-                    onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
-                  />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        value={form.price}
+                        onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
+                      <select
+                        value={form.billingCycle}
+                        onChange={(e) => setForm({ ...form, billingCycle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      >
+                        <option value="MONTHLY">Monthly</option>
+                        <option value="WEEKLY">Weekly</option>
+                        <option value="PER_SESSION">Per Session</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Validity (Days)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={form.durationDays}
+                        onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Sessions Limit</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.sessionLimit}
-                    onChange={(e) => setForm({ ...form, sessionLimit: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Call Limit</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.callLimit}
-                    onChange={(e) => setForm({ ...form, callLimit: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Chat Limit</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.chatLimit}
-                    onChange={(e) => setForm({ ...form, chatLimit: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Sessions Limit</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.sessionLimit}
+                        onChange={(e) => setForm({ ...form, sessionLimit: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Call Limit</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.callLimit}
+                        onChange={(e) => setForm({ ...form, callLimit: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Chat Limit</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.chatLimit}
+                        onChange={(e) => setForm({ ...form, chatLimit: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">Description</label>
