@@ -222,40 +222,31 @@ export default function MatchmakerDashboard() {
           </DashboardCard>
 
           {/* Recent Messages */}
-          <DashboardCard title="Recent Messages" icon={MessageCircle} link="/matchmaker/messages">
-            {data.messages.length === 0 ? (
-              <EmptyState message="No recent messages." />
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {data.messages.map((msg: any) => (
-                  <div key={msg.id} className="py-4 flex items-start justify-between group hover:bg-slate-50 -mx-4 px-4 transition rounded-xl cursor-pointer">
-                    <div className="flex gap-3">
-                      <div className="relative">
-                        <img src={msg.profileImage} alt={msg.clientName} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
-                        {msg.unreadCount > 0 && (
-                          <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-bold text-white">
-                            {msg.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <p className={`text-sm ${msg.unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
-                          {msg.clientName}
-                        </p>
-                        <p className={`text-xs mt-0.5 line-clamp-1 ${msg.unreadCount > 0 ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
-                          {msg.lastMessage || 'Sent an attachment'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 ml-2">
-                      <p className="text-[10px] text-slate-400">
-                        {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                      </p>
+          <DashboardCard title="Messages with Admin" icon={MessageCircle} link="/matchmaker/messages">
+            <div className="divide-y divide-slate-100">
+              <div className="py-4 flex items-start justify-between group hover:bg-slate-50 -mx-4 px-4 transition rounded-xl cursor-pointer">
+                <div className="flex gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center border border-rose-200">
+                      <span className="text-rose-600 font-bold text-lg">A</span>
                     </div>
                   </div>
-                ))}
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      System Admin
+                    </p>
+                    <p className="text-xs mt-0.5 line-clamp-1 text-slate-500">
+                      Welcome to your dashboard. Reach out here for support.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-2">
+                  <p className="text-[10px] text-slate-400">
+                    Just now
+                  </p>
+                </div>
               </div>
-            )}
+            </div>
           </DashboardCard>
 
         </div>

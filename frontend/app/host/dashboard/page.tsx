@@ -28,6 +28,7 @@ import {
   Phone,
   Edit,
   Trash,
+  Loader2,
 } from "lucide-react";
 
 type Booking = {
@@ -102,6 +103,8 @@ export default function HostDashboardPage() {
   });
   const [activeSection, setActiveSection] = useState<"overview" | "events" | "attendees" | "analytics" | "profile" | "subscriptions">("overview");
   const [subStatus, setSubStatus] = useState<any>(null);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [subscribingPkgId, setSubscribingPkgId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -152,10 +155,11 @@ export default function HostDashboardPage() {
   const loadHostData = async () => {
     try {
       setLoading(true);
-      const [statsRes, bookingsRes, subRes] = await Promise.all([
+      const [statsRes, bookingsRes, subRes, plansRes] = await Promise.all([
         fetch("/api/events/host/stats", { credentials: "include" }),
         fetch("/api/events/host/bookings", { credentials: "include" }),
         fetch("/api/subscription/status", { credentials: "include" }),
+        fetch("/api/subscription/plans", { credentials: "include" }),
       ]);
 
       if (statsRes.ok) {
@@ -177,6 +181,13 @@ export default function HostDashboardPage() {
         const subData = await subRes.json();
         if (subData.success) {
           setSubStatus(subData.data);
+        }
+      }
+
+      if (plansRes && plansRes.ok) {
+        const plansData = await plansRes.json();
+        if (plansData.success) {
+          setAvailablePackages(plansData.packages || []);
         }
       }
     } catch (e) {
@@ -243,33 +254,64 @@ export default function HostDashboardPage() {
     });
   };
 
-  const handleBuyPlan = async (plan: string) => {
-    const res = await loadRazorpay();
-    if (!res) {
-      alert("Razorpay SDK failed to load. Are you online?");
-      return;
-    }
+  const handleBuyPlan = async (pkgOrPlan: any) => {
+    const pkgId = typeof pkgOrPlan === "object" ? pkgOrPlan.id : null;
+    const planName = typeof pkgOrPlan === "object" ? pkgOrPlan.name : pkgOrPlan;
+    setSubscribingPkgId(pkgId || planName);
 
     try {
       const orderRes = await fetch("/api/subscription/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ packageId: pkgId, plan: planName }),
         credentials: "include",
       });
       const data = await orderRes.json();
 
       if (!data.success) {
         alert(data.message || "Failed to create order");
+        setSubscribingPkgId(null);
+        return;
+      }
+
+      // Handle development / mock order fallback
+      if (data.order?.id?.startsWith("order_mock_")) {
+        const verifyRes = await fetch("/api/subscription/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_order_id: data.order.id,
+            razorpay_payment_id: "pay_mock_" + Date.now(),
+            razorpay_signature: "mock_signature",
+            packageId: pkgId,
+            plan: planName,
+          }),
+          credentials: "include",
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.success) {
+          showToast(`Successfully upgraded to ${planName} plan! 🎉`);
+          loadHostData();
+        } else {
+          alert(verifyData.message || "Payment verification failed");
+        }
+        setSubscribingPkgId(null);
+        return;
+      }
+
+      const res = await loadRazorpay();
+      if (!res) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        setSubscribingPkgId(null);
         return;
       }
 
       const options = {
-        key: data.keyId,
+        key: data.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
         amount: data.order.amount,
         currency: data.order.currency,
         name: "JabWeMeet",
-        description: `Upgrade to ${plan} Plan`,
+        description: `Upgrade to ${planName} Plan`,
         order_id: data.order.id,
         handler: async function (response: any) {
           const verifyRes = await fetch("/api/subscription/verify-payment", {
@@ -279,17 +321,19 @@ export default function HostDashboardPage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              plan,
+              packageId: pkgId,
+              plan: planName,
             }),
             credentials: "include",
           });
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            showToast(`Successfully upgraded to ${plan} plan! 🎉`);
+            showToast(`Successfully upgraded to ${planName} plan! 🎉`);
             loadHostData();
           } else {
             alert(verifyData.message || "Payment verification failed");
           }
+          setSubscribingPkgId(null);
         },
         prefill: {
           name: user?.name,
@@ -302,10 +346,15 @@ export default function HostDashboardPage() {
       };
 
       const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.on("payment.failed", function (resp: any) {
+        alert(resp.error?.description || "Payment failed or cancelled");
+        setSubscribingPkgId(null);
+      });
       paymentObject.open();
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      alert("Something went wrong processing your subscription");
+      setSubscribingPkgId(null);
     }
   };
   const handleCreateEvent = async (e: React.FormEvent) => {
@@ -789,7 +838,7 @@ export default function HostDashboardPage() {
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-amber-300">${stats.totalRevenue}</span>
+                <span className="text-3xl font-extrabold text-amber-300">₹{stats.totalRevenue.toLocaleString("en-IN")}</span>
                 <span className="text-xs text-emerald-400">verified sales</span>
               </div>
             </div>
@@ -860,7 +909,7 @@ export default function HostDashboardPage() {
                               {evt.category}
                             </span>
                             <span className="text-sm font-extrabold text-amber-300">
-                              {evt.price > 0 ? `$${evt.price}` : "Free Pass"}
+                              {evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Free Pass"}
                             </span>
                           </div>
 
@@ -1087,7 +1136,7 @@ export default function HostDashboardPage() {
                           {evt.category}
                         </span>
                         <span className="font-bold text-amber-300 text-sm">
-                          {evt.price > 0 ? `$${evt.price}` : "Free"}
+                          {evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Free"}
                         </span>
                       </div>
                       <h3 className="font-bold text-lg text-white">{evt.title}</h3>
@@ -1171,7 +1220,8 @@ export default function HostDashboardPage() {
                       <tr>
                         <th className="px-4 py-3">Attendee</th>
                         <th className="px-4 py-3">Event</th>
-                        <th className="px-4 py-3">Spots</th>
+                        <th className="px-4 py-3">Seats Booked</th>
+                        <th className="px-4 py-3">Amount</th>
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3 text-right">Action</th>
                       </tr>
@@ -1187,7 +1237,12 @@ export default function HostDashboardPage() {
                             <div className="text-white font-medium">{b.event.title}</div>
                             <div className="text-slate-400 text-[11px]">{b.event.city}</div>
                           </td>
-                          <td className="px-4 py-3 font-bold text-white">{b.spots}</td>
+                          <td className="px-4 py-3 font-bold text-amber-300">
+                            🎟️ {b.spots || 1} {(b.spots || 1) === 1 ? 'seat' : 'seats'}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-emerald-400">
+                            {b.totalAmount ? `₹${b.totalAmount.toLocaleString("en-IN")}` : "Free"}
+                          </td>
                           <td className="px-4 py-3">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1235,7 +1290,7 @@ export default function HostDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="bg-[#0b111e] p-6 rounded-2xl border border-white/5 space-y-2">
                     <span className="text-xs text-slate-400 uppercase font-semibold">Gross Ticket Sales</span>
-                    <p className="text-3xl font-extrabold text-amber-300">${stats.totalRevenue}</p>
+                    <p className="text-3xl font-extrabold text-amber-300">₹{stats.totalRevenue.toLocaleString("en-IN")}</p>
                     <p className="text-xs text-slate-500">From {stats.totalAttendees} confirmed spots</p>
                   </div>
                   <div className="bg-[#0b111e] p-6 rounded-2xl border border-white/5 space-y-2">
@@ -1262,54 +1317,276 @@ export default function HostDashboardPage() {
           {/* Section: Subscriptions */}
           {activeSection === "subscriptions" && (
             <div className="space-y-6">
+            {activeSection === "subscriptions" && (
               <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-8 space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-amber-400" /> Host Subscriptions & Plans</h2>
-                  <p className="text-xs text-slate-400 mt-1">Upgrade your plan to host more events and reach more attendees.</p>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-400" /> Host Subscriptions & Plans
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Manage your event hosting subscription quota and validities.
+                  </p>
                 </div>
 
-                {subStatus && (
-                  <div className="p-5 rounded-2xl bg-[#0b111e] border border-white/10 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Current Plan</span>
-                      <p className="text-lg font-bold text-white mt-1">{subStatus.currentPlan}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Expires: {new Date(subStatus.expiresAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Events Remaining</span>
-                      <p className="text-2xl font-extrabold text-[#e06d53] mt-1">{subStatus.eventsRemaining} <span className="text-sm font-semibold text-slate-500">/ {subStatus.maxEvents}</span></p>
-                    </div>
-                  </div>
-                )}
+                {(() => {
+                  const isPaidActive = Boolean(
+                    subStatus?.hasActivePlan &&
+                    subStatus?.currentPlan &&
+                    subStatus?.currentPlan !== "STARTER" &&
+                    (subStatus?.eventsRemaining ?? 0) > 0 &&
+                    new Date(subStatus?.expiresAt).getTime() > Date.now()
+                  );
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
-                  {[
-                    { name: "Basic", price: 999, events: 5, days: 30, color: "text-blue-400" },
-                    { name: "Pro", price: 2499, events: 15, days: 90, color: "text-amber-400" },
-                    { name: "Unlimited", price: 4999, events: "Unlimited", days: 365, color: "text-purple-400" },
-                  ].map((plan) => (
-                    <div key={plan.name} className="bg-[#0b111e] border border-white/10 rounded-2xl p-6 flex flex-col justify-between h-full hover:border-[#e06d53]/50 transition">
-                      <div>
-                        <h3 className={`font-bold text-lg ${plan.color}`}>{plan.name} Plan</h3>
-                        <div className="mt-4 space-y-2 text-sm text-slate-300">
-                          <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> {plan.events} Events</p>
-                          <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> {plan.days} Days Validity</p>
-                          <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> Priority Support</p>
+                  const eventsUsed = subStatus?.eventsUsed || 0;
+                  const maxEvents = subStatus?.maxEvents || 1;
+                  const eventsRemaining = subStatus?.eventsRemaining || 0;
+                  const isExpired = subStatus?.expiresAt ? new Date(subStatus.expiresAt).getTime() <= Date.now() : false;
+                  const isQuotaExhausted = !isExpired && eventsRemaining <= 0;
+                  const daysLeft = subStatus?.expiresAt
+                    ? Math.max(0, Math.ceil((new Date(subStatus.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    : 0;
+
+                  // 1. ACTIVE PAID SUBSCRIPTION: Hide buy cards until quota or validity runs out
+                  if (isPaidActive) {
+                    const usagePercent = Math.min(100, Math.round((eventsUsed / maxEvents) * 100));
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Active Subscription Banner Card */}
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1e293b] via-[#0f172a] to-[#0b111e] border border-emerald-500/30 p-6 sm:p-8 shadow-2xl">
+                          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+                          <div className="relative z-10 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                              <div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                  Active Subscription
+                                </div>
+                                <h3 className="text-2xl sm:text-3xl font-black text-white capitalize">
+                                  {subStatus.currentPlan}
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  Your host subscription is active and in good standing.
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() => {
+                                  setActiveSection("events");
+                                  setShowCreateModal(true);
+                                }}
+                                className="px-5 py-3 rounded-2xl bg-[#e06d53] hover:bg-[#d05c42] text-white text-sm font-bold shadow-lg shadow-[#e06d53]/25 flex items-center justify-center gap-2 transition self-start sm:self-auto shrink-0"
+                              >
+                                <Plus className="w-4 h-4" /> Create An Event
+                              </button>
+                            </div>
+
+                            {/* Quota & Validity Metric Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Events Remaining</div>
+                                <div className="text-3xl font-extrabold text-[#e06d53] mt-1">
+                                  {eventsRemaining}
+                                  <span className="text-sm font-semibold text-slate-400"> / {maxEvents} total</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1">
+                                  {eventsUsed} event{eventsUsed === 1 ? "" : "s"} already hosted
+                                </div>
+                              </div>
+
+                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Valid Until</div>
+                                <div className="text-lg font-bold text-white mt-1">
+                                  {new Date(subStatus.expiresAt).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </div>
+                                <div className="text-[10px] text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> {daysLeft} day{daysLeft === 1 ? "" : "s"} remaining
+                                </div>
+                              </div>
+
+                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Hosting Status</div>
+                                <div className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Authorized to Host
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1">
+                                  Instant attendee check-in enabled
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="space-y-1.5 pt-2">
+                              <div className="flex justify-between text-xs text-slate-400 font-medium">
+                                <span>Event Quota Used ({usagePercent}%)</span>
+                                <span>{eventsRemaining} slot{eventsRemaining === 1 ? "" : "s"} available</span>
+                              </div>
+                              <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-emerald-500 to-[#e06d53] rounded-full transition-all duration-500"
+                                  style={{ width: `${usagePercent}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Info Callout */}
+                            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-xs text-slate-400 flex items-start gap-3">
+                              <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-semibold text-slate-300">Subscription is Active: </span>
+                                You have active event slots remaining. To keep your dashboard focused, package purchase options are paused and will automatically reappear here once your events run out or when your subscription period concludes.
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-8 pt-4 border-t border-white/10 text-center">
-                        <p className="text-2xl font-extrabold text-white mb-4">₹{plan.price}</p>
-                        <button 
-                          onClick={() => handleBuyPlan(plan.name.toUpperCase())}
-                          className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition"
-                        >
-                          Upgrade to {plan.name}
-                        </button>
-                      </div>
+                    );
+                  }
+
+                  // 2. SUBSCRIPTION HAS RUN OUT OR STARTER PLAN: Show renewal/upgrade packages
+                  return (
+                    <div className="space-y-6">
+                      {/* Alert banner if plan ran out */}
+                      {isQuotaExhausted && subStatus?.currentPlan !== "STARTER" && (
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-300 text-xs">
+                          <Clock className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
+                          <div>
+                            <div className="font-bold text-sm text-white">Event Quota Exhausted</div>
+                            You have created all <strong>{maxEvents}</strong> events permitted by your <strong>{subStatus?.currentPlan}</strong> plan (0 events remaining). Select a package below to renew your quota and host more events.
+                          </div>
+                        </div>
+                      )}
+
+                      {isExpired && subStatus?.currentPlan !== "STARTER" && (
+                        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 text-red-300 text-xs">
+                          <Ban className="w-5 h-5 shrink-0 text-red-400 mt-0.5" />
+                          <div>
+                            <div className="font-bold text-sm text-white">Subscription Expired</div>
+                            Your <strong>{subStatus?.currentPlan}</strong> plan expired on {new Date(subStatus.expiresAt).toLocaleDateString()}. Please select an active package below to reactivate your hosting privileges.
+                          </div>
+                        </div>
+                      )}
+
+                      {subStatus?.currentPlan === "STARTER" && (
+                        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-4">
+                          <div>
+                            <span className="text-[10px] text-blue-400 uppercase font-bold tracking-wider">Free Starter Tier</span>
+                            <div className="text-sm font-semibold text-white mt-0.5">
+                              You have {eventsRemaining} free event slot{eventsRemaining === 1 ? "" : "s"} remaining. Upgrade to host unlimited or regular events!
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Package Grid */}
+                      {availablePackages.length === 0 ? (
+                        <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl p-8 bg-[#0b111e]/50 mt-4">
+                          <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+                          <h3 className="text-base font-semibold text-white">No Subscription Plans Available</h3>
+                          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                            There are currently no active host subscription plans published by the administrator. Please check back later.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
+                          {availablePackages.map((pkg, idx) => {
+                            const isSubscribing = subscribingPkgId === pkg.id || subscribingPkgId === pkg.name;
+                            const featuresList = Array.isArray(pkg.features)
+                              ? pkg.features
+                              : typeof pkg.features === "string"
+                              ? (() => {
+                                  try {
+                                    return JSON.parse(pkg.features);
+                                  } catch {
+                                    return [pkg.features];
+                                  }
+                                })()
+                              : [];
+
+                            const colorAccents = [
+                              { tag: "text-blue-400", border: "hover:border-blue-500/50" },
+                              { tag: "text-amber-400", border: "hover:border-amber-500/50" },
+                              { tag: "text-purple-400", border: "hover:border-purple-500/50" },
+                              { tag: "text-emerald-400", border: "hover:border-emerald-500/50" },
+                            ];
+                            const accent = colorAccents[idx % colorAccents.length];
+
+                            return (
+                              <div
+                                key={pkg.id}
+                                className={`bg-[#0b111e] border border-white/10 ${accent.border} rounded-2xl p-6 flex flex-col justify-between h-full transition relative group`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <h3 className={`font-bold text-lg capitalize ${accent.tag}`}>{pkg.name}</h3>
+                                    {pkg.billingCycle && (
+                                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white/5 text-slate-400">
+                                        {pkg.billingCycle}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {pkg.description && (
+                                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">{pkg.description}</p>
+                                  )}
+
+                                  <div className="mt-4 space-y-2 text-sm text-slate-300">
+                                    <p className="flex items-center gap-2">
+                                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                      <span>{pkg.sessionLimit ? `${pkg.sessionLimit} Event Creations` : "Unlimited Events"}</span>
+                                    </p>
+                                    <p className="flex items-center gap-2">
+                                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                      <span>{pkg.durationDays || 30} Days Validity</span>
+                                    </p>
+                                    {featuresList.map((feat: any, fIdx: number) => {
+                                      const featText = typeof feat === "string" ? feat : feat?.title || feat?.name;
+                                      if (!featText) return null;
+                                      return (
+                                        <p key={fIdx} className="flex items-center gap-2">
+                                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                          <span>{featText}</span>
+                                        </p>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                <div className="mt-8 pt-4 border-t border-white/10 text-center">
+                                  <div className="mb-4">
+                                    <p className="text-2xl font-extrabold text-white">₹{pkg.price}</p>
+                                    <span className="text-[11px] text-slate-400">for {pkg.durationDays || 30} days</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleBuyPlan(pkg)}
+                                    disabled={isSubscribing}
+                                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-[#e06d53] hover:bg-[#d05c42] text-white shadow-lg shadow-[#e06d53]/20 ${
+                                      isSubscribing ? "opacity-60 cursor-not-allowed" : ""
+                                    }`}
+                                  >
+                                    {isSubscribing ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                                      </>
+                                    ) : (
+                                      `Subscribe to ${pkg.name}`
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
+            )}
             </div>
           )}
 
@@ -1318,9 +1595,10 @@ export default function HostDashboardPage() {
 
       {/* Individual Event Attendees Modal */}
       {selectedEventForModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-[#131d2e] rounded-3xl p-6 md:p-8 w-full max-w-3xl border border-white/10 relative my-8 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-3xl bg-[#131d2e] border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-white/10 shrink-0 bg-[#131d2e]">
               <div>
                 <div className="text-xs font-semibold text-[#fca5a5] uppercase">{selectedEventForModal.category}</div>
                 <h3 className="text-xl font-bold text-white mt-0.5">{selectedEventForModal.title}</h3>
@@ -1329,14 +1607,19 @@ export default function HostDashboardPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedEventForModal(null)}
-                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5"
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* Scrollable Content */}
+            <div
+              className="flex-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-6 space-y-4"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">
                 Confirmed Attendees for this Event
               </h4>
@@ -1346,7 +1629,7 @@ export default function HostDashboardPage() {
                   No attendees have reserved a spot for this event yet.
                 </div>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <div className="space-y-3">
                   {bookings
                     .filter((b) => b.eventId === selectedEventForModal.id)
                     .map((b) => (
@@ -1364,7 +1647,7 @@ export default function HostDashboardPage() {
                               {b.user.email} {b.user.phone && `• ${b.user.phone}`}
                             </div>
                             <div className="text-[11px] text-amber-400 mt-0.5">
-                              {b.spots} spot(s) • Status: <span className="font-bold">{b.status}</span>
+                              🎟️ {b.spots || 1} {(b.spots || 1) === 1 ? 'seat' : 'seats'} • {b.totalAmount ? `₹${b.totalAmount.toLocaleString("en-IN")}` : 'Free Pass'} • Status: <span className="font-bold">{b.status}</span>
                             </div>
                           </div>
                         </div>
@@ -1374,7 +1657,7 @@ export default function HostDashboardPage() {
                             <button
                               disabled={updatingBookingId === b.id}
                               onClick={() => handleStatusChange(b.id, "CHECKED_IN")}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
                             >
                               <Check className="w-3.5 h-3.5" />
                               Check In
@@ -1383,7 +1666,7 @@ export default function HostDashboardPage() {
                             <button
                               disabled={updatingBookingId === b.id}
                               onClick={() => handleStatusChange(b.id, "CONFIRMED")}
-                              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition"
+                              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition cursor-pointer"
                             >
                               Revert
                             </button>
@@ -1392,7 +1675,7 @@ export default function HostDashboardPage() {
                             <button
                               disabled={updatingBookingId === b.id}
                               onClick={() => handleStatusChange(b.id, "CANCELLED")}
-                              className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition"
+                              className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition cursor-pointer"
                               title="Cancel"
                             >
                               <Ban className="w-3.5 h-3.5" />
@@ -1405,10 +1688,12 @@ export default function HostDashboardPage() {
               )}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-white/10">
+            {/* Sticky Footer */}
+            <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0c1322] flex justify-end shrink-0 rounded-b-3xl">
               <button
+                type="button"
                 onClick={() => setSelectedEventForModal(null)}
-                className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition"
+                className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition cursor-pointer"
               >
                 Done
               </button>
@@ -1419,218 +1704,234 @@ export default function HostDashboardPage() {
 
       {/* Create Event Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-[#131d2e] rounded-3xl p-6 md:p-8 w-full max-w-2xl border border-white/10 relative my-8 shadow-2xl">
-            <button
-              onClick={() => { setShowCreateModal(false); setEditingEventId(null); }}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e06d53]/15 text-[#fca5a5] text-xs font-bold mb-2">
-                <Plus className="w-3.5 h-3.5" />
-                New Experience Creation
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-2xl bg-[#131d2e] border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-6 pb-4 border-b border-white/10 shrink-0 bg-[#131d2e]">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e06d53]/15 text-[#fca5a5] text-xs font-bold mb-1.5">
+                  <Plus className="w-3.5 h-3.5" />
+                  New Experience Creation
+                </div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+                  {editingEventId ? "Edit Event" : "Create New Event"}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Post an offline single event, speed dating night, dance dating party, or group travel.
+                </p>
               </div>
-              <h2 className="text-2xl font-extrabold text-white">{editingEventId ? "Edit Event" : "Create New Event"}</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Post an offline single event, speed dating night, dance dating party, or group travel.
-              </p>
+              <button
+                type="button"
+                onClick={() => { setShowCreateModal(false); setEditingEventId(null); }}
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition"
+                title="Close"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Event Title *
-                  </label>
-                  <input
-                    required
-                    placeholder="e.g. Bangalore Friday Speed Dating Mixer"
-                    name="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                  />
-                </div>
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleCreateEvent} className="flex-1 flex flex-col overflow-hidden">
+              <div
+                className="flex-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-6 space-y-4"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Event Title *
+                    </label>
+                    <input
+                      required
+                      placeholder="e.g. Bangalore Friday Speed Dating Mixer"
+                      name="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                    />
+                  </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Description *
-                  </label>
-                  <textarea
-                    required
-                    placeholder="Describe the vibe, icebreakers, agenda, and what participants should expect..."
-                    name="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-24"
-                  />
-                </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Description *
+                    </label>
+                    <textarea
+                      required
+                      placeholder="Describe the vibe, icebreakers, agenda, and what participants should expect..."
+                      name="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-24"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Category *
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    City *
-                  </label>
-                  <input
-                    required
-                    placeholder="e.g. Bangalore, Mumbai, Delhi"
-                    name="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Venue / Location *
-                  </label>
-                  <input
-                    required
-                    placeholder="e.g. The Bier Library, Koramangala"
-                    name="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Start Date & Time *
-                  </label>
-                  <input
-                    required
-                    type="datetime-local"
-                    name="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                  />
-                </div>
-
-                {formData.category === "Singles Travels" ? (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Return / End Date *
+                      Category *
+                    </label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      City *
+                    </label>
+                    <input
+                      required
+                      placeholder="e.g. Bangalore, Mumbai, Delhi"
+                      name="city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Venue / Location *
+                    </label>
+                    <input
+                      required
+                      placeholder="e.g. The Bier Library, Koramangala"
+                      name="location"
+                      value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      Start Date & Time *
                     </label>
                     <input
                       required
                       type="datetime-local"
-                      name="endDate"
-                      value={formData.endDate}
-                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      name="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                       className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
                     />
                   </div>
-                ) : (
+
+                  {formData.category === "Singles Travels" ? (
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                        Return / End Date *
+                      </label>
+                      <input
+                        required
+                        type="datetime-local"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                        Ticket Price (₹)
+                      </label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        name="price"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      />
+                    </div>
+                  )}
+
+                  {formData.category === "Singles Travels" && (
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                        Trip Package Price (₹)
+                      </label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        name="price"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Ticket Price ($ or ₹)
+                      Max Capacity / Attendees
                     </label>
                     <input
                       required
                       type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                      min="1"
+                      name="maxAttendees"
+                      value={formData.maxAttendees}
+                      onChange={(e) => setFormData({ ...formData, maxAttendees: Number(e.target.value) })}
                       className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
                     />
                   </div>
-                )}
 
-                {formData.category === "Singles Travels" && (
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Trip Package Price ($ or ₹)
-                    </label>
-                    <input
-                      required
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                    />
-                  </div>
-                )}
+                  {formData.category === "Speed dating" && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                        Age Bracket (e.g. 24 - 32 years)
+                      </label>
+                      <input
+                        name="ageRange"
+                        placeholder="24 - 32"
+                        value={formData.ageRange}
+                        onChange={(e) => setFormData({ ...formData, ageRange: e.target.value })}
+                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      />
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Max Capacity / Attendees
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    name="maxAttendees"
-                    value={formData.maxAttendees}
-                    onChange={(e) => setFormData({ ...formData, maxAttendees: Number(e.target.value) })}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                  />
+                  {formData.category === "Singles Travels" && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                        Travel Itinerary & Inclusions
+                      </label>
+                      <textarea
+                        name="itinerary"
+                        placeholder="Day 1: Arrival & Sunset Beach Mixer... Day 2: Trekking & Bonfire..."
+                        value={formData.itinerary}
+                        onChange={(e) => setFormData({ ...formData, itinerary: e.target.value })}
+                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-20"
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {formData.category === "Speed dating" && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Age Bracket (e.g. 24 - 32 years)
-                    </label>
-                    <input
-                      name="ageRange"
-                      placeholder="24 - 32"
-                      value={formData.ageRange}
-                      onChange={(e) => setFormData({ ...formData, ageRange: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
-                    />
-                  </div>
-                )}
-
-                {formData.category === "Singles Travels" && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Travel Itinerary & Inclusions
-                    </label>
-                    <textarea
-                      name="itinerary"
-                      placeholder="Day 1: Arrival & Sunset Beach Mixer... Day 2: Trekking & Bonfire..."
-                      value={formData.itinerary}
-                      onChange={(e) => setFormData({ ...formData, itinerary: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-20"
-                    />
-                  </div>
-                )}
               </div>
 
-              <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-white/10">
+              {/* Sticky Footer */}
+              <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0c1322] flex items-center justify-end gap-3 shrink-0 rounded-b-3xl">
                 <button
                   type="button"
                   onClick={() => { setShowCreateModal(false); setEditingEventId(null); }}
-                  className="px-5 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 text-sm font-semibold transition"
+                  className="px-5 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 text-sm font-semibold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] px-6 py-2.5 rounded-xl font-bold text-sm text-white transition shadow-lg shadow-[#e06d53]/25"
+                  className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] px-6 py-2.5 rounded-xl font-bold text-sm text-white transition shadow-lg shadow-[#e06d53]/25 cursor-pointer"
                 >
                   {editingEventId ? "Save Changes" : "Publish Event"}
                 </button>

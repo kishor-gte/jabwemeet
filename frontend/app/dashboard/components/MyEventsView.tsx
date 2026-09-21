@@ -9,7 +9,7 @@ import {
   Ticket,
   QrCode,
   ShieldCheck,
-  Trash2,
+  CheckCircle2,
   Compass,
 } from "lucide-react";
 import { EventItem } from "./UpcomingEventsSection";
@@ -17,14 +17,12 @@ import { EventItem } from "./UpcomingEventsSection";
 interface MyEventsViewProps {
   registeredEvents: EventItem[];
   userName: string;
-  onCancelReservation: (eventId: string) => void;
   onExploreEvents: () => void;
 }
 
 export default function MyEventsView({
   registeredEvents,
   userName,
-  onCancelReservation,
   onExploreEvents,
 }: MyEventsViewProps) {
   return (
@@ -76,9 +74,10 @@ export default function MyEventsView({
                     <p className="font-semibold text-white truncate">{userName}</p>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase">Entry Fee</span>
+                    <span className="text-slate-400 text-[10px] uppercase">Entry Pass</span>
                     <p className="font-semibold text-emerald-300">
-                      {evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Complimentary"}
+                      {evt.bookedSpots ? `${evt.bookedSpots} ${evt.bookedSpots > 1 ? 'Seats' : 'Seat'}` : '1 Seat'}
+                      {evt.price > 0 ? ` • ₹${((evt.price || 0) * (evt.bookedSpots || 1)).toLocaleString("en-IN")}` : " • Complimentary"}
                     </p>
                   </div>
                   <div>
@@ -99,13 +98,10 @@ export default function MyEventsView({
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                <button
-                  onClick={() => onCancelReservation(evt.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold border border-rose-500/20 transition"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Cancel Reservation</span>
-                </button>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Confirmed Ticket Pass</span>
+                </div>
 
                 <div className="flex items-center gap-2 text-xs text-emerald-300">
                   <span>Ready at door</span>

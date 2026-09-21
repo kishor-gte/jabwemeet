@@ -172,6 +172,36 @@ router.get('/reviews', async (req, res) => {
   }
 });
 
+router.post('/reviews', async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.body.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+    const { buddyId, rating, comment } = req.body;
+    if (!buddyId || !rating) {
+      return res.status(400).json({ success: false, message: 'Buddy ID and rating are required' });
+    }
+    const numRating = parseInt(rating, 10);
+    const review = await prisma.buddyReview.create({
+      data: {
+        userId,
+        buddyId,
+        rating: Math.min(5, Math.max(1, numRating)),
+        comment: comment ? String(comment).trim() : null,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        buddy: { select: { id: true, name: true, displayName: true } },
+      },
+    });
+    res.status(201).json({ success: true, review });
+  } catch (error) {
+    console.error('Error in POST /api/buddy/reviews:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/earnings', async (req, res) => {
   try {
     const buddyId = req.user.userId;

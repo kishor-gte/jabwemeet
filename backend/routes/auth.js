@@ -767,6 +767,36 @@ router.put('/connections/:id', authenticateToken, async (req, res) => {
       data: updateData
     });
 
+    // Send email to opposite user about the status update
+    try {
+      const oppositeUserId = connection.clientId === userId ? connection.suggestedProfileId : connection.clientId;
+      const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+      const oppositeUser = await prisma.user.findUnique({ where: { id: oppositeUserId } });
+      const { sendMail } = require('../services/emailService');
+
+      if (oppositeUser && oppositeUser.email && currentUser) {
+        let subject = '';
+        let messageText = '';
+        let messageHtml = '';
+
+        if (action === 'Approve') {
+          subject = 'Connection Request Accepted - JabWeMeet';
+          messageText = `Hello ${oppositeUser.name},\n\nGreat news! ${currentUser.name} has accepted your connection request.\nLog into your dashboard to check it out.\n\nBest Regards,\nJabWeMeet Team`;
+          messageHtml = `<p>Hello <strong>${oppositeUser.name}</strong>,</p><p>Great news! <strong>${currentUser.name}</strong> has accepted your connection request.</p><p>Log into your dashboard to check it out.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
+        } else if (action === 'Reject') {
+          subject = 'Connection Request Passed - JabWeMeet';
+          messageText = `Hello ${oppositeUser.name},\n\n${currentUser.name} has passed on your connection request. Don't worry, there are plenty of other matches!\n\nBest Regards,\nJabWeMeet Team`;
+          messageHtml = `<p>Hello <strong>${oppositeUser.name}</strong>,</p><p><strong>${currentUser.name}</strong> has passed on your connection request. Don't worry, there are plenty of other matches!</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
+        }
+
+        if (subject) {
+          await sendMail(oppositeUser.email, subject, messageText, messageHtml);
+        }
+      }
+    } catch (mailError) {
+      console.error('Error sending update email:', mailError);
+    }
+
     res.json({ success: true, connection: updated });
   } catch (error) {
     console.error('Error updating connection:', error);
@@ -888,14 +918,55 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
       }
     });
 
-    const packages = await prisma.$queryRawUnsafe(`
+    // Create table if it doesn't exist (to avoid crashes)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ServicePackage" (
+        "id" TEXT PRIMARY KEY,
+        "name" TEXT,
+        "description" TEXT,
+        "price" DOUBLE PRECISION,
+        "type" TEXT,
+        "sessionLimit" INTEGER DEFAULT 1
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Payment" (
+        "id" TEXT PRIMARY KEY,
+        "userId" TEXT,
+        "amount" DOUBLE PRECISION,
+        "type" TEXT,
+        "status" TEXT,
+        "gateway" TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    let packages = await prisma.$queryRawUnsafe(`
       SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
     `);
+
+    if (packages.length === 0) {
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "ServicePackage" ("id", "name", "description", "price", "type", "sessionLimit")
+        VALUES ('PKG-DATE-1', 'Premium Dating Pass', 'Unlock 1 additional curated date', 999.0, 'DATING', 1)
+      `);
+      packages = await prisma.$queryRawUnsafe(`
+        SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
+      `);
+    }
+
+    const purchased = await prisma.$queryRawUnsafe(`
+      SELECT COUNT(*) as count FROM "Payment" WHERE "userId" = $1 AND "type" = 'DATING_PACKAGE' AND "status" = 'SUCCESS'
+    `, userId);
+    
+    const purchasedCount = purchased && purchased.length > 0 ? Number(purchased[0].count) : 0;
+    const totalAllowed = 1 + purchasedCount;
 
     res.json({
       success: true,
       approvedMatchesCount,
-      freeDatesRemaining: Math.max(0, 1 - approvedMatchesCount),
+      freeDatesRemaining: Math.max(0, totalAllowed - approvedMatchesCount),
       packages
     });
   } catch (err) {
@@ -904,16 +975,75 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
   }
 });
 
-// Process Payment
-router.post('/payments/package', authenticateToken, async (req, res) => {
+const Razorpay = require('razorpay');
+
+// Helper to get Razorpay instance
+function getRazorpayInstance() {
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RIlD5bEKRjyn3h',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'Ltg6uo9vI8TiFMVfj2cGm4I8',
+  });
+}
+
+// 1. Create Razorpay Order for Dating Package
+router.post('/payments/create-razorpay-order', authenticateToken, async (req, res) => {
+  try {
+    const { packageId, amount } = req.body;
+    if (!packageId || !amount) {
+      return res.status(400).json({ success: false, message: 'Missing package details' });
+    }
+
+    const amountInPaise = Math.round(parseFloat(amount) * 100);
+    const options = {
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: `rcpt_pkg_${Date.now().toString().slice(-6)}`,
+      notes: {
+        packageId,
+        userId: req.user.userId
+      },
+    };
+
+    const razorpay = getRazorpayInstance();
+    const order = await razorpay.orders.create(options);
+
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_RIlD5bEKRjyn3h'
+    });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    res.status(500).json({ success: false, message: "Failed to create payment order" });
+  }
+});
+
+// 2. Verify Razorpay Payment for Dating Package
+router.post('/payments/verify-razorpay-payment', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { packageId, amount } = req.body;
-    
-    const paymentId = 'PAY-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, packageId, amount } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Missing payment parameters" });
+    }
+
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'Ltg6uo9vI8TiFMVfj2cGm4I8';
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const generatedSignature = hmac.digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid Signature" });
+    }
+
+    // Process actual DB update
+    const paymentId = 'PAY-' + razorpay_payment_id.substring(0, 7).toUpperCase();
     await prisma.$executeRawUnsafe(`
       INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
-      VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'STRIPE', NOW())
+      VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'RAZORPAY', NOW())
     `, paymentId, userId, parseFloat(amount));
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -928,7 +1058,7 @@ router.post('/payments/package', authenticateToken, async (req, res) => {
     res.json({ success: true, paymentId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Payment verification failed" });
   }
 });
 
@@ -1006,6 +1136,22 @@ router.post('/connections/:id/feedback', authenticateToken, async (req, res) => 
 // Get Public Feedbacks (Testimonials)
 router.get('/public/feedbacks', async (req, res) => {
   try {
+    // Ensure table exists to prevent crash on fresh db
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT NOT NULL,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        "isPublished" BOOLEAN DEFAULT FALSE,
+        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
     const feedbacks = await prisma.$queryRawUnsafe(`
       SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
       FROM "DateFeedback" f
@@ -1018,6 +1164,101 @@ router.get('/public/feedbacks', async (req, res) => {
   } catch (err) {
     console.error('Error fetching public feedbacks:', err);
     res.status(500).json({ success: false });
+  }
+});
+
+// Generic Chat API (Admin <-> Staff)
+router.get('/chat/:contactId', authenticateToken, async (req, res) => {
+  try {
+    let { contactId } = req.params;
+    const userId = req.user.userId;
+
+    if (contactId === 'admin') {
+      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
+      if (!adminUser) return res.json({ success: true, messages: [] });
+      contactId = adminUser.id;
+    }
+
+    let conversation = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { clientId: userId, matchmakerId: contactId },
+          { clientId: contactId, matchmakerId: userId }
+        ]
+      },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: { sender: { select: { name: true } } }
+        }
+      }
+    });
+
+    if (!conversation) {
+      return res.json({ success: true, messages: [] });
+    }
+
+    // Mark as read
+    await prisma.message.updateMany({
+      where: {
+        conversationId: conversation.id,
+        senderId: contactId,
+        isRead: false
+      },
+      data: { isRead: true }
+    });
+
+    res.json({ success: true, messages: conversation.messages });
+  } catch (error) {
+    console.error('Error fetching chat:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch chat' });
+  }
+});
+
+router.post('/chat/:contactId', authenticateToken, async (req, res) => {
+  try {
+    let { contactId } = req.params;
+    const userId = req.user.userId;
+    const { text } = req.body;
+
+    if (contactId === 'admin') {
+      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
+      if (!adminUser) return res.status(404).json({ success: false, message: 'Admin not found' });
+      contactId = adminUser.id;
+    }
+
+    if (!text) return res.status(400).json({ success: false, message: 'Text is required' });
+
+    let conversation = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { clientId: userId, matchmakerId: contactId },
+          { clientId: contactId, matchmakerId: userId }
+        ]
+      }
+    });
+
+    if (!conversation) {
+      conversation = await prisma.conversation.create({
+        data: {
+          clientId: userId,
+          matchmakerId: contactId
+        }
+      });
+    }
+
+    const message = await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: userId,
+        content: text
+      }
+    });
+
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Error sending chat:', error);
+    res.status(500).json({ success: false, message: 'Failed to send chat' });
   }
 });
 
