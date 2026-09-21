@@ -1031,15 +1031,139 @@ router.patch('/matchmaking/requests/:id', async (req, res) => {
 
 router.get('/dates', async (req, res) => {
   try {
-    const dates = await prisma.appointment.findMany({
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+    // 1. Fetch dates from MatchSuggestion (where meetingDate IS NOT NULL OR status IN ('DateFixed', 'Ongoing', 'Completed', 'Done', 'Scheduled'))
+    const suggestions = await prisma.matchSuggestion.findMany({
+      where: {
+        OR: [
+          { meetingDate: { not: null } },
+          { status: { in: ['DateFixed', 'Ongoing', 'Completed', 'Done', 'Scheduled'] } }
+        ]
+      },
       include: {
-        client: { select: { id: true, name: true, email: true, phone: true } },
-        matchmaker: { select: { id: true, name: true, email: true } },
+        client: {
+          select: { id: true, name: true, email: true, phone: true, profileImage: true, gender: true, city: true }
+        },
+        suggestedProfile: {
+          select: { id: true, name: true, email: true, phone: true, profileImage: true, gender: true, city: true }
+        },
+        matchmaker: {
+          select: { id: true, name: true, email: true, phone: true }
+        },
+      },
+      orderBy: [
+        { meetingDate: 'desc' },
+        { updatedAt: 'desc' }
+      ]
+    });
+
+    // 2. Fetch appointments
+    const appointments = await prisma.appointment.findMany({
+      include: {
+        client: { select: { id: true, name: true, email: true, phone: true, profileImage: true, gender: true, city: true } },
+        matchmaker: { select: { id: true, name: true, email: true, phone: true } },
       },
       orderBy: { date: 'desc' },
     });
 
-    return res.json({ success: true, dates });
+    // Format MatchSuggestion dates
+    const formattedSuggestions = suggestions.map((s) => {
+      const meetDate = s.meetingDate ? new Date(s.meetingDate) : new Date(s.updatedAt);
+      const isPast = meetDate.getTime() < todayStart.getTime();
+      const isToday = meetDate >= todayStart && meetDate <= todayEnd;
+
+      let computedStatus = 'Scheduled';
+      if (s.status === 'Completed' || s.status === 'Done') {
+        computedStatus = 'Done';
+      } else if (s.status === 'Cancelled' || s.status === 'Rejected') {
+        computedStatus = 'Cancelled';
+      } else if (s.status === 'Ongoing' || isToday) {
+        computedStatus = 'Ongoing';
+      } else if (isPast) {
+        computedStatus = 'Done';
+      } else {
+        computedStatus = 'Scheduled';
+      }
+
+      return {
+        id: s.id,
+        source: 'MATCH_SUGGESTION',
+        client: s.client,
+        partner: s.suggestedProfile,
+        matchmaker: s.matchmaker,
+        date: s.meetingDate || s.updatedAt,
+        time: s.meetingDate
+          ? new Date(s.meetingDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+          : 'TBD',
+        mode: s.meetingVenue ? 'Venue Table' : 'Curated Date',
+        venue: s.meetingVenue || 'Venue Table',
+        location: s.meetingLocation || s.client?.city || 'City Center',
+        message: s.meetingMessage || 'Curated match date',
+        status: computedStatus,
+        rawStatus: s.status,
+        clientStatus: s.clientStatus,
+        suggestedStatus: s.suggestedStatus,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      };
+    });
+
+    // Format Appointment dates
+    const formattedAppointments = appointments.map((a) => {
+      const appDate = new Date(a.date);
+      const isPast = appDate.getTime() < todayStart.getTime();
+      const isToday = appDate >= todayStart && appDate <= todayEnd;
+
+      let computedStatus = 'Scheduled';
+      if (a.status === 'Completed' || a.status === 'Done') {
+        computedStatus = 'Done';
+      } else if (a.status === 'Cancelled' || a.status === 'Rejected') {
+        computedStatus = 'Cancelled';
+      } else if (a.status === 'Ongoing' || isToday) {
+        computedStatus = 'Ongoing';
+      } else if (isPast) {
+        computedStatus = 'Done';
+      } else {
+        computedStatus = a.status || 'Scheduled';
+      }
+
+      return {
+        id: a.id,
+        source: 'APPOINTMENT',
+        client: a.client,
+        partner: null,
+        matchmaker: a.matchmaker,
+        date: a.date,
+        time: a.time,
+        mode: a.mode || a.type || 'Consultation',
+        venue: a.type || 'Matchmaker Desk',
+        location: a.client?.city || 'Online / Center',
+        message: 'Direct Matchmaker Appointment',
+        status: computedStatus,
+        rawStatus: a.status,
+        createdAt: a.createdAt,
+        updatedAt: a.createdAt,
+      };
+    });
+
+    const allDates = [...formattedSuggestions, ...formattedAppointments].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    return res.json({
+      success: true,
+      dates: allDates,
+      counts: {
+        all: allDates.length,
+        ongoing: allDates.filter(d => d.status === 'Ongoing').length,
+        done: allDates.filter(d => d.status === 'Done').length,
+        scheduled: allDates.filter(d => d.status === 'Scheduled').length,
+        cancelled: allDates.filter(d => d.status === 'Cancelled').length,
+      }
+    });
   } catch (error) {
     console.error('Error fetching dates:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch scheduled dates' });
@@ -1049,33 +1173,72 @@ router.get('/dates', async (req, res) => {
 router.patch('/dates/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, date, time, reason } = req.body;
+    const { status, date, time, venue, location, reason } = req.body;
 
-    const appointment = await prisma.appointment.findUnique({ where: { id } });
-    if (!appointment) {
-      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    const suggestion = await prisma.matchSuggestion.findUnique({ where: { id } });
+    if (suggestion) {
+      const updateData = {};
+      if (status) {
+        if (status === 'Done' || status === 'Completed') updateData.status = 'Completed';
+        else if (status === 'Ongoing') updateData.status = 'Ongoing';
+        else if (status === 'Cancelled') updateData.status = 'Cancelled';
+        else updateData.status = status;
+      }
+      if (date) {
+        let newDate = new Date(date);
+        if (time) {
+          const parts = String(time).match(/(\d+):(\d+)/);
+          if (parts) {
+            newDate.setHours(parseInt(parts[1], 10), parseInt(parts[2], 10));
+          }
+        }
+        updateData.meetingDate = newDate;
+      }
+      if (venue) updateData.meetingVenue = venue;
+      if (location) updateData.meetingLocation = location;
+
+      await prisma.matchSuggestion.update({
+        where: { id },
+        data: updateData,
+      });
+
+      await logAudit(req, {
+        action: 'DATE_SCHEDULE_UPDATE',
+        targetType: 'MATCH_SUGGESTION',
+        targetId: id,
+        before: suggestion,
+        after: updateData,
+        reason: reason || 'Date schedule updated by admin',
+      });
+
+      return res.json({ success: true, message: 'Date schedule updated' });
     }
 
-    const updateData = {};
-    if (status) updateData.status = status;
-    if (date) updateData.date = new Date(date);
-    if (time) updateData.time = time;
+    const appointment = await prisma.appointment.findUnique({ where: { id } });
+    if (appointment) {
+      const updateData = {};
+      if (status) updateData.status = status;
+      if (date) updateData.date = new Date(date);
+      if (time) updateData.time = time;
 
-    await prisma.appointment.update({
-      where: { id },
-      data: updateData,
-    });
+      await prisma.appointment.update({
+        where: { id },
+        data: updateData,
+      });
 
-    await logAudit(req, {
-      action: 'DATE_SCHEDULE_UPDATE',
-      targetType: 'APPOINTMENT',
-      targetId: id,
-      before: appointment,
-      after: updateData,
-      reason: reason || 'Date schedule updated by admin',
-    });
+      await logAudit(req, {
+        action: 'DATE_SCHEDULE_UPDATE',
+        targetType: 'APPOINTMENT',
+        targetId: id,
+        before: appointment,
+        after: updateData,
+        reason: reason || 'Date schedule updated by admin',
+      });
 
-    return res.json({ success: true, message: 'Date schedule updated' });
+      return res.json({ success: true, message: 'Date schedule updated' });
+    }
+
+    return res.status(404).json({ success: false, message: 'Date record not found' });
   } catch (error) {
     console.error('Error updating date:', error);
     return res.status(500).json({ success: false, message: 'Failed to update date' });
@@ -1231,15 +1394,70 @@ router.delete('/services/packages/:id', async (req, res) => {
 
 router.get('/services/subscriptions', async (req, res) => {
   try {
-    const subscriptions = await prisma.$queryRawUnsafe(`
-      SELECT s.*, u."name" as "userName", u."email" as "userEmail", u."phone" as "userPhone",
-             p."name" as "packageName", p."type" as "packageType"
-      FROM "Subscription" s
-      JOIN "User" u ON s."userId" = u."id"
-      LEFT JOIN "ServicePackage" p ON s."packageId" = p."id"
-      ORDER BY s."createdAt" DESC
-    `);
-    return res.json({ success: true, subscriptions });
+    // 1. Fetch general service subscriptions
+    let generalSubs = [];
+    try {
+      generalSubs = await prisma.$queryRawUnsafe(`
+        SELECT s.*, u."name" as "userName", u."email" as "userEmail", u."phone" as "userPhone",
+               p."name" as "packageName", p."type" as "packageType", p."sessionLimit" as "sessionLimit"
+        FROM "Subscription" s
+        JOIN "User" u ON s."userId" = u."id"
+        LEFT JOIN "ServicePackage" p ON s."packageId" = p."id"
+        ORDER BY s."createdAt" DESC
+      `);
+    } catch (e) {
+      console.warn("Notice querying Subscription table:", e.message);
+    }
+
+    // 2. Fetch Host subscriptions (excluding free starter plans with 0 amount)
+    let hostSubs = [];
+    try {
+      hostSubs = await prisma.hostSubscription.findMany({
+        where: {
+          OR: [
+            { amountPaid: { gt: 0 } },
+            { plan: { not: 'STARTER' } }
+          ]
+        },
+        include: {
+          host: {
+            select: { id: true, name: true, email: true, phone: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } catch (e) {
+      console.warn("Notice querying HostSubscription table:", e.message);
+    }
+
+    // Map and merge host subscriptions not already represented in generalSubs
+    const existingSubIds = new Set((generalSubs || []).map(s => s.id));
+    const formattedHostSubs = hostSubs
+      .filter(hs => !existingSubIds.has(hs.id) && !existingSubIds.has(`sub_host_${hs.id}`))
+      .map(hs => ({
+        id: hs.id,
+        userId: hs.hostId,
+        userName: hs.host?.name || 'Host Member',
+        userEmail: hs.host?.email || '',
+        userPhone: hs.host?.phone || '',
+        packageName: hs.plan,
+        packageType: 'HOST',
+        serviceType: 'HOST_SUBSCRIPTION',
+        amount: hs.amountPaid,
+        billingCycle: 'MONTHLY',
+        status: hs.status,
+        startDate: hs.createdAt,
+        expiryDate: hs.expiresAt,
+        maxEvents: hs.maxEvents,
+        eventsUsed: hs.eventsUsed,
+        createdAt: hs.createdAt,
+      }));
+
+    const combined = [...(generalSubs || []), ...formattedHostSubs].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    return res.json({ success: true, subscriptions: combined });
   } catch (error) {
     console.error('Error fetching subscriptions:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch subscriptions' });
@@ -1251,37 +1469,65 @@ router.patch('/services/subscriptions/:id', async (req, res) => {
     const { id } = req.params;
     const { status, extendDays, reason } = req.body;
 
-    const subRows = await prisma.$queryRawUnsafe(`SELECT * FROM "Subscription" WHERE "id" = $1`, id);
-    const existing = subRows[0];
-    if (!existing) {
+    const subRows = await prisma.$queryRawUnsafe(`SELECT * FROM "Subscription" WHERE "id" = $1`, id).catch(() => []);
+    const existing = subRows && subRows[0];
+
+    // Check host subscription if applicable
+    const cleanHostId = id.startsWith('sub_host_') ? id.replace('sub_host_', '') : id;
+    const existingHostSub = await prisma.hostSubscription.findFirst({
+      where: { OR: [{ id }, { id: cleanHostId }] }
+    }).catch(() => null);
+
+    if (!existing && !existingHostSub) {
       return res.status(404).json({ success: false, message: 'Subscription not found' });
     }
 
-    const updates = [];
-    const params = [];
-    let pIdx = 1;
+    // Update central Subscription record if present
+    if (existing) {
+      const updates = [];
+      const params = [];
+      let pIdx = 1;
 
-    if (status) {
-      updates.push(`"status" = $${pIdx++}`);
-      params.push(status);
-    }
-    if (extendDays) {
-      updates.push(`"expiryDate" = "expiryDate" + INTERVAL '${parseInt(extendDays, 10)} days'`);
+      if (status) {
+        updates.push(`"status" = $${pIdx++}`);
+        params.push(status);
+      }
+      if (extendDays) {
+        updates.push(`"expiryDate" = "expiryDate" + INTERVAL '${parseInt(extendDays, 10)} days'`);
+      }
+
+      if (updates.length > 0) {
+        params.push(id);
+        await prisma.$executeRawUnsafe(
+          `UPDATE "Subscription" SET ${updates.join(', ')} WHERE "id" = $${pIdx}`,
+          ...params
+        );
+      }
     }
 
-    if (updates.length > 0) {
-      params.push(id);
-      await prisma.$executeRawUnsafe(
-        `UPDATE "Subscription" SET ${updates.join(', ')} WHERE "id" = $${pIdx}`,
-        ...params
-      );
+    // Update HostSubscription record if present
+    if (existingHostSub) {
+      const updateData = {};
+      if (status) updateData.status = status;
+      if (extendDays) {
+        const newExpiry = new Date(existingHostSub.expiresAt);
+        newExpiry.setDate(newExpiry.getDate() + parseInt(extendDays, 10));
+        updateData.expiresAt = newExpiry;
+      }
+      await prisma.hostSubscription.update({
+        where: { id: existingHostSub.id },
+        data: updateData,
+      });
     }
 
     await logAudit(req, {
       action: 'SUBSCRIPTION_UPDATE',
       targetType: 'SUBSCRIPTION',
       targetId: id,
-      before: { status: existing.status, expiryDate: existing.expiryDate },
+      before: {
+        status: existing?.status || existingHostSub?.status,
+        expiryDate: existing?.expiryDate || existingHostSub?.expiresAt,
+      },
       after: { status, extendDays },
       reason: reason || 'Admin updated subscription status/extension',
     });

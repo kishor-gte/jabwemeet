@@ -28,6 +28,7 @@ import {
   Phone,
   Edit,
   Trash,
+  Loader2,
 } from "lucide-react";
 
 type Booking = {
@@ -102,6 +103,8 @@ export default function HostDashboardPage() {
   });
   const [activeSection, setActiveSection] = useState<"overview" | "events" | "attendees" | "analytics" | "profile" | "subscriptions">("overview");
   const [subStatus, setSubStatus] = useState<any>(null);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [subscribingPkgId, setSubscribingPkgId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -152,10 +155,11 @@ export default function HostDashboardPage() {
   const loadHostData = async () => {
     try {
       setLoading(true);
-      const [statsRes, bookingsRes, subRes] = await Promise.all([
+      const [statsRes, bookingsRes, subRes, plansRes] = await Promise.all([
         fetch("/api/events/host/stats", { credentials: "include" }),
         fetch("/api/events/host/bookings", { credentials: "include" }),
         fetch("/api/subscription/status", { credentials: "include" }),
+        fetch("/api/subscription/plans", { credentials: "include" }),
       ]);
 
       if (statsRes.ok) {
@@ -177,6 +181,13 @@ export default function HostDashboardPage() {
         const subData = await subRes.json();
         if (subData.success) {
           setSubStatus(subData.data);
+        }
+      }
+
+      if (plansRes && plansRes.ok) {
+        const plansData = await plansRes.json();
+        if (plansData.success) {
+          setAvailablePackages(plansData.packages || []);
         }
       }
     } catch (e) {
@@ -243,24 +254,55 @@ export default function HostDashboardPage() {
     });
   };
 
-  const handleBuyPlan = async (plan: string) => {
-    const res = await loadRazorpay();
-    if (!res) {
-      alert("Razorpay SDK failed to load. Are you online?");
-      return;
-    }
+  const handleBuyPlan = async (pkgOrPlan: any) => {
+    const pkgId = typeof pkgOrPlan === "object" ? pkgOrPlan.id : null;
+    const planName = typeof pkgOrPlan === "object" ? pkgOrPlan.name : pkgOrPlan;
+    setSubscribingPkgId(pkgId || planName);
 
     try {
       const orderRes = await fetch("/api/subscription/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ packageId: pkgId, plan: planName }),
         credentials: "include",
       });
       const data = await orderRes.json();
 
       if (!data.success) {
         alert(data.message || "Failed to create order");
+        setSubscribingPkgId(null);
+        return;
+      }
+
+      // Handle development / mock order fallback
+      if (data.order?.id?.startsWith("order_mock_")) {
+        const verifyRes = await fetch("/api/subscription/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_order_id: data.order.id,
+            razorpay_payment_id: "pay_mock_" + Date.now(),
+            razorpay_signature: "mock_signature",
+            packageId: pkgId,
+            plan: planName,
+          }),
+          credentials: "include",
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.success) {
+          showToast(`Successfully upgraded to ${planName} plan! 🎉`);
+          loadHostData();
+        } else {
+          alert(verifyData.message || "Payment verification failed");
+        }
+        setSubscribingPkgId(null);
+        return;
+      }
+
+      const res = await loadRazorpay();
+      if (!res) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        setSubscribingPkgId(null);
         return;
       }
 
@@ -269,7 +311,7 @@ export default function HostDashboardPage() {
         amount: data.order.amount,
         currency: data.order.currency,
         name: "JabWeMeet",
-        description: `Upgrade to ${plan} Plan`,
+        description: `Upgrade to ${planName} Plan`,
         order_id: data.order.id,
         handler: async function (response: any) {
           const verifyRes = await fetch("/api/subscription/verify-payment", {
@@ -279,17 +321,19 @@ export default function HostDashboardPage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              plan,
+              packageId: pkgId,
+              plan: planName,
             }),
             credentials: "include",
           });
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            showToast(`Successfully upgraded to ${plan} plan! 🎉`);
+            showToast(`Successfully upgraded to ${planName} plan! 🎉`);
             loadHostData();
           } else {
             alert(verifyData.message || "Payment verification failed");
           }
+          setSubscribingPkgId(null);
         },
         prefill: {
           name: user?.name,
@@ -302,10 +346,15 @@ export default function HostDashboardPage() {
       };
 
       const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.on("payment.failed", function (resp: any) {
+        alert(resp.error?.description || "Payment failed or cancelled");
+        setSubscribingPkgId(null);
+      });
       paymentObject.open();
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      alert("Something went wrong processing your subscription");
+      setSubscribingPkgId(null);
     }
   };
   const handleCreateEvent = async (e: React.FormEvent) => {
@@ -1268,54 +1317,276 @@ export default function HostDashboardPage() {
           {/* Section: Subscriptions */}
           {activeSection === "subscriptions" && (
             <div className="space-y-6">
+            {activeSection === "subscriptions" && (
               <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-8 space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-amber-400" /> Host Subscriptions & Plans</h2>
-                  <p className="text-xs text-slate-400 mt-1">Upgrade your plan to host more events and reach more attendees.</p>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-400" /> Host Subscriptions & Plans
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Manage your event hosting subscription quota and validities.
+                  </p>
                 </div>
 
-                {subStatus && (
-                  <div className="p-5 rounded-2xl bg-[#0b111e] border border-white/10 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Current Plan</span>
-                      <p className="text-lg font-bold text-white mt-1">{subStatus.currentPlan}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Expires: {new Date(subStatus.expiresAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Events Remaining</span>
-                      <p className="text-2xl font-extrabold text-[#e06d53] mt-1">{subStatus.eventsRemaining} <span className="text-sm font-semibold text-slate-500">/ {subStatus.maxEvents}</span></p>
-                    </div>
-                  </div>
-                )}
+                {(() => {
+                  const isPaidActive = Boolean(
+                    subStatus?.hasActivePlan &&
+                    subStatus?.currentPlan &&
+                    subStatus?.currentPlan !== "STARTER" &&
+                    (subStatus?.eventsRemaining ?? 0) > 0 &&
+                    new Date(subStatus?.expiresAt).getTime() > Date.now()
+                  );
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
-                  {[
-                    { name: "Basic", price: 999, events: 5, days: 30, color: "text-blue-400" },
-                    { name: "Pro", price: 2499, events: 15, days: 90, color: "text-amber-400" },
-                    { name: "Unlimited", price: 4999, events: "Unlimited", days: 365, color: "text-purple-400" },
-                  ].map((plan) => (
-                    <div key={plan.name} className="bg-[#0b111e] border border-white/10 rounded-2xl p-6 flex flex-col justify-between h-full hover:border-[#e06d53]/50 transition">
-                      <div>
-                        <h3 className={`font-bold text-lg ${plan.color}`}>{plan.name} Plan</h3>
-                        <div className="mt-4 space-y-2 text-sm text-slate-300">
-                          <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> {plan.events} Events</p>
-                          <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> {plan.days} Days Validity</p>
-                          <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400" /> Priority Support</p>
+                  const eventsUsed = subStatus?.eventsUsed || 0;
+                  const maxEvents = subStatus?.maxEvents || 1;
+                  const eventsRemaining = subStatus?.eventsRemaining || 0;
+                  const isExpired = subStatus?.expiresAt ? new Date(subStatus.expiresAt).getTime() <= Date.now() : false;
+                  const isQuotaExhausted = !isExpired && eventsRemaining <= 0;
+                  const daysLeft = subStatus?.expiresAt
+                    ? Math.max(0, Math.ceil((new Date(subStatus.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    : 0;
+
+                  // 1. ACTIVE PAID SUBSCRIPTION: Hide buy cards until quota or validity runs out
+                  if (isPaidActive) {
+                    const usagePercent = Math.min(100, Math.round((eventsUsed / maxEvents) * 100));
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Active Subscription Banner Card */}
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1e293b] via-[#0f172a] to-[#0b111e] border border-emerald-500/30 p-6 sm:p-8 shadow-2xl">
+                          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+                          <div className="relative z-10 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                              <div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                  Active Subscription
+                                </div>
+                                <h3 className="text-2xl sm:text-3xl font-black text-white capitalize">
+                                  {subStatus.currentPlan}
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  Your host subscription is active and in good standing.
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() => {
+                                  setActiveSection("events");
+                                  setShowCreateModal(true);
+                                }}
+                                className="px-5 py-3 rounded-2xl bg-[#e06d53] hover:bg-[#d05c42] text-white text-sm font-bold shadow-lg shadow-[#e06d53]/25 flex items-center justify-center gap-2 transition self-start sm:self-auto shrink-0"
+                              >
+                                <Plus className="w-4 h-4" /> Create An Event
+                              </button>
+                            </div>
+
+                            {/* Quota & Validity Metric Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Events Remaining</div>
+                                <div className="text-3xl font-extrabold text-[#e06d53] mt-1">
+                                  {eventsRemaining}
+                                  <span className="text-sm font-semibold text-slate-400"> / {maxEvents} total</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1">
+                                  {eventsUsed} event{eventsUsed === 1 ? "" : "s"} already hosted
+                                </div>
+                              </div>
+
+                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Valid Until</div>
+                                <div className="text-lg font-bold text-white mt-1">
+                                  {new Date(subStatus.expiresAt).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </div>
+                                <div className="text-[10px] text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> {daysLeft} day{daysLeft === 1 ? "" : "s"} remaining
+                                </div>
+                              </div>
+
+                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Hosting Status</div>
+                                <div className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Authorized to Host
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1">
+                                  Instant attendee check-in enabled
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="space-y-1.5 pt-2">
+                              <div className="flex justify-between text-xs text-slate-400 font-medium">
+                                <span>Event Quota Used ({usagePercent}%)</span>
+                                <span>{eventsRemaining} slot{eventsRemaining === 1 ? "" : "s"} available</span>
+                              </div>
+                              <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-emerald-500 to-[#e06d53] rounded-full transition-all duration-500"
+                                  style={{ width: `${usagePercent}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Info Callout */}
+                            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-xs text-slate-400 flex items-start gap-3">
+                              <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-semibold text-slate-300">Subscription is Active: </span>
+                                You have active event slots remaining. To keep your dashboard focused, package purchase options are paused and will automatically reappear here once your events run out or when your subscription period concludes.
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-8 pt-4 border-t border-white/10 text-center">
-                        <p className="text-2xl font-extrabold text-white mb-4">₹{plan.price}</p>
-                        <button 
-                          onClick={() => handleBuyPlan(plan.name.toUpperCase())}
-                          className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition"
-                        >
-                          Upgrade to {plan.name}
-                        </button>
-                      </div>
+                    );
+                  }
+
+                  // 2. SUBSCRIPTION HAS RUN OUT OR STARTER PLAN: Show renewal/upgrade packages
+                  return (
+                    <div className="space-y-6">
+                      {/* Alert banner if plan ran out */}
+                      {isQuotaExhausted && subStatus?.currentPlan !== "STARTER" && (
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-300 text-xs">
+                          <Clock className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
+                          <div>
+                            <div className="font-bold text-sm text-white">Event Quota Exhausted</div>
+                            You have created all <strong>{maxEvents}</strong> events permitted by your <strong>{subStatus?.currentPlan}</strong> plan (0 events remaining). Select a package below to renew your quota and host more events.
+                          </div>
+                        </div>
+                      )}
+
+                      {isExpired && subStatus?.currentPlan !== "STARTER" && (
+                        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 text-red-300 text-xs">
+                          <Ban className="w-5 h-5 shrink-0 text-red-400 mt-0.5" />
+                          <div>
+                            <div className="font-bold text-sm text-white">Subscription Expired</div>
+                            Your <strong>{subStatus?.currentPlan}</strong> plan expired on {new Date(subStatus.expiresAt).toLocaleDateString()}. Please select an active package below to reactivate your hosting privileges.
+                          </div>
+                        </div>
+                      )}
+
+                      {subStatus?.currentPlan === "STARTER" && (
+                        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-4">
+                          <div>
+                            <span className="text-[10px] text-blue-400 uppercase font-bold tracking-wider">Free Starter Tier</span>
+                            <div className="text-sm font-semibold text-white mt-0.5">
+                              You have {eventsRemaining} free event slot{eventsRemaining === 1 ? "" : "s"} remaining. Upgrade to host unlimited or regular events!
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Package Grid */}
+                      {availablePackages.length === 0 ? (
+                        <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl p-8 bg-[#0b111e]/50 mt-4">
+                          <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+                          <h3 className="text-base font-semibold text-white">No Subscription Plans Available</h3>
+                          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                            There are currently no active host subscription plans published by the administrator. Please check back later.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
+                          {availablePackages.map((pkg, idx) => {
+                            const isSubscribing = subscribingPkgId === pkg.id || subscribingPkgId === pkg.name;
+                            const featuresList = Array.isArray(pkg.features)
+                              ? pkg.features
+                              : typeof pkg.features === "string"
+                              ? (() => {
+                                  try {
+                                    return JSON.parse(pkg.features);
+                                  } catch {
+                                    return [pkg.features];
+                                  }
+                                })()
+                              : [];
+
+                            const colorAccents = [
+                              { tag: "text-blue-400", border: "hover:border-blue-500/50" },
+                              { tag: "text-amber-400", border: "hover:border-amber-500/50" },
+                              { tag: "text-purple-400", border: "hover:border-purple-500/50" },
+                              { tag: "text-emerald-400", border: "hover:border-emerald-500/50" },
+                            ];
+                            const accent = colorAccents[idx % colorAccents.length];
+
+                            return (
+                              <div
+                                key={pkg.id}
+                                className={`bg-[#0b111e] border border-white/10 ${accent.border} rounded-2xl p-6 flex flex-col justify-between h-full transition relative group`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <h3 className={`font-bold text-lg capitalize ${accent.tag}`}>{pkg.name}</h3>
+                                    {pkg.billingCycle && (
+                                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white/5 text-slate-400">
+                                        {pkg.billingCycle}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {pkg.description && (
+                                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">{pkg.description}</p>
+                                  )}
+
+                                  <div className="mt-4 space-y-2 text-sm text-slate-300">
+                                    <p className="flex items-center gap-2">
+                                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                      <span>{pkg.sessionLimit ? `${pkg.sessionLimit} Event Creations` : "Unlimited Events"}</span>
+                                    </p>
+                                    <p className="flex items-center gap-2">
+                                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                      <span>{pkg.durationDays || 30} Days Validity</span>
+                                    </p>
+                                    {featuresList.map((feat: any, fIdx: number) => {
+                                      const featText = typeof feat === "string" ? feat : feat?.title || feat?.name;
+                                      if (!featText) return null;
+                                      return (
+                                        <p key={fIdx} className="flex items-center gap-2">
+                                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                          <span>{featText}</span>
+                                        </p>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                <div className="mt-8 pt-4 border-t border-white/10 text-center">
+                                  <div className="mb-4">
+                                    <p className="text-2xl font-extrabold text-white">₹{pkg.price}</p>
+                                    <span className="text-[11px] text-slate-400">for {pkg.durationDays || 30} days</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleBuyPlan(pkg)}
+                                    disabled={isSubscribing}
+                                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-[#e06d53] hover:bg-[#d05c42] text-white shadow-lg shadow-[#e06d53]/20 ${
+                                      isSubscribing ? "opacity-60 cursor-not-allowed" : ""
+                                    }`}
+                                  >
+                                    {isSubscribing ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                                      </>
+                                    ) : (
+                                      `Subscribe to ${pkg.name}`
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
+            )}
             </div>
           )}
 
@@ -1345,7 +1616,10 @@ export default function HostDashboardPage() {
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div
+              className="flex-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-6 space-y-4"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">
                 Confirmed Attendees for this Event
               </h4>
@@ -1458,7 +1732,10 @@ export default function HostDashboardPage() {
 
             {/* Scrollable Form Body */}
             <form onSubmit={handleCreateEvent} className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div
+                className="flex-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-6 space-y-4"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">

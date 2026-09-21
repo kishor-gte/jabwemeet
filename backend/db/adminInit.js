@@ -151,6 +151,29 @@ async function initAdminDb() {
       CREATE INDEX IF NOT EXISTS "idx_subscription_user" ON "Subscription"("userId");
     `);
 
+    // Sync existing paid HostSubscriptions into central Subscription table
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "Subscription" (
+        "id", "userId", "packageId", "serviceType", "amount", "billingCycle", "status", "startDate", "expiryDate", "autoRenewal", "createdAt"
+      )
+      SELECT 
+        hs."id",
+        hs."hostId" as "userId",
+        p."id" as "packageId",
+        'HOST_SUBSCRIPTION' as "serviceType",
+        hs."amountPaid" as "amount",
+        'MONTHLY' as "billingCycle",
+        hs."status",
+        hs."createdAt" as "startDate",
+        hs."expiresAt" as "expiryDate",
+        false as "autoRenewal",
+        hs."createdAt"
+      FROM "HostSubscription" hs
+      LEFT JOIN "ServicePackage" p ON LOWER(p."name") = LOWER(hs."plan")
+      WHERE (hs."amountPaid" > 0 OR hs."plan" != 'STARTER')
+      ON CONFLICT ("id") DO NOTHING;
+    `);
+
     // 9. Report table
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Report" (

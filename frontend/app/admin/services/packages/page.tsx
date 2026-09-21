@@ -189,9 +189,17 @@ export default function AdminPackagesPage() {
                         ? "bg-purple-500/20 text-purple-300"
                         : pkg.type === "DATING"
                         ? "bg-rose-500/20 text-rose-300"
+                        : pkg.type === "HOST"
+                        ? "bg-amber-500/20 text-amber-300"
                         : "bg-blue-500/20 text-blue-300"
                     }`}>
-                      {pkg.type === "RELATIONSHIP_MANAGER" ? "Matchmaking" : pkg.type === "DATING" ? "Dating Package" : "Breakup Buddy"}
+                      {pkg.type === "RELATIONSHIP_MANAGER"
+                        ? "Matchmaking"
+                        : pkg.type === "DATING"
+                        ? "Dating Package"
+                        : pkg.type === "HOST"
+                        ? "Host Subscription"
+                        : "Breakup Buddy"}
                     </span>
                   <span className={`w-2 h-2 rounded-full ${pkg.isActive ? "bg-emerald-400" : "bg-slate-500"}`} />
                 </div>
@@ -207,7 +215,24 @@ export default function AdminPackagesPage() {
                 <p className="text-xs text-slate-400 line-clamp-2">{pkg.description}</p>
 
                 <div className="pt-2 border-t border-white/5 space-y-1 text-xs text-slate-300">
-                  {pkg.type === "BREAKUP_BUDDY" ? (
+                  {pkg.type === "HOST" ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Events Quota:</span>
+                        <span className="font-bold text-amber-400">
+                          {pkg.sessionLimit ? `${pkg.sessionLimit} Events` : "Unlimited Events"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Validity:</span>
+                        <span className="font-bold text-white">{pkg.durationDays || 30} Days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Billing:</span>
+                        <span className="text-slate-300">{pkg.billingCycle || "MONTHLY"}</span>
+                      </div>
+                    </>
+                  ) : pkg.type === "BREAKUP_BUDDY" ? (
                     <>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Duration:</span>
@@ -289,6 +314,7 @@ export default function AdminPackagesPage() {
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
                   >
+                    <option value="HOST">Host Subscription</option>
                     <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
                     <option value="BREAKUP_BUDDY">Breakup Buddy</option>
                     <option value="DATING">Dating Package</option>
@@ -299,7 +325,7 @@ export default function AdminPackagesPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 1 Hour Pass / 24 Hours Pass"
+                    placeholder="e.g. Basic Host / Pro Host / Starter"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
@@ -307,7 +333,63 @@ export default function AdminPackagesPage() {
                 </div>
               </div>
 
-              {form.type === "BREAKUP_BUDDY" ? (
+              {form.type === "HOST" ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        value={form.price}
+                        onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Events Quota</label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        placeholder="0 for unlimited"
+                        value={form.sessionLimit}
+                        onChange={(e) => setForm({ ...form, sessionLimit: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Validity (Days)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={form.durationDays}
+                        onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
+                    <select
+                      value={form.billingCycle}
+                      onChange={(e) => setForm({ ...form, billingCycle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    >
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="QUARTERLY">Quarterly</option>
+                      <option value="ANNUAL">Annual / Yearly</option>
+                      <option value="ONE_TIME">One-Time Pass</option>
+                    </select>
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-2 font-medium">
+                    <span>🎟️</span>
+                    <span>Allows the host to publish up to <strong>{form.sessionLimit === 0 ? "Unlimited" : (form.sessionLimit || 5)} events</strong> over <strong>{form.durationDays || 30} days</strong>.</span>
+                  </div>
+                </div>
+              ) : form.type === "BREAKUP_BUDDY" ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>

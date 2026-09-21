@@ -530,7 +530,10 @@ export default function AdminOverviewPage() {
       {activeModal === "event" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
-          <div className="relative w-full max-w-xl bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
+          <div
+            className="relative w-full max-w-xl bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
               <h3 className="text-lg font-bold text-white">Create New Real-World Event</h3>
               <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">

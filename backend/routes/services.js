@@ -435,6 +435,33 @@ router.post("/buddy-subscribe/:requestId", authenticateToken, async (req, res) =
       }
     });
 
+    // Record into central Subscription table for Admin visibility
+    try {
+      const expiryDate = new Date(Date.now() + limitSeconds * 1000);
+      let pkgPrice = 0;
+      if (packageId) {
+        const pkgs = await prisma.$queryRawUnsafe(`SELECT * FROM "ServicePackage" WHERE "id" = $1 LIMIT 1`, packageId);
+        if (pkgs && pkgs[0]) {
+          pkgPrice = parseFloat(pkgs[0].price || 0);
+        }
+      }
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "Subscription" (
+          "id", "userId", "packageId", "serviceType", "amount", "billingCycle", "status", "startDate", "expiryDate", "autoRenewal", "createdAt"
+        ) VALUES ($1, $2, $3, 'BREAKUP_BUDDY', $4, $5, 'ACTIVE', CURRENT_TIMESTAMP, $6, false, CURRENT_TIMESTAMP)
+        ON CONFLICT ("id") DO NOTHING;
+      `,
+        `sub_buddy_${requestId}_${Date.now()}`,
+        req.user.userId,
+        packageId || null,
+        pkgPrice,
+        `${hours} Hours`,
+        expiryDate
+      );
+    } catch (subErr) {
+      console.warn("Buddy subscription admin sync notice:", subErr.message);
+    }
+
     res.json({ 
       success: true, 
       message: `Subscription activated! Unlimited calls and chats granted with ${updatedRequest.buddy?.displayName || updatedRequest.buddy?.name || 'your buddy'} for ${hours} hour(s).`,

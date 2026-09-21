@@ -25,6 +25,22 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Default sleek transparent scrollbars to prevent harsh browser defaults */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* Custom sleek dark theme scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
