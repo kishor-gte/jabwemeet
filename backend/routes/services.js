@@ -86,6 +86,7 @@ router.get("/breakup-buddies", async (req, res) => {
         availableTimeStart: true,
         availableTimeEnd: true,
         weeklySchedule: true,
+        isAvailableForRequests: true,
         isVerified: true,
         isApproved: true,
         createdAt: true,
@@ -295,8 +296,15 @@ router.post("/buddy-request", authenticateToken, async (req, res) => {
         .status(404)
         .json({
           success: false,
-          message: "Breakup Buddy not found or unavailable.",
+          message: "Breakup Buddy not found or inactive.",
         });
+    }
+
+    if (buddy.isAvailableForRequests === false) {
+      return res.status(400).json({
+        success: false,
+        message: "This Breakup Buddy is currently unavailable and not accepting new session requests.",
+      });
     }
 
     const format = sessionFormat === "Voice Call" ? "Voice Call" : "Chat";

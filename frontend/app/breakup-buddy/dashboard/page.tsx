@@ -17,16 +17,20 @@ export default function BreakupBuddyDashboardPage() {
   const [callWaiting, setCallWaiting] = useState<{ requestId: string, callerName: string, autoAccept?: boolean } | null>(null);
 
   // Profile Settings State
+  const [settingsActiveTab, setSettingsActiveTab] = useState<"profile" | "specialties" | "account">("profile");
   const [profilePhoto, setProfilePhoto] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [city, setCity] = useState("");
   const [shortBio, setShortBio] = useState("");
   const [languages, setLanguages] = useState<string[]>([]);
+  const [customLanguageInput, setCustomLanguageInput] = useState("");
   const [areasOfExpertise, setAreasOfExpertise] = useState<string[]>([]);
   const [sessionTypes, setSessionTypes] = useState<string[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [availableTimeStart, setAvailableTimeStart] = useState("");
   const [availableTimeEnd, setAvailableTimeEnd] = useState("");
   const [saving, setSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   // Availability & Schedule Dynamic States
   const [isAvailableForRequests, setIsAvailableForRequests] = useState<boolean>(true);
@@ -84,8 +88,89 @@ export default function BreakupBuddyDashboardPage() {
   const [requestFilter, setRequestFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
   const [isRefreshingLogs, setIsRefreshingLogs] = useState<boolean>(false);
   const [isRefreshingHistory, setIsRefreshingHistory] = useState<boolean>(false);
+  const [isRefreshingReviews, setIsRefreshingReviews] = useState<boolean>(false);
   const [historySearch, setHistorySearch] = useState<string>("");
   const [historyFilter, setHistoryFilter] = useState<"all" | "hourly" | "session">("all");
+  const [reviewsSearch, setReviewsSearch] = useState<string>("");
+  const [reviewsRatingFilter, setReviewsRatingFilter] = useState<number | "all">("all");
+  const [reviewsSort, setReviewsSort] = useState<"newest" | "highest" | "lowest">("newest");
+
+  // Pagination States for Tabs
+  const [requestsPage, setRequestsPage] = useState<number>(1);
+  const [acceptedPage, setAcceptedPage] = useState<number>(1);
+  const [historyPage, setHistoryPage] = useState<number>(1);
+  const [callLogsPage, setCallLogsPage] = useState<number>(1);
+  const [reviewsPage, setReviewsPage] = useState<number>(1);
+  const [earningsPage, setEarningsPage] = useState<number>(1);
+
+  const REQUESTS_PER_PAGE = 5;
+  const ACCEPTED_PER_PAGE = 6;
+  const HISTORY_PER_PAGE = 5;
+  const CALL_LOGS_PER_PAGE = 6;
+  const REVIEWS_PER_PAGE = 5;
+  const EARNINGS_PER_PAGE = 6;
+
+  const renderPagination = (
+    currentPage: number,
+    totalItems: number,
+    itemsPerPage: number,
+    onPageChange: (p: number) => void,
+    label: string
+  ) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    if (totalPages <= 1) return null;
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+    return (
+      <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm text-xs">
+        <span className="text-slate-500 font-medium">
+          Showing <span className="font-bold text-slate-800">{startIndex + 1}</span>–<span className="font-bold text-slate-800">{endIndex}</span> of <span className="font-bold text-slate-800">{totalItems}</span> {label}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage <= 1}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer"
+          >
+            ← Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+            if (totalPages > 7 && Math.abs(p - currentPage) > 2 && p !== 1 && p !== totalPages) {
+              if (p === 2 || p === totalPages - 1) {
+                return <span key={p} className="px-1 text-slate-400">...</span>;
+              }
+              return null;
+            }
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onPageChange(p)}
+                className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  currentPage === p
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage >= totalPages}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const handleRefreshCallLogs = async () => {
     setIsRefreshingLogs(true);
@@ -114,6 +199,21 @@ export default function BreakupBuddyDashboardPage() {
       console.error("Failed to refresh history:", e);
     } finally {
       setTimeout(() => setIsRefreshingHistory(false), 300);
+    }
+  };
+
+  const handleRefreshReviews = async () => {
+    setIsRefreshingReviews(true);
+    try {
+      const res = await fetch("/api/buddy/reviews", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setReviews(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to refresh reviews:", e);
+    } finally {
+      setTimeout(() => setIsRefreshingReviews(false), 300);
     }
   };
 
@@ -384,6 +484,7 @@ export default function BreakupBuddyDashboardPage() {
           setUser(d.user);
           setProfilePhoto(d.user.profilePhoto || "");
           setDisplayName(d.user.displayName || d.user.name || "");
+          setCity(d.user.city || "");
           setShortBio(d.user.shortBio || "");
           setLanguages(d.user.languages || []);
           setAreasOfExpertise(d.user.areasOfExpertise || []);
@@ -391,6 +492,10 @@ export default function BreakupBuddyDashboardPage() {
           setAvailableDays(d.user.availableDays || []);
           setAvailableTimeStart(d.user.availableTimeStart || "");
           setAvailableTimeEnd(d.user.availableTimeEnd || "");
+          if (typeof d.user.isAvailableForRequests === "boolean") {
+            setIsAvailableForRequests(d.user.isAvailableForRequests);
+          }
+          fetchAvailability();
         }
       })
       .catch(() => router.replace("/"));
@@ -398,6 +503,7 @@ export default function BreakupBuddyDashboardPage() {
 
   const handleSaveProfile = async () => {
     setSaving(true);
+    setSettingsMessage(null);
     try {
       const res = await fetch("/api/auth/profile", {
         method: "PUT",
@@ -406,6 +512,7 @@ export default function BreakupBuddyDashboardPage() {
         body: JSON.stringify({
           profilePhoto,
           displayName,
+          city,
           shortBio,
           languages,
           areasOfExpertise,
@@ -417,12 +524,16 @@ export default function BreakupBuddyDashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Profile saved successfully!");
+        if (data.user) {
+          setUser(data.user);
+        }
+        setSettingsMessage({ text: "✓ Your profile settings have been successfully saved!", type: "success" });
+        setTimeout(() => setSettingsMessage(null), 5000);
       } else {
-        alert("Error saving profile: " + data.message);
+        setSettingsMessage({ text: data.message || "Failed to save profile changes.", type: "error" });
       }
     } catch (e) {
-      alert("Error saving profile.");
+      setSettingsMessage({ text: "Error saving profile. Please check your connection.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -584,6 +695,11 @@ export default function BreakupBuddyDashboardPage() {
         ? requests
         : requests.filter((r) => r.status === requestFilter);
 
+    const paginatedRequests = filteredRequests.slice(
+      (requestsPage - 1) * REQUESTS_PER_PAGE,
+      requestsPage * REQUESTS_PER_PAGE
+    );
+
     return (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -595,7 +711,7 @@ export default function BreakupBuddyDashboardPage() {
             {(["all", "Pending", "Accepted", "Rejected"] as const).map((filter) => (
               <button
                 key={filter}
-                onClick={() => setRequestFilter(filter)}
+                onClick={() => { setRequestFilter(filter); setRequestsPage(1); }}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
                   requestFilter === filter
                     ? "bg-white text-teal-700 shadow-sm"
@@ -633,78 +749,89 @@ export default function BreakupBuddyDashboardPage() {
             <p className="text-xs text-slate-400">Incoming requests will show up here automatically.</p>
           </div>
         ) : (
-          filteredRequests.map((req: any) => (
-            <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm">
-                    {req.user?.name ? req.user.name[0].toUpperCase() : "U"}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg text-slate-800">{req.user?.name || "User"}</h3>
-                    <p className="text-sm text-slate-600 font-medium">
-                      {req.sessionType || "1-on-1 Call"} Session • Topic: "{req.topic || "General Discussion"}"
-                    </p>
-                    <p className="text-xs text-teal-600 font-semibold mt-1">
-                      Requested on {new Date(req.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  {req.status === "Pending" && (
-                    <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">
-                      PENDING
-                    </span>
-                  )}
-                  {req.status === "Accepted" && (
-                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full">
-                      ✓ ACCEPTED
-                    </span>
-                  )}
-                  {req.status === "Rejected" && (
-                    <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-full">
-                      ✕ DECLINED
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                {req.status === "Pending" ? (
-                  <>
-                    <button
-                      disabled={actionLoadingId === req.id}
-                      onClick={() => handleRejectRequest(req.id)}
-                      className="px-5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-sm font-bold transition disabled:opacity-50 cursor-pointer"
-                    >
-                      {actionLoadingId === req.id ? "Processing..." : "Reject"}
-                    </button>
-                    <button
-                      disabled={actionLoadingId === req.id}
-                      onClick={() => handleAcceptRequest(req.id)}
-                      className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-                    >
-                      {actionLoadingId === req.id ? (
-                        "Accepting..."
-                      ) : (
-                        <>
-                          <span>✓</span> Accept Request
-                        </>
+          <div>
+            <div className="space-y-4">
+              {paginatedRequests.map((req: any) => (
+                <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm">
+                        {req.user?.name ? req.user.name[0].toUpperCase() : "U"}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-800">{req.user?.name || "User"}</h3>
+                        <p className="text-sm text-slate-600 font-medium">
+                          {req.sessionType || "1-on-1 Call"} Session • Topic: "{req.topic || "General Discussion"}"
+                        </p>
+                        <p className="text-xs text-teal-600 font-semibold mt-1">
+                          Requested on {new Date(req.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      {req.status === "Pending" && (
+                        <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">
+                          PENDING
+                        </span>
                       )}
-                    </button>
-                  </>
-                ) : req.status === "Accepted" ? (
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs text-emerald-700 font-semibold">
-                      ✓ Session created & added to upcoming sessions.
-                    </span>
+                      {req.status === "Accepted" && (
+                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full">
+                          ✓ ACCEPTED
+                        </span>
+                      )}
+                      {req.status === "Rejected" && (
+                        <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-full">
+                          ✕ DECLINED
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <span className="text-xs text-slate-400 italic">This request was declined.</span>
-                )}
-              </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                    {req.status === "Pending" ? (
+                      <>
+                        <button
+                          disabled={actionLoadingId === req.id}
+                          onClick={() => handleRejectRequest(req.id)}
+                          className="px-5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-sm font-bold transition disabled:opacity-50 cursor-pointer"
+                        >
+                          {actionLoadingId === req.id ? "Processing..." : "Reject"}
+                        </button>
+                        <button
+                          disabled={actionLoadingId === req.id}
+                          onClick={() => handleAcceptRequest(req.id)}
+                          className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                        >
+                          {actionLoadingId === req.id ? (
+                            "Accepting..."
+                          ) : (
+                            <>
+                              <span>✓</span> Accept Request
+                            </>
+                          )}
+                        </button>
+                      </>
+                    ) : req.status === "Accepted" ? (
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs text-emerald-700 font-semibold">
+                          ✓ Session created & added to upcoming sessions.
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">This request was declined.</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))
+            {renderPagination(
+              requestsPage,
+              filteredRequests.length,
+              REQUESTS_PER_PAGE,
+              setRequestsPage,
+              "requests"
+            )}
+          </div>
         )}
       </div>
     );
@@ -727,6 +854,11 @@ export default function BreakupBuddyDashboardPage() {
       );
     });
 
+    const paginatedAccepted = filtered.slice(
+      (acceptedPage - 1) * ACCEPTED_PER_PAGE,
+      acceptedPage * ACCEPTED_PER_PAGE
+    );
+
     return (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -746,7 +878,7 @@ export default function BreakupBuddyDashboardPage() {
               type="text"
               placeholder="Search by name, city, email or topic..."
               value={acceptedSearch}
-              onChange={(e) => setAcceptedSearch(e.target.value)}
+              onChange={(e) => { setAcceptedSearch(e.target.value); setAcceptedPage(1); }}
               className="w-full px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 shadow-sm transition"
             />
           </div>
@@ -794,7 +926,7 @@ export default function BreakupBuddyDashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map((req: any) => {
+            {paginatedAccepted.map((req: any) => {
               const u = req.user || {};
               const age = u.dateOfBirth
                 ? Math.floor((new Date().getTime() - new Date(u.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
@@ -902,6 +1034,14 @@ export default function BreakupBuddyDashboardPage() {
             })}
           </div>
         )}
+        {filtered.length > 0 &&
+          renderPagination(
+            acceptedPage,
+            filtered.length,
+            ACCEPTED_PER_PAGE,
+            setAcceptedPage,
+            "clients"
+          )}
       </div>
     );
   };
@@ -918,38 +1058,56 @@ export default function BreakupBuddyDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <h2 className="text-2xl font-bold font-serif text-slate-800">Manage Availability</h2>
-            <p className="text-slate-500 text-sm mt-0.5">Set your weekly routine, active timeslots, and blocked days.</p>
+            <p className="text-slate-500 text-sm mt-0.5">Set your weekly routine and active timeslots.</p>
           </div>
         </div>
 
         {/* 1. Your Status Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className={`border rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+          isAvailableForRequests ? "bg-white border-slate-200" : "bg-amber-50/50 border-amber-200"
+        }`}>
           <div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">Your Status</h3>
-            <div className="flex items-center gap-2 text-xs font-semibold">
-              <span className={`w-2.5 h-2.5 rounded-full ${isAvailableForRequests ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-              <span className={isAvailableForRequests ? "text-emerald-700" : "text-slate-500"}>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-base font-bold text-slate-800">Your Status</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 ${
+                isAvailableForRequests
+                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  : "bg-amber-100 text-amber-800 border border-amber-200"
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${isAvailableForRequests ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
                 {isAvailableForRequests ? "Available for Requests" : "Unavailable for Requests"}
               </span>
             </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {isAvailableForRequests
+                ? "Clients browsing the Breakup Buddy directory can discover your profile and book new confidential sessions."
+                : "Your card on the Breakup Buddy directory is marked as 'Unavailable for Requests' and new session bookings are disabled."}
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-slate-700">Accept new requests</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs font-bold text-slate-700">Accept new requests</span>
             <button
               type="button"
               onClick={() => {
                 const nextVal = !isAvailableForRequests;
                 setIsAvailableForRequests(nextVal);
                 handleSaveAvailability({ isAvailableForRequests: nextVal });
+                setActionMessage({
+                  text: nextVal
+                    ? "✓ Status updated: You are now Available for new client requests!"
+                    : "✓ Status updated: You are now marked as Unavailable. Clients cannot send new requests.",
+                  type: "success",
+                });
               }}
-              className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
+              className={`w-14 h-7 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
                 isAvailableForRequests ? "bg-teal-500" : "bg-slate-300"
               }`}
+              title={isAvailableForRequests ? "Click to set status to Unavailable" : "Click to set status to Available"}
             >
               <div
-                className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
-                  isAvailableForRequests ? "translate-x-6" : "translate-x-0"
+                className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
+                  isAvailableForRequests ? "translate-x-7" : "translate-x-0"
                 }`}
               />
             </button>
@@ -1077,93 +1235,420 @@ export default function BreakupBuddyDashboardPage() {
             </button>
           </div>
         </div>
-
-        {/* 3. Block Date Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-800">Block Date</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Prevent users from booking when you are unavailable.</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="date"
-              value={newBlockDate}
-              onChange={(e) => setNewBlockDate(e.target.value)}
-              className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (!newBlockDate) return;
-                if (!blockedDates.includes(newBlockDate)) {
-                  const updated = [...blockedDates, newBlockDate].sort();
-                  setBlockedDates(updated);
-                  handleSaveAvailability({ blockedDates: updated });
-                }
-                setNewBlockDate("");
-              }}
-              className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition border border-slate-200 cursor-pointer"
-            >
-              Block
-            </button>
-          </div>
-
-          {blockedDates.length > 0 && (
-            <div className="pt-2">
-              <p className="text-xs font-bold text-slate-700 mb-2">Currently Blocked Dates:</p>
-              <div className="flex flex-wrap gap-2">
-                {blockedDates.map((dStr) => (
-                  <div key={dStr} className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-                    <span>📅 {dStr}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated = blockedDates.filter((x) => x !== dStr);
-                        setBlockedDates(updated);
-                        handleSaveAvailability({ blockedDates: updated });
-                      }}
-                      className="text-rose-400 hover:text-rose-600 font-bold text-sm ml-1 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     );
   };
 
-  const renderReviews = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Reviews</h2>
-      {reviews.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No reviews yet.</div>
-      ) : (
-        reviews.map((rev: any) => (
-          <div key={rev.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              {[...Array(5)].map((_, i) => (
-                <span key={i} className={`text-lg ${i < rev.rating ? 'text-amber-400' : 'text-slate-200'}`}>★</span>
-              ))}
-              <span className="text-slate-400 text-xs ml-2">{new Date(rev.createdAt).toLocaleDateString()}</span>
-            </div>
-            <p className="text-slate-700 text-sm mb-4">"{rev.comment}"</p>
+  const renderReviews = () => {
+    const totalReviews = reviews.length;
+    const avgRating =
+      totalReviews > 0
+        ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 5), 0) / totalReviews).toFixed(1)
+        : "5.0";
+    const numAvg = parseFloat(avgRating);
+
+    // Distribution
+    const starCounts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach((r: any) => {
+      const star = Math.max(1, Math.min(5, Math.round(r.rating || 5)));
+      starCounts[star] = (starCounts[star] || 0) + 1;
+    });
+
+    const satisfactionPercent =
+      totalReviews > 0
+        ? Math.round(((starCounts[5] + starCounts[4]) / totalReviews) * 100)
+        : 100;
+
+    const reviewsWithComments = reviews.filter((r: any) => r.comment && r.comment.trim().length > 0).length;
+
+    // Filter & Search & Sort
+    const filteredReviews = reviews.filter((r: any) => {
+      const q = reviewsSearch.toLowerCase().trim();
+      const userName = (r.user?.name || "Anonymous").toLowerCase();
+      const comment = (r.comment || "").toLowerCase();
+
+      const matchesQuery = !q || userName.includes(q) || comment.includes(q);
+      if (!matchesQuery) return false;
+
+      if (reviewsRatingFilter !== "all") {
+        const star = Math.max(1, Math.min(5, Math.round(r.rating || 5)));
+        if (reviewsRatingFilter === 1 || reviewsRatingFilter === 2) {
+          if (star > 2) return false;
+        } else if (star !== reviewsRatingFilter) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Sort
+    filteredReviews.sort((a: any, b: any) => {
+      if (reviewsSort === "highest") {
+        return (b.rating || 5) - (a.rating || 5);
+      }
+      if (reviewsSort === "lowest") {
+        return (a.rating || 5) - (b.rating || 5);
+      }
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+    const paginatedReviews = filteredReviews.slice(
+      (reviewsPage - 1) * REVIEWS_PER_PAGE,
+      reviewsPage * REVIEWS_PER_PAGE
+    );
+
+    const getRatingLabel = (rating: number) => {
+      if (rating >= 5) return { label: "Excellent", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+      if (rating >= 4) return { label: "Great", color: "bg-teal-50 text-teal-700 border-teal-200" };
+      if (rating >= 3) return { label: "Good", color: "bg-sky-50 text-sky-700 border-sky-200" };
+      if (rating >= 2) return { label: "Fair", color: "bg-amber-50 text-amber-700 border-amber-200" };
+      return { label: "Needs Attention", color: "bg-rose-50 text-rose-700 border-rose-200" };
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-slate-800">- {rev.user?.name || 'Anonymous'}</span>
+              <h2 className="text-2xl font-bold font-serif text-slate-800">Client Reviews & Ratings</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                ⭐ {totalReviews} {totalReviews === 1 ? "Review" : "Reviews"}
+              </span>
+            </div>
+            <p className="text-slate-500 text-sm mt-0.5">
+              Verified feedback, star ratings, and testimonials shared by clients you've supported.
+            </p>
+          </div>
+
+          <button
+            onClick={handleRefreshReviews}
+            disabled={isRefreshingReviews}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer disabled:opacity-60"
+          >
+            <span className={`inline-block ${isRefreshingReviews ? "animate-spin" : ""}`}>🔄</span>
+            <span>{isRefreshingReviews ? "Refreshing..." : "Refresh Reviews"}</span>
+          </button>
+        </div>
+
+        {/* Analytics & Rating Breakdown Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* 1. Overall Score Card (4 cols) */}
+          <div className="lg:col-span-4 bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 text-white rounded-2xl p-6 shadow-md flex flex-col justify-between border border-slate-700/50">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Overall Rating</span>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-200 border border-teal-400/30">
+                  {numAvg >= 4.5 ? "🌟 Top Rated" : "✨ Verified Feedback"}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mt-4">
+                <span className="text-5xl font-black tracking-tight">{avgRating}</span>
+                <span className="text-xl text-slate-400 font-semibold">/ 5.0</span>
+              </div>
+              <div className="flex items-center gap-1 text-amber-400 text-lg mt-2">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <span key={s} className={s <= Math.round(numAvg) ? "text-amber-400" : "text-slate-600"}>
+                    ★
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-300">
+              <span>Based on <strong>{totalReviews}</strong> ratings</span>
+              <span className="text-teal-300 font-semibold">{satisfactionPercent}% Positive</span>
             </div>
           </div>
-        ))
-      )}
-    </div>
-  );
+
+          {/* 2. Rating Breakdown Bars (5 cols) */}
+          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+            <h3 className="font-bold text-slate-800 text-sm mb-3">Rating Breakdown</h3>
+            <div className="space-y-2">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = starCounts[star] || 0;
+                const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                const isSelected = reviewsRatingFilter === star;
+
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => {
+                      setReviewsRatingFilter(isSelected ? "all" : star);
+                      setReviewsPage(1);
+                    }}
+                    className={`w-full flex items-center gap-3 text-xs p-1 rounded-lg transition text-left cursor-pointer group ${
+                      isSelected ? "bg-teal-50" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="w-12 font-bold text-slate-700 flex items-center gap-1 shrink-0">
+                      {star} <span className="text-amber-400 text-xs">★</span>
+                    </span>
+                    <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          star >= 4 ? "bg-teal-500" : star === 3 ? "bg-sky-500" : "bg-amber-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="w-14 text-right text-slate-400 group-hover:text-slate-700 font-medium shrink-0">
+                      {count} ({pct}%)
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Performance Insights (3 cols) */}
+          <div className="lg:col-span-3 grid grid-cols-1 gap-3">
+            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center text-xl shrink-0">
+                🎯
+              </div>
+              <div>
+                <p className="text-xl font-black text-emerald-800">{satisfactionPercent}%</p>
+                <p className="text-[11px] text-emerald-700 font-semibold">Satisfaction Rate</p>
+              </div>
+            </div>
+
+            <div className="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-teal-100 border border-teal-200 text-teal-700 flex items-center justify-center text-xl shrink-0">
+                💬
+              </div>
+              <div>
+                <p className="text-xl font-black text-teal-800">{reviewsWithComments}</p>
+                <p className="text-[11px] text-teal-700 font-semibold">Detailed Comments</p>
+              </div>
+            </div>
+
+            <div className="bg-sky-50/70 border border-sky-200/80 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-sky-100 border border-sky-200 text-sky-700 flex items-center justify-center text-xl shrink-0">
+                🛡️
+              </div>
+              <div>
+                <p className="text-xl font-black text-sky-800">100%</p>
+                <p className="text-[11px] text-sky-700 font-semibold">Verified Client Reviews</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar: Star Filter Pills, Search Bar, and Sort */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+          {/* Star Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            {[
+              { id: "all", label: `All (${totalReviews})` },
+              { id: 5, label: `5 ★ (${starCounts[5] || 0})` },
+              { id: 4, label: `4 ★ (${starCounts[4] || 0})` },
+              { id: 3, label: `3 ★ (${starCounts[3] || 0})` },
+              { id: 1, label: `1–2 ★ (${(starCounts[1] || 0) + (starCounts[2] || 0)})` },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setReviewsRatingFilter(tab.id as any);
+                  setReviewsPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  reviewsRatingFilter === tab.id
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search & Sort */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search reviews or client..."
+                value={reviewsSearch}
+                onChange={(e) => {
+                  setReviewsSearch(e.target.value);
+                  setReviewsPage(1);
+                }}
+                className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-teal-500 focus:bg-white transition"
+              />
+              <span className="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+              {reviewsSearch && (
+                <button
+                  onClick={() => {
+                    setReviewsSearch("");
+                    setReviewsPage(1);
+                  }}
+                  className="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-700 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <select
+              value={reviewsSort}
+              onChange={(e) => {
+                setReviewsSort(e.target.value as any);
+                setReviewsPage(1);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold focus:outline-none focus:border-teal-500 cursor-pointer"
+            >
+              <option value="newest">🕒 Newest First</option>
+              <option value="highest">⭐ Highest Rating</option>
+              <option value="lowest">📉 Lowest Rating</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Reviews Cards List */}
+        {totalReviews === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-3xl mx-auto border border-amber-200 shadow-inner">
+              ⭐
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">No Client Reviews Yet</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              When clients complete their hourly passes or voice consultation sessions with you, their ratings and thoughtful reviews will appear here.
+            </p>
+          </div>
+        ) : filteredReviews.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-2xl mx-auto text-slate-400">
+              🔍
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">No matching reviews found</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              We couldn't find any reviews matching your current filters or search term.
+            </p>
+            <button
+              onClick={() => {
+                setReviewsSearch("");
+                setReviewsRatingFilter("all");
+                setReviewsPage(1);
+              }}
+              className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm cursor-pointer inline-block mt-2"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paginatedReviews.map((rev: any) => {
+                const u = rev.user || {};
+                const rating = Math.max(1, Math.min(5, rev.rating || 5));
+                const ratingMeta = getRatingLabel(rating);
+                const formattedDate = rev.createdAt
+                  ? new Date(rev.createdAt).toLocaleDateString(undefined, {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "Recent";
+
+                return (
+                  <div
+                    key={rev.id}
+                    className="bg-white border border-slate-200 hover:border-teal-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
+                  >
+                    {/* Top: User Profile & Rating Pill */}
+                    <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-teal-100 to-emerald-200 text-teal-800 font-black text-sm flex items-center justify-center shrink-0 border border-teal-200 shadow-sm overflow-hidden">
+                            {u.profileImage ? (
+                              <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
+                            ) : (
+                              u.name ? u.name[0].toUpperCase() : "👤"
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-slate-800 text-sm truncate">
+                              {u.name || "Client"}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Verified Client
+                              </span>
+                              <span>•</span>
+                              <span>{formattedDate}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Rating Pill */}
+                        <div className="flex flex-col items-end shrink-0">
+                          <div className="flex items-center gap-0.5 text-amber-400 text-xs">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={i < rating ? "text-amber-400" : "text-slate-200"}>
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                          <span className={`mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${ratingMeta.color}`}>
+                            {rating.toFixed(1)} • {ratingMeta.label}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Comment Body */}
+                      <div className="mt-4 pt-3 border-t border-slate-100">
+                        {rev.comment && rev.comment.trim().length > 0 ? (
+                          <div className="relative pl-3 border-l-2 border-teal-400/60">
+                            <p className="text-slate-700 text-xs leading-relaxed font-normal italic">
+                              "{rev.comment}"
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-slate-400 text-xs italic">
+                            Provided a {rating}-star rating with no written review.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer Tags */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100/60">
+                        🤝 Breakup Consultation Feedback
+                      </span>
+                      <span className="text-slate-400 font-semibold">Public Review</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredReviews.length > 0 &&
+              renderPagination(
+                reviewsPage,
+                filteredReviews.length,
+                REVIEWS_PER_PAGE,
+                setReviewsPage,
+                "reviews"
+              )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
 
   const renderEarnings = () => {
-    const uniqueClientsCount = new Set((earnings.sessions || []).map((s: any) => s.userId).filter(Boolean)).size;
+    const allEarningsSessions = earnings.sessions || [];
+    const uniqueClientsCount = new Set(allEarningsSessions.map((s: any) => s.userId).filter(Boolean)).size;
+    const paginatedEarningsSessions = allEarningsSessions.slice(
+      (earningsPage - 1) * EARNINGS_PER_PAGE,
+      earningsPage * EARNINGS_PER_PAGE
+    );
 
     return (
       <div className="space-y-6">
@@ -1199,7 +1684,7 @@ export default function BreakupBuddyDashboardPage() {
               <span className="w-8 h-8 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center text-lg">📦</span>
             </div>
             <div className="mt-4">
-              <h3 className="text-3xl sm:text-4xl font-black text-slate-800">{earnings.sessions?.length || 0}</h3>
+              <h3 className="text-3xl sm:text-4xl font-black text-slate-800">{allEarningsSessions.length}</h3>
               <p className="text-xs text-slate-400 mt-1">Total completed transactions</p>
             </div>
           </div>
@@ -1221,11 +1706,11 @@ export default function BreakupBuddyDashboardPage() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-slate-800 font-serif text-lg">Subscription & Payment History</h3>
             <span className="text-xs font-semibold text-slate-400">
-              {earnings.sessions?.length || 0} Transactions
+              {allEarningsSessions.length} Transactions
             </span>
           </div>
 
-          {(!earnings.sessions || earnings.sessions.length === 0) ? (
+          {allEarningsSessions.length === 0 ? (
             <div className="p-12 text-center text-slate-500 space-y-3">
               <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
                 💳
@@ -1236,47 +1721,56 @@ export default function BreakupBuddyDashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {earnings.sessions.map((sess: any) => {
-                const u = sess.user || {};
-                return (
-                  <div
-                    key={sess.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-xl gap-4 transition"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-full bg-teal-100 text-teal-800 font-bold text-sm flex items-center justify-center shrink-0 border border-teal-200">
-                        {u.name ? u.name[0].toUpperCase() : "U"}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-800 text-sm">{u.name || "Client Subscriber"}</span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            ✓ PAID
-                          </span>
+            <div>
+              <div className="space-y-3">
+                {paginatedEarningsSessions.map((sess: any) => {
+                  const u = sess.user || {};
+                  return (
+                    <div
+                      key={sess.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-xl gap-4 transition"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-11 h-11 rounded-full bg-teal-100 text-teal-800 font-bold text-sm flex items-center justify-center shrink-0 border border-teal-200">
+                          {u.name ? u.name[0].toUpperCase() : "U"}
                         </div>
-                        <p className="text-xs text-slate-600 font-medium mt-0.5">
-                          {sess.sessionType || "Hourly Unlimited Subscription Pass"}
-                        </p>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                          <span>📅 {new Date(sess.scheduledAt || sess.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          {u.city && <span>• 📍 {u.city}</span>}
-                          {u.email && <span>• ✉️ {u.email}</span>}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-800 text-sm">{u.name || "Client Subscriber"}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              ✓ PAID
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 font-medium mt-0.5">
+                            {sess.sessionType || "Hourly Unlimited Subscription Pass"}
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                            <span>📅 {new Date(sess.scheduledAt || sess.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            {u.city && <span>• 📍 {u.city}</span>}
+                            {u.email && <span>• ✉️ {u.email}</span>}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="text-right sm:self-center shrink-0">
-                      <div className="text-xl font-black text-emerald-600 tracking-tight">
-                        +₹{sess.amountEarned}
+                      <div className="text-right sm:self-center shrink-0">
+                        <div className="text-xl font-black text-emerald-600 tracking-tight">
+                          +₹{sess.amountEarned}
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                          Credit Payout
+                        </span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                        Credit Payout
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              {renderPagination(
+                earningsPage,
+                allEarningsSessions.length,
+                EARNINGS_PER_PAGE,
+                setEarningsPage,
+                "transactions"
+              )}
             </div>
           )}
         </div>
@@ -1313,6 +1807,11 @@ export default function BreakupBuddyDashboardPage() {
       }
       return true;
     });
+
+    const paginatedHistory = filteredHistory.slice(
+      (historyPage - 1) * HISTORY_PER_PAGE,
+      historyPage * HISTORY_PER_PAGE
+    );
 
     return (
       <div className="space-y-6">
@@ -1385,7 +1884,7 @@ export default function BreakupBuddyDashboardPage() {
             ).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setHistoryFilter(tab.id)}
+                onClick={() => { setHistoryFilter(tab.id); setHistoryPage(1); }}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   historyFilter === tab.id
                     ? "bg-white text-teal-800 shadow-sm"
@@ -1402,7 +1901,7 @@ export default function BreakupBuddyDashboardPage() {
               type="text"
               placeholder="Search by client, plan, or city..."
               value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
+              onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
               className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-teal-500 shadow-sm transition"
             />
           </div>
@@ -1425,12 +1924,20 @@ export default function BreakupBuddyDashboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredHistory.map((h: any) => {
+            {paginatedHistory.map((h: any) => {
               const u = h.user || {};
-              const startedDate = h.startedAt ? new Date(h.startedAt) : new Date(h.scheduledAt || h.createdAt);
-              const completedDate = h.completedAt
-                ? new Date(h.completedAt)
-                : new Date(startedDate.getTime() + (h.durationMinutes || 60) * 60000);
+              const durMinutes = Number(h.durationMinutes) || 60;
+              const startedDate = h.startedAt ? new Date(h.startedAt) : new Date(h.scheduledAt || h.createdAt || Date.now());
+              const startMs = startedDate.getTime();
+              const durMs = durMinutes * 60000;
+
+              let completedDate = new Date(startMs + durMs);
+              if (h.completedAt) {
+                const compMs = new Date(h.completedAt).getTime();
+                if (compMs - startMs >= durMs || compMs - startMs >= 60000) {
+                  completedDate = new Date(compMs);
+                }
+              }
 
               const formattedStart = startedDate.toLocaleString(undefined, {
                 day: "numeric",
@@ -1518,6 +2025,14 @@ export default function BreakupBuddyDashboardPage() {
             })}
           </div>
         )}
+        {filteredHistory.length > 0 &&
+          renderPagination(
+            historyPage,
+            filteredHistory.length,
+            HISTORY_PER_PAGE,
+            setHistoryPage,
+            "sessions"
+          )}
       </div>
     );
   };
@@ -1526,6 +2041,10 @@ export default function BreakupBuddyDashboardPage() {
   const renderCallLogs = () => {
     const totalCalls = callLogs.length;
     const missedCalls = callLogs.filter((c: any) => c.status === "MISSED").length;
+    const paginatedCallLogs = callLogs.slice(
+      (callLogsPage - 1) * CALL_LOGS_PER_PAGE,
+      callLogsPage * CALL_LOGS_PER_PAGE
+    );
 
     return (
       <div className="space-y-6">
@@ -1587,162 +2106,758 @@ export default function BreakupBuddyDashboardPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {callLogs.map((log: any) => {
-              const isMissed = log.status === "MISSED";
-              const u = log.user || {};
+          <div>
+            <div className="space-y-3">
+              {paginatedCallLogs.map((log: any) => {
+                const isMissed = log.status === "MISSED";
+                const u = log.user || {};
 
-              return (
-                <div
-                  key={log.id}
-                  className={`bg-white border rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
-                    isMissed ? "border-rose-200 bg-rose-50/30" : "border-slate-200 hover:border-teal-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-800 font-bold text-base flex items-center justify-center shrink-0 border border-teal-200">
-                      {u.name ? u.name[0].toUpperCase() : "U"}
-                    </div>
-
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-800 text-sm">{u.name || "User"}</span>
-                        <span
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                            isMissed
-                              ? "bg-rose-100 text-rose-700 border border-rose-200"
-                              : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                          }`}
-                        >
-                          {isMissed ? "MISSED CALL" : log.status}
-                        </span>
-                        <span className="text-[10px] font-semibold text-slate-500 px-2 py-0.5 rounded bg-slate-100">
-                          {log.type}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
-                        <span>📅 {new Date(log.startedAt).toLocaleString()}</span>
-                        <span>•</span>
-                        <span>⏱️ {isMissed ? "No connection" : `${Math.floor((log.durationSec || 0) / 60)}m ${(log.durationSec || 0) % 60}s`}</span>
-                        {u.phone && <span>• 📞 {u.phone}</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      setBuddyActiveCall({
-                        requestId: log.requestId,
-                        targetUserId: u.id,
-                        targetName: u.name || "User",
-                        callerName: displayName || user?.name || "Breakup Buddy",
-                      })
-                    }
-                    className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-end sm:self-center cursor-pointer shrink-0"
+                return (
+                  <div
+                    key={log.id}
+                    className={`bg-white border rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                      isMissed ? "border-rose-200 bg-rose-50/30" : "border-slate-200 hover:border-teal-200"
+                    }`}
                   >
-                    📞 Call User
-                  </button>
-                </div>
-              );
-            })}
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-800 font-bold text-base flex items-center justify-center shrink-0 border border-teal-200">
+                        {u.name ? u.name[0].toUpperCase() : "U"}
+                      </div>
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-800 text-sm">{u.name || "User"}</span>
+                          <span
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                              isMissed
+                                ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            }`}
+                          >
+                            {isMissed ? "MISSED CALL" : log.status}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-500 px-2 py-0.5 rounded bg-slate-100">
+                            {log.type}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                          <span>📅 {new Date(log.startedAt).toLocaleString()}</span>
+                          <span>•</span>
+                          <span>⏱️ {isMissed ? "No connection" : `${Math.floor((log.durationSec || 0) / 60)}m ${(log.durationSec || 0) % 60}s`}</span>
+                          {u.phone && <span>• 📞 {u.phone}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        setBuddyActiveCall({
+                          requestId: log.requestId,
+                          targetUserId: u.id,
+                          targetName: u.name || "User",
+                          callerName: displayName || user?.name || "Breakup Buddy",
+                        })
+                      }
+                      className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-end sm:self-center cursor-pointer shrink-0"
+                    >
+                      📞 Call User
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {renderPagination(
+              callLogsPage,
+              callLogs.length,
+              CALL_LOGS_PER_PAGE,
+              setCallLogsPage,
+              "call records"
+            )}
           </div>
         )}
       </div>
     );
   };
 
-  const renderSettings = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-        <div>
-          <h2 className="text-2xl font-bold font-serif text-slate-800">Profile Settings</h2>
-          <p className="text-slate-500 text-sm mt-1">Set up your profile to start listening and helping others.</p>
-        </div>
-        <button onClick={handleSaveProfile} disabled={saving} className="px-6 py-2.5 rounded-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm shadow-sm transition disabled:opacity-60">
-          {saving ? "Saving..." : "Save Profile"}
-        </button>
-      </div>
+  const renderSettings = () => {
+    const predefinedLanguages = [
+      "English",
+      "Hindi",
+      "Kannada",
+      "Tamil",
+      "Telugu",
+      "Spanish",
+      "French",
+      "German",
+      "Bengali",
+      "Marathi",
+      "Punjabi",
+      "Gujarati",
+      "Malayalam",
+    ];
 
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    const expertiseCategories = [
+      {
+        title: "💔 Heartbreak & Healing",
+        items: [
+          { name: "Breakup Recovery", desc: "Guiding through immediate heartbreak and emotional turbulence" },
+          { name: "Moving On & Closure", desc: "Acceptance, letting go, and finding inner peace" },
+          { name: "Grief & Emotional Loss", desc: "Processing loneliness, sadness, and nostalgia after separation" },
+          { name: "Detachment & No-Contact", desc: "Overcoming dependency and breaking compulsive contact loops" },
+        ],
+      },
+      {
+        title: "⚡ Relationship Challenges",
+        items: [
+          { name: "Toxic Relationship Exit", desc: "Navigating difficult separations and rebuilding self-identity" },
+          { name: "Communication & Conflict", desc: "Understanding what went wrong and processing relationship patterns" },
+          { name: "Trust & Betrayal", desc: "Healing from infidelity, broken trust, and emotional pain" },
+          { name: "Dating Burnout & Anxiety", desc: "Navigating fear of vulnerability and modern dating fatigue" },
+        ],
+      },
+      {
+        title: "🌱 Self-Love & Emotional Wellbeing",
+        items: [
+          { name: "Self-Love & Rebuilding", desc: "Reclaiming self-worth, positive habits, and personal goals" },
+          { name: "Loneliness & Isolation", desc: "A compassionate presence when you feel isolated or unheard" },
+          { name: "Friendly Empathetic Venting", desc: "A safe, 100% confidential space to release thoughts freely" },
+          { name: "Life & Post-Breakup Transition", desc: "Adjusting to single life and discovering new routines" },
+        ],
+      },
+    ];
+
+    const handleAddCustomLanguage = (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = customLanguageInput.trim();
+      if (trimmed && !languages.includes(trimmed)) {
+        setLanguages([...languages, trimmed]);
+        setCustomLanguageInput("");
+      }
+    };
+
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        {/* Header Bar */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Profile Photo</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  setProfilePhoto(e.target.files[0].name);
-                }
-              }}
-              className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-colors"
-            />
-            {profilePhoto && <p className="text-xs text-teal-600 font-medium mt-2">✓ Current: {profilePhoto}</p>}
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 bg-teal-50 text-teal-600 rounded-xl text-lg font-bold">⚙️</span>
+              <h2 className="text-2xl font-bold font-serif text-slate-800">Profile & Account Settings</h2>
+            </div>
+            <p className="text-slate-500 text-sm mt-1">
+              Customize your public consultant card, consultation specialties, and manage verification details.
+            </p>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Display Name</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="How you appear to others"
-              className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-teal-600/20 transition disabled:opacity-60 cursor-pointer"
+          >
+            {saving ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Saving Changes...</span>
+              </>
+            ) : (
+              <>
+                <span>💾 Save Changes</span>
+              </>
+            )}
+          </button>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Short Bio</label>
-          <textarea
-            value={shortBio}
-            onChange={(e) => setShortBio(e.target.value)}
-            placeholder="A little bit about you..."
-            rows={3}
-            className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
-          ></textarea>
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-2">Languages</label>
-          <div className="flex gap-2 flex-wrap">
-            {['English', 'Hindi', 'Spanish', 'French', 'Kannada'].map(lang => (
-              <label key={lang} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-sm cursor-pointer hover:bg-slate-100 text-slate-700 transition">
-                <input type="checkbox" checked={languages.includes(lang)} onChange={() => toggleArrayItem(lang, languages, setLanguages)} className="accent-teal-500 w-3.5 h-3.5" />
-                {lang}
-              </label>
-            ))}
+        {/* Action / Notification Toast Banner */}
+        {settingsMessage && (
+          <div
+            className={`p-4 rounded-xl border flex items-center justify-between gap-3 text-sm font-medium animate-in slide-in-from-top-2 ${
+              settingsMessage.type === "success"
+                ? "bg-teal-50 border-teal-200 text-teal-800"
+                : "bg-rose-50 border-rose-200 text-rose-800"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span>{settingsMessage.type === "success" ? "✅" : "⚠️"}</span>
+              <span>{settingsMessage.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettingsMessage(null)}
+              className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+            >
+              ✕
+            </button>
           </div>
+        )}
+
+        {/* Sub-Tab Navigation Bar */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+          {[
+            { id: "profile", label: "Public Profile", icon: "👤" },
+            { id: "specialties", label: "Specialties & Services", icon: "🎯" },
+            { id: "account", label: "Account & Verification", icon: "🛡️" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setSettingsActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer ${
+                settingsActiveTab === tab.id
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-2">Areas I Can Listen To:</label>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {['Breakup', 'Relationship Problems', 'Loneliness', 'Moving On', 'Dating Experiences', 'General Conversation'].map(area => (
-              <label key={area} className="flex items-center gap-2 cursor-pointer text-slate-700 hover:text-slate-900 transition">
-                <input type="checkbox" checked={areasOfExpertise.includes(area)} onChange={() => toggleArrayItem(area, areasOfExpertise, setAreasOfExpertise)} className="accent-teal-500 w-4 h-4 rounded" />
-                {area}
-              </label>
-            ))}
-          </div>
-        </div>
+        {/* TAB 1: Public Profile */}
+        {settingsActiveTab === "profile" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Form: 7 columns */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Photo & Display Name Card */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <span>📸</span> Avatar & Identity
+                </h3>
 
-        <div className="pt-6 border-t border-slate-100">
-          <h3 className="text-lg font-bold font-serif text-slate-800 mb-4">Services</h3>
-          <div className="mb-6">
-            <div className="flex gap-6">
-              {['Chat', 'Audio Call'].map(type => (
-                <label key={type} className="flex items-center gap-2 cursor-pointer text-slate-700 hover:text-slate-900 font-medium text-sm transition">
-                  <input type="checkbox" checked={sessionTypes.includes(type)} onChange={() => toggleArrayItem(type, sessionTypes, setSessionTypes)} className="accent-teal-500 w-4 h-4 rounded" />
-                  {type}
-                </label>
-              ))}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pt-1">
+                  <div className="relative group">
+                    <div className="w-20 h-20 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-2xl border-2 border-teal-200 overflow-hidden shadow-inner">
+                      {profilePhoto && (profilePhoto.startsWith("http") || profilePhoto.startsWith("data:")) ? (
+                        <img
+                          src={profilePhoto}
+                          alt={displayName || "Buddy"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>{displayName ? displayName[0].toUpperCase() : "B"}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-2 w-full">
+                    <label className="block text-xs font-bold text-slate-700">Profile Photo URL or Image Name</label>
+                    <input
+                      type="text"
+                      value={profilePhoto}
+                      onChange={(e) => setProfilePhoto(e.target.value)}
+                      placeholder="https://example.com/avatar.jpg or image filename"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                    />
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs text-teal-600 hover:text-teal-700 font-bold cursor-pointer inline-flex items-center gap-1">
+                        <span>📁 Choose file...</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              const file = e.target.files[0];
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setProfilePhoto(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {profilePhoto && (
+                        <button
+                          type="button"
+                          onClick={() => setProfilePhoto("")}
+                          className="text-xs text-rose-500 hover:text-rose-600 font-bold cursor-pointer"
+                        >
+                          Remove Photo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Display Name <span className="text-teal-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="e.g., Alex Bennett"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">Visible to clients seeking breakup support.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">City / Location</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g., Mumbai, India or Remote"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">Helps match with local or timezone-friendly users.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio & Intro Card */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>✍️</span> About Me / Short Bio
+                  </h3>
+                  <span
+                    className={`text-xs font-bold ${
+                      shortBio.length > 280 ? "text-amber-500" : "text-slate-400"
+                    }`}
+                  >
+                    {shortBio.length}/300
+                  </span>
+                </div>
+
+                <textarea
+                  value={shortBio}
+                  maxLength={300}
+                  onChange={(e) => setShortBio(e.target.value)}
+                  placeholder="Introduce yourself warmly. Mention your listening style, empathy, and how you support people going through breakups..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition resize-none leading-relaxed"
+                />
+
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <p className="text-xs text-slate-500">
+                    💡 <strong className="text-slate-700">Pro Tip:</strong> Breakup buddies with a warm, non-judgmental introduction receive 3x more accepted requests.
+                  </p>
+                </div>
+              </div>
+
+              {/* Languages Spoken Card */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>🗣️</span> Languages Spoken
+                  </h3>
+                  <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">
+                    {languages.length} Selected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Select the languages you are comfortable speaking or chatting in during sessions.
+                </p>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {predefinedLanguages.map((lang) => {
+                    const isSelected = languages.includes(lang);
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => toggleArrayItem(lang, languages, setLanguages)}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                          isSelected
+                            ? "bg-teal-600 text-white shadow-sm ring-2 ring-teal-500/20"
+                            : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {isSelected ? "✓" : "+"} {lang}
+                      </button>
+                    );
+                  })}
+                  {languages
+                    .filter((l) => !predefinedLanguages.includes(l))
+                    .map((customLang) => (
+                      <span
+                        key={customLang}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-teal-600 text-white shadow-sm"
+                      >
+                        ✓ {customLang}
+                        <button
+                          type="button"
+                          onClick={() => toggleArrayItem(customLang, languages, setLanguages)}
+                          className="hover:text-rose-200 ml-1"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                </div>
+
+                <form onSubmit={handleAddCustomLanguage} className="flex gap-2 pt-2">
+                  <input
+                    type="text"
+                    value={customLanguageInput}
+                    onChange={(e) => setCustomLanguageInput(e.target.value)}
+                    placeholder="Add other language (e.g., Telugu, Italian)..."
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!customLanguageInput.trim()}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition disabled:opacity-40 cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right Live Preview: 5 columns */}
+            <div className="lg:col-span-5">
+              <div className="sticky top-6 space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    👁️ Client View Preview
+                  </span>
+                  <span className="text-[11px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded-full">
+                    Live Simulator
+                  </span>
+                </div>
+
+                {/* Simulated Consultant Card */}
+                <div className="bg-white border-2 border-teal-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden bg-gradient-to-b from-teal-50/20 via-white to-white">
+                  <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-600"></div>
+
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xl border border-teal-200 overflow-hidden shadow-sm">
+                          {profilePhoto && (profilePhoto.startsWith("http") || profilePhoto.startsWith("data:")) ? (
+                            <img src={profilePhoto} alt={displayName || "Buddy"} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{displayName ? displayName[0].toUpperCase() : "B"}</span>
+                          )}
+                        </div>
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-slate-900 text-base">{displayName || "Your Display Name"}</h4>
+                          <span className="text-teal-600 text-sm" title="Verified Breakup Buddy">
+                            ✓
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                          <span>📍</span> {city || "City, India"}
+                        </p>
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 mt-1">
+                          <span>★ 4.9</span>
+                          <span className="text-slate-400 font-normal">({reviews.length || 12} reviews)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed italic">
+                      "{shortBio || "Your short bio and supportive message will appear here to introduce yourself to clients seeking comfort..."}"
+                    </p>
+                  </div>
+
+                  {/* Languages Tags */}
+                  <div className="mt-4 space-y-1.5">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Speaks
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(languages.length > 0 ? languages : ["English", "Hindi"]).map((l) => (
+                        <span key={l} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-medium rounded-md">
+                          {l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Focus Areas */}
+                  <div className="mt-4 space-y-1.5">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Focus Areas
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(areasOfExpertise.length > 0 ? areasOfExpertise.slice(0, 3) : ["Breakup Recovery", "Moving On", "Emotional Healing"]).map((a) => (
+                        <span key={a} className="px-2 py-0.5 bg-teal-50 text-teal-800 text-[11px] font-bold rounded-md border border-teal-100">
+                          {a}
+                        </span>
+                      ))}
+                      {areasOfExpertise.length > 3 && (
+                        <span className="px-2 py-0.5 bg-slate-50 text-slate-500 text-[11px] font-bold rounded-md">
+                          +{areasOfExpertise.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Consultation Formats */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {sessionTypes.includes("Chat") && (
+                        <span className="px-2 py-1 bg-indigo-50 text-indigo-700 font-bold rounded-lg flex items-center gap-1">
+                          💬 Chat
+                        </span>
+                      )}
+                      {sessionTypes.includes("Audio Call") && (
+                        <span className="px-2 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg flex items-center gap-1">
+                          📞 Voice
+                        </span>
+                      )}
+                      {!sessionTypes.includes("Chat") && !sessionTypes.includes("Audio Call") && (
+                        <span className="text-slate-400 italic">No formats active</span>
+                      )}
+                    </div>
+                    <span className="text-teal-600 font-bold text-xs">Available Now</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full mt-4 py-2.5 bg-teal-600 text-white rounded-xl font-bold text-xs shadow-md shadow-teal-600/20 opacity-90 cursor-not-allowed"
+                  >
+                    Request Consultation
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* TAB 2: Specialties & Services */}
+        {settingsActiveTab === "specialties" && (
+          <div className="space-y-6">
+            {/* Consultation Channels / Formats */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>📡</span> Consultation Channels
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Enable the communication modes through which users can book sessions with you.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">
+                  {sessionTypes.length} Active Formats
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {[
+                  {
+                    id: "Chat",
+                    title: "💬 Instant Text & Chat Support",
+                    desc: "Real-time empathetic chat messaging for clients who prefer written expression.",
+                  },
+                  {
+                    id: "Audio Call",
+                    title: "📞 1-on-1 Voice Call Sessions",
+                    desc: "Private, high-quality audio call for active listening and spoken encouragement.",
+                  },
+                ].map((type) => {
+                  const isChecked = sessionTypes.includes(type.id);
+                  return (
+                    <div
+                      key={type.id}
+                      onClick={() => toggleArrayItem(type.id, sessionTypes, setSessionTypes)}
+                      className={`p-5 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                        isChecked
+                          ? "border-teal-500 bg-teal-50/40 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm">{type.title}</h4>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">{type.desc}</p>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-xs ${
+                            isChecked ? "bg-teal-600 text-white" : "border border-slate-300 bg-slate-50"
+                          }`}
+                        >
+                          {isChecked && "✓"}
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isChecked ? "bg-emerald-500" : "bg-slate-300"
+                          }`}
+                        />
+                        <span className="text-[11px] font-bold text-slate-600">
+                          {isChecked ? "Active & Accepting Requests" : "Disabled"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Categorized Areas of Expertise */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span>🎯</span> Areas of Focus & Emotional Support
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Pick topics where you feel most confident offering understanding and guidance.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">
+                  {areasOfExpertise.length} Topics Selected
+                </span>
+              </div>
+
+              <div className="space-y-6">
+                {expertiseCategories.map((category) => (
+                  <div key={category.title} className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      {category.title}
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {category.items.map((item) => {
+                        const isSelected = areasOfExpertise.includes(item.name);
+                        return (
+                          <div
+                            key={item.name}
+                            onClick={() => toggleArrayItem(item.name, areasOfExpertise, setAreasOfExpertise)}
+                            className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start justify-between gap-3 ${
+                              isSelected
+                                ? "border-teal-500 bg-teal-50/50 shadow-sm"
+                                : "border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <p className="text-xs font-bold text-slate-800">{item.name}</p>
+                              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{item.desc}</p>
+                            </div>
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 ${
+                                isSelected ? "bg-teal-600 text-white" : "border border-slate-300 bg-white"
+                              }`}
+                            >
+                              {isSelected && "✓"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: Account & Verification */}
+        {settingsActiveTab === "account" && (
+          <div className="space-y-6">
+            {/* Status & Badges Card */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+                <span>🛡️</span> Consultant Verification Status
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-teal-50 border border-teal-100 flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-lg font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider block">
+                      Account Status
+                    </span>
+                    <span className="text-sm font-bold text-teal-900">Verified & Active</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg font-bold">
+                    🛡️
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">
+                      Role Privilege
+                    </span>
+                    <span className="text-sm font-bold text-emerald-900">Breakup Buddy Specialist</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-lg font-bold">
+                    🔒
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+                      Confidentiality
+                    </span>
+                    <span className="text-sm font-bold text-slate-800">100% Encrypted</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Registered Details */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <span>📋</span> Registered Account Details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Registered Email ID
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-800">{user?.email || "buddy@jabwemeet.com"}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                      Verified
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Registered Mobile Number
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-800">{user?.phone || "+91 ••••••••••"}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                      Verified
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Ethics & Confidentiality */}
+            <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md space-y-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">🤝</span>
+                <h4 className="font-bold text-sm">JabWeMeet Breakup Buddy Community Pledge</h4>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                As a verified Breakup Buddy on JabWeMeet, you play a vital role in supporting members during their most vulnerable moments. All conversations must maintain absolute confidentiality, kindness, empathy, and active listening. Never request or share private off-platform contact details.
+              </p>
+              <div className="pt-2 flex items-center gap-2 text-xs text-teal-400 font-bold">
+                <span>✓ Adheres to JabWeMeet Consultant Guidelines</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen flex bg-slate-50 text-slate-800 font-sans selection:bg-teal-500 selection:text-white">
