@@ -465,18 +465,6 @@ export default function BreakupBuddyDashboardPage() {
             </div>
           </button>
           <button
-            onClick={() => setActiveTab("Sessions")}
-            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm text-center transition group text-left cursor-pointer"
-          >
-            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Upcoming Sessions</p>
-            <div className="flex items-center justify-between">
-              <p className="text-3xl font-bold text-sky-500">{dashboardData.upcomingSessions}</p>
-              <span className="text-xs font-bold text-sky-600 group-hover:translate-x-1 transition-transform">
-                View Schedule →
-              </span>
-            </div>
-          </button>
-          <button
             onClick={() => setActiveTab("History")}
             className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm text-center transition group text-left cursor-pointer"
           >
@@ -659,12 +647,6 @@ export default function BreakupBuddyDashboardPage() {
                     <span className="text-xs text-emerald-700 font-semibold">
                       ✓ Session created & added to upcoming sessions.
                     </span>
-                    <button
-                      onClick={() => setActiveTab("Sessions")}
-                      className="text-xs font-bold text-teal-600 hover:underline cursor-pointer"
-                    >
-                      View in Sessions →
-                    </button>
                   </div>
                 ) : (
                   <span className="text-xs text-slate-400 italic">This request was declined.</span>
@@ -863,12 +845,6 @@ export default function BreakupBuddyDashboardPage() {
                     >
                       💬 Open Chat
                     </button>
-                    <button
-                      onClick={() => setActiveTab("Sessions")}
-                      className="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-sm text-center cursor-pointer"
-                    >
-                      📅 View Session
-                    </button>
                   </div>
                 </div>
               );
@@ -878,86 +854,6 @@ export default function BreakupBuddyDashboardPage() {
       </div>
     );
   };
-
-  const [sessionTab, setSessionTab] = useState("Active");
-  const renderSessions = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-        <div>
-          <h2 className="text-2xl font-bold font-serif text-slate-800">Upcoming Sessions</h2>
-          <p className="text-slate-500 text-sm mt-0.5">Your scheduled consultations and emotional support sessions</p>
-        </div>
-      </div>
-
-      {actionMessage && (
-        <div
-          className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm ${
-            actionMessage.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-red-50 text-red-800 border border-red-200"
-          }`}
-        >
-          <span>{actionMessage.text}</span>
-          <button
-            onClick={() => setActionMessage(null)}
-            className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-2">
-          <p className="text-2xl">📅</p>
-          <p className="font-semibold text-slate-700">No upcoming sessions</p>
-          <p className="text-xs text-slate-400">Accepted requests will appear here as scheduled sessions.</p>
-        </div>
-      ) : (
-        sessions.map((sess: any) => (
-          <div
-            key={sess.id}
-            className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm mb-4 gap-4"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl overflow-hidden font-bold text-teal-700">
-                {sess.user?.profileImage ? (
-                  <img src={sess.user.profileImage} alt="User" className="w-full h-full object-cover" />
-                ) : (
-                  sess.user?.name ? sess.user.name[0].toUpperCase() : "👤"
-                )}
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-800 text-base">{sess.user?.name || "User"}</h4>
-                <p className="text-xs text-slate-500 font-medium">
-                  {sess.sessionType || "1-on-1"} Session • {sess.durationMinutes || 45} mins
-                </p>
-                <p className="text-xs font-semibold text-teal-600 mt-0.5">
-                  📅 {new Date(sess.scheduledAt).toLocaleString()}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveTab("Messages")}
-                className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold rounded-lg border border-teal-200 transition cursor-pointer"
-              >
-                💬 Open Chat
-              </button>
-              <button
-                disabled={actionLoadingId === sess.id}
-                onClick={() => handleCompleteSession(sess.id)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
-              >
-                {actionLoadingId === sess.id ? "Updating..." : "✓ Mark Completed"}
-              </button>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-
 
   const renderMessages = () => (
     <BuddyMessagesTab acceptedUsers={acceptedUsers} initialActiveReqId={selectedChatRequestId} />
@@ -1534,7 +1430,6 @@ export default function BreakupBuddyDashboardPage() {
               { id: 'Requests', icon: '📩', badge: requests.filter((r) => r.status === 'Pending').length },
               { id: 'Accepted Users', icon: '👥', badge: acceptedUsers.length },
               { id: 'Call Log', icon: '📞', badge: callLogs.filter((c) => c.status === 'MISSED').length },
-              { id: 'Sessions', icon: '📅', badge: sessions.length },
               { id: 'Messages', icon: '💬' },
               { id: 'Availability', icon: '🕐' },
               { id: 'Reviews', icon: '⭐' },
@@ -1671,7 +1566,6 @@ export default function BreakupBuddyDashboardPage() {
             {activeTab === 'Requests' && renderRequests()}
             {activeTab === 'Accepted Users' && renderAcceptedUsers()}
             {activeTab === 'Call Log' && renderCallLogs()}
-            {activeTab === 'Sessions' && renderSessions()}
             {activeTab === 'Messages' && renderMessages()}
             {activeTab === 'Availability' && renderAvailability()}
             {activeTab === 'Reviews' && renderReviews()}
