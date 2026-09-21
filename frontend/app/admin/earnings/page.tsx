@@ -210,11 +210,9 @@ export default function AdminEarningsPage() {
             <h3 className="text-4xl font-black text-white">{totalCount}</h3>
             <p className="text-xs text-slate-400 font-medium mt-3 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-purple-400" /> Razorpay & Platform verified transactions
-
             </p>
           </div>
         </div>
-      </div>
       </div>
 
       {/* CATEGORY BREAKDOWN PILLS */}
