@@ -131,6 +131,11 @@ async function initAdminDb() {
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       ALTER TABLE "ServicePackage" ADD COLUMN IF NOT EXISTS "durationHours" INTEGER DEFAULT 1;
+      ALTER TABLE "ServicePackage" ADD COLUMN IF NOT EXISTS "durationMinutes" INTEGER DEFAULT 0;
+      ALTER TABLE "BuddyRequest" ADD COLUMN IF NOT EXISTS "packageStartedAt" TIMESTAMPTZ;
+      ALTER TABLE "BuddyRequest" ADD COLUMN IF NOT EXISTS "packageExpiresAt" TIMESTAMPTZ;
+      ALTER TABLE "BuddyRequest" ADD COLUMN IF NOT EXISTS "packageName" TEXT;
+      ALTER TABLE "BuddyRequest" ADD COLUMN IF NOT EXISTS "packagePrice" DOUBLE PRECISION;
     `);
 
     // 8. Subscription table

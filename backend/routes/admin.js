@@ -3,6 +3,10 @@ const prisma = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { logAudit } = require('../services/auditLogger');
+const {
+  sendBuddyApprovedEmail,
+  sendBuddyRejectedEmail,
+} = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -917,7 +921,26 @@ router.patch('/breakup-buddies/:id', async (req, res) => {
     }
 
     const updateData = {};
-    if (isApproved !== undefined) updateData.isApproved = Boolean(isApproved);
+    if (isApproved !== undefined) {
+      updateData.isApproved = Boolean(isApproved);
+      // Trigger approval/rejection email to the Breakup Buddy
+      try {
+        if (Boolean(isApproved)) {
+          sendBuddyApprovedEmail({
+            buddyEmail: buddy.email,
+            buddyName: buddy.displayName || buddy.name,
+          });
+        } else {
+          sendBuddyRejectedEmail({
+            buddyEmail: buddy.email,
+            buddyName: buddy.displayName || buddy.name,
+            reason: reason || 'Application status updated by Admin',
+          });
+        }
+      } catch (mailErr) {
+        console.warn('Mail dispatch note:', mailErr.message);
+      }
+    }
     if (availableDays) updateData.availableDays = availableDays;
     if (availableTimeStart) updateData.availableTimeStart = availableTimeStart;
     if (availableTimeEnd) updateData.availableTimeEnd = availableTimeEnd;
@@ -1099,7 +1122,7 @@ router.get('/services/packages', async (req, res) => {
 
 router.post('/services/packages', async (req, res) => {
   try {
-    const { type, name, price, billingCycle = 'MONTHLY', durationDays = 30, durationHours = 1, sessionLimit = 0, callLimit = 0, chatLimit = 0, description = '', features = [] } = req.body;
+    const { type, name, price, billingCycle = 'MONTHLY', durationDays = 30, durationHours = 0, durationMinutes = 0, sessionLimit = 0, callLimit = 0, chatLimit = 0, description = '', features = [] } = req.body;
     if (!type || !name || price === undefined) {
       return res.status(400).json({ success: false, message: 'Package type, name and price are required' });
     }
@@ -1107,9 +1130,9 @@ router.post('/services/packages', async (req, res) => {
     const packageId = 'pkg-' + Date.now();
 
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "ServicePackage" ("id", "type", "name", "price", "billingCycle", "durationDays", "durationHours", "sessionLimit", "callLimit", "chatLimit", "description", "features", "isActive")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, true)
-    `, packageId, type, name, parseFloat(price), billingCycle, parseInt(durationDays, 10) || 0, parseInt(durationHours, 10) || 1, parseInt(sessionLimit, 10) || 0, parseInt(callLimit, 10) || 0, parseInt(chatLimit, 10) || 0, description, JSON.stringify(features));
+      INSERT INTO "ServicePackage" ("id", "type", "name", "price", "billingCycle", "durationDays", "durationHours", "durationMinutes", "sessionLimit", "callLimit", "chatLimit", "description", "features", "isActive")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, true)
+    `, packageId, type, name, parseFloat(price), billingCycle, parseInt(durationDays, 10) || 0, parseInt(durationHours, 10) || 0, parseInt(durationMinutes, 10) || 0, parseInt(sessionLimit, 10) || 0, parseInt(callLimit, 10) || 0, parseInt(chatLimit, 10) || 0, description, JSON.stringify(features));
 
     await logAudit(req, {
       action: 'SERVICE_PACKAGE_CREATE',
@@ -1153,6 +1176,10 @@ router.patch('/services/packages/:id', async (req, res) => {
     if (body.durationHours !== undefined) {
       updates.push(`"durationHours" = $${pIdx++}`);
       params.push(parseInt(body.durationHours, 10));
+    }
+    if (body.durationMinutes !== undefined) {
+      updates.push(`"durationMinutes" = $${pIdx++}`);
+      params.push(parseInt(body.durationMinutes, 10));
     }
     if (body.sessionLimit !== undefined) {
       updates.push(`"sessionLimit" = $${pIdx++}`);
@@ -1563,6 +1590,25 @@ router.post('/verification/:id', async (req, res) => {
       },
     });
 
+    if (user.role === 'BREAKUP_BUDDY') {
+      try {
+        if (approved) {
+          sendBuddyApprovedEmail({
+            buddyEmail: user.email,
+            buddyName: user.displayName || user.name,
+          });
+        } else {
+          sendBuddyRejectedEmail({
+            buddyEmail: user.email,
+            buddyName: user.displayName || user.name,
+            reason: notes || 'Verification rejected by Admin',
+          });
+        }
+      } catch (mailErr) {
+        console.warn('Mail dispatch note:', mailErr.message);
+      }
+    }
+
     await logAudit(req, {
       action: approved ? 'VERIFICATION_APPROVED' : 'VERIFICATION_REJECTED',
       targetType: 'USER',
@@ -1606,10 +1652,20 @@ router.get('/pending', async (req, res) => {
 router.post('/approve/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id },
       data: { isApproved: true, isVerified: true },
     });
+    if (user.role === 'BREAKUP_BUDDY') {
+      try {
+        sendBuddyApprovedEmail({
+          buddyEmail: user.email,
+          buddyName: user.displayName || user.name,
+        });
+      } catch (mailErr) {
+        console.warn('Mail dispatch note:', mailErr.message);
+      }
+    }
     await logAudit(req, {
       action: 'APPROVE_APPLICATION',
       targetType: 'USER',
@@ -2114,29 +2170,39 @@ router.patch('/settings', async (req, res) => {
   }
 });
 
-// Fetch Admin Earnings (10% of Dating Packages)
+// Fetch Admin Earnings (5% on Breakup Buddy / Service Packages, 10% on Dating Packages)
 router.get('/earnings', async (req, res) => {
   try {
-    const packages = await prisma.$queryRawUnsafe(`
+    const payments = await prisma.$queryRawUnsafe(`
       SELECT p.*, u."name" as "userName", u."email" as "userEmail"
       FROM "Payment" p
       JOIN "User" u ON p."userId" = u."id"
-      WHERE p."type" = 'DATING_PACKAGE' AND p."status" = 'SUCCESS'
+      WHERE p."type" IN ('DATING_PACKAGE', 'BREAKUP_BUDDY_PACKAGE', 'SERVICE_PACKAGE', 'PACKAGE') AND p."status" = 'SUCCESS'
       ORDER BY p."createdAt" DESC
     `);
     
-    // Map to 10% cut
-    const earnings = packages.map(pkg => ({
-      id: pkg.id,
-      createdAt: pkg.createdAt,
-      sourceAmount: pkg.amount,
-      amount: pkg.amount * 0.10, // 10% cut
-      userName: pkg.userName,
-      userEmail: pkg.userEmail,
-      type: 'Admin Revenue Share (10%)'
-    }));
+    // Map commission: 5% for Breakup Buddy & Service Packages, 10% for Dating Packages
+    const earnings = payments.map(pay => {
+      const isBuddyOrService = pay.type === 'BREAKUP_BUDDY_PACKAGE' || pay.type === 'SERVICE_PACKAGE' || pay.type === 'PACKAGE';
+      const rate = isBuddyOrService ? 0.05 : 0.10; // 5% commission for packages bought from dashboard/packages
+      const commissionPercent = isBuddyOrService ? '5%' : '10%';
+      const feeTitle = isBuddyOrService ? 'Package Commission (5%)' : 'Dating Revenue Share (10%)';
 
-    const totalEarned = earnings.reduce((sum, e) => sum + e.amount, 0);
+      return {
+        id: pay.id,
+        createdAt: pay.createdAt,
+        sourceAmount: pay.amount,
+        rate,
+        commissionRate: commissionPercent,
+        amount: Number((pay.amount * rate).toFixed(2)),
+        userName: pay.userName,
+        userEmail: pay.userEmail,
+        type: feeTitle,
+        description: pay.description || `${commissionPercent} Admin Commission on package purchase`
+      };
+    });
+
+    const totalEarned = Number(earnings.reduce((sum, e) => sum + e.amount, 0).toFixed(2));
 
     res.json({ success: true, earnings, totalEarned });
   } catch (error) {

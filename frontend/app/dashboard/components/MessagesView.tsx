@@ -13,7 +13,7 @@ import {
   CreditCard,
   Phone
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 
 interface MessagesViewProps {
@@ -23,6 +23,7 @@ interface MessagesViewProps {
 }
 
 export default function MessagesView({ userName, userId, connections = [] }: MessagesViewProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialRequestId = searchParams.get('requestId');
 
@@ -514,7 +515,10 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                     )}
 
                     <button
-                      onClick={() => setPackagesViewMode("plans")}
+                      onClick={() => {
+                        setShowSubscription(false);
+                        router.push("/dashboard?tab=packages");
+                      }}
                       className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
                     >
                       <span>⭐ View Packages / Buy Unlimited Pass</span>

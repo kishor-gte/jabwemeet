@@ -38,9 +38,9 @@ export default function AdminEarningsPage() {
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
       <div>
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">Admin Earnings</h1>
+        <h1 className="text-3xl font-extrabold text-white tracking-tight">Admin Earnings & Commission</h1>
         <p className="text-slate-400 mt-1">
-          Track platform revenue sharing (10% cut from dating package purchases).
+          Track platform revenue sharing (5% commission on Breakup Buddy packages and 10% on dating packages).
         </p>
       </div>
 
@@ -53,14 +53,14 @@ export default function AdminEarningsPage() {
               <DollarSign className="w-6 h-6" />
             </div>
             <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider border border-emerald-500/20">
-              Lifetime
+              Lifetime Revenue
             </span>
           </div>
           <div className="relative z-10">
             <p className="text-sm font-bold text-slate-400 mb-1">Total Admin Revenue</p>
             <h3 className="text-4xl font-black text-white">₹{totalEarned.toLocaleString('en-IN')}</h3>
             <p className="text-xs text-emerald-400 font-medium mt-3 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> System automatically retains 10%
+              <TrendingUp className="w-3 h-3" /> 5% Commission on Packages & 10% Dating Revenue
             </p>
           </div>
         </div>
@@ -71,8 +71,9 @@ export default function AdminEarningsPage() {
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-emerald-400" />
-            Platform Earnings History
+            Platform Earnings & Commission History
           </h3>
+          <span className="text-xs text-slate-400 font-semibold">{earnings.length} Transactions</span>
         </div>
         
         {earnings.length > 0 ? (
@@ -84,8 +85,16 @@ export default function AdminEarningsPage() {
                     <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="font-bold text-white text-base">
-                      10% Cut - {e.userName} ({e.userEmail})
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white text-base">
+                        {e.userName || "User"} ({e.userEmail || "No email"})
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        {e.commissionRate || (e.type?.includes("5%") ? "5%" : "10%")} Commission
+                      </span>
+                    </div>
+                    <p className="text-xs text-indigo-300 font-semibold mt-0.5">
+                      {e.type || e.description || "Package Purchase"}
                     </p>
                     <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                       <span className="flex items-center gap-1">
@@ -100,7 +109,7 @@ export default function AdminEarningsPage() {
                 <div className="text-right w-full md:w-auto flex md:flex-col items-center md:items-end justify-between">
                   <span className="text-xl font-black text-emerald-400">+ ₹{Number(e.amount).toLocaleString('en-IN')}</span>
                   <span className="text-[10px] text-slate-500 mt-1">
-                    from full package (₹{Number(e.sourceAmount).toLocaleString('en-IN')})
+                    from total package amount ₹{Number(e.sourceAmount).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
@@ -111,7 +120,7 @@ export default function AdminEarningsPage() {
             <DollarSign className="w-16 h-16 mx-auto text-white/10 mb-4" />
             <h3 className="text-lg font-bold text-white mb-2">No admin earnings recorded yet</h3>
             <p className="text-sm text-slate-400 max-w-sm mx-auto">
-              When users purchase dating packages, the 10% platform fee will automatically appear here.
+              When users purchase packages from the dashboard, the 5% platform commission will automatically appear here.
             </p>
           </div>
         )}

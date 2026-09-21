@@ -64,7 +64,12 @@ export default function BreakupBuddyDashboardPage() {
   };
 
   // Real Data States
-  const [dashboardData, setDashboardData] = useState({ newRequests: 0, upcomingSessions: 0, completedSessions: 0 });
+  const [dashboardData, setDashboardData] = useState<{
+    newRequests: number;
+    upcomingSessions: number;
+    completedSessions: number;
+    totalEarnings?: number;
+  }>({ newRequests: 0, upcomingSessions: 0, completedSessions: 0, totalEarnings: 0 });
   const [requests, setRequests] = useState<any[]>([]);
   const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
   const [acceptedSearch, setAcceptedSearch] = useState("");
@@ -77,6 +82,40 @@ export default function BreakupBuddyDashboardPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [requestFilter, setRequestFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
+  const [isRefreshingLogs, setIsRefreshingLogs] = useState<boolean>(false);
+  const [isRefreshingHistory, setIsRefreshingHistory] = useState<boolean>(false);
+  const [historySearch, setHistorySearch] = useState<string>("");
+  const [historyFilter, setHistoryFilter] = useState<"all" | "hourly" | "session">("all");
+
+  const handleRefreshCallLogs = async () => {
+    setIsRefreshingLogs(true);
+    try {
+      const res = await fetch("/api/buddy/call-logs", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setCallLogs(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to refresh call logs:", e);
+    } finally {
+      setTimeout(() => setIsRefreshingLogs(false), 300);
+    }
+  };
+
+  const handleRefreshHistory = async () => {
+    setIsRefreshingHistory(true);
+    try {
+      const res = await fetch("/api/buddy/history", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setHistory(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to refresh history:", e);
+    } finally {
+      setTimeout(() => setIsRefreshingHistory(false), 300);
+    }
+  };
 
   const fetchAvailability = async () => {
     try {
@@ -473,6 +512,18 @@ export default function BreakupBuddyDashboardPage() {
               <p className="text-3xl font-bold text-slate-800">{dashboardData.completedSessions}</p>
               <span className="text-xs font-bold text-slate-500 group-hover:translate-x-1 transition-transform">
                 View History →
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab("Earnings")}
+            className="bg-gradient-to-br from-teal-600 to-emerald-700 hover:from-teal-700 hover:to-emerald-800 text-white border border-teal-600 rounded-xl p-5 shadow-sm transition group text-left cursor-pointer"
+          >
+            <p className="text-teal-100 text-xs font-semibold uppercase tracking-wider mb-2">Total Earnings</p>
+            <div className="flex items-center justify-between">
+              <p className="text-3xl font-black">₹{earnings.totalEarnings || dashboardData.totalEarnings || 0}</p>
+              <span className="text-xs font-bold text-teal-200 group-hover:translate-x-1 transition-transform">
+                View Payouts →
               </span>
             </div>
           </button>
@@ -1111,75 +1162,365 @@ export default function BreakupBuddyDashboardPage() {
   );
 
 
-  const renderEarnings = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Earnings</h2>
-      <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-6 text-white shadow-sm mb-6 flex justify-between items-center">
-        <div>
-          <p className="text-teal-100 text-sm font-medium mb-1">Total Earnings</p>
-          <h3 className="text-4xl font-bold">₹{earnings.totalEarnings}</h3>
+  const renderEarnings = () => {
+    const uniqueClientsCount = new Set((earnings.sessions || []).map((s: any) => s.userId).filter(Boolean)).size;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold font-serif text-slate-800">Earnings & Subscriptions</h2>
+            <p className="text-slate-500 text-sm mt-0.5">Real-time revenue from user subscriptions and consultations</p>
+          </div>
+          <button
+            onClick={fetchData}
+            className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer"
+          >
+            🔄 Refresh Earnings
+          </button>
         </div>
-        <div className="text-right">
-          <p className="text-teal-100 text-sm font-medium mb-1">Sessions Completed</p>
-          <h3 className="text-2xl font-bold">{earnings.sessions.length}</h3>
+
+        {/* Highlight Summary Banner */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-teal-600 via-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-teal-100 text-xs font-bold uppercase tracking-wider">Total Revenue</span>
+              <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg">💰</span>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-3xl sm:text-4xl font-black tracking-tight">₹{earnings.totalEarnings || 0}</h3>
+              <p className="text-xs text-teal-100 mt-1">✓ Credited from client subscriptions & passes</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Paid Packages & Sessions</span>
+              <span className="w-8 h-8 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center text-lg">📦</span>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-3xl sm:text-4xl font-black text-slate-800">{earnings.sessions?.length || 0}</h3>
+              <p className="text-xs text-slate-400 mt-1">Total completed transactions</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Paying Clients</span>
+              <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-lg">👥</span>
+            </div>
+            <div className="mt-4">
+              <h3 className="text-3xl sm:text-4xl font-black text-slate-800">{uniqueClientsCount}</h3>
+              <p className="text-xs text-slate-400 mt-1">Clients who subscribed or booked</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Transactions / Subscriptions Feed */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-bold text-slate-800 font-serif text-lg">Subscription & Payment History</h3>
+            <span className="text-xs font-semibold text-slate-400">
+              {earnings.sessions?.length || 0} Transactions
+            </span>
+          </div>
+
+          {(!earnings.sessions || earnings.sessions.length === 0) ? (
+            <div className="p-12 text-center text-slate-500 space-y-3">
+              <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
+                💳
+              </div>
+              <h4 className="font-bold text-slate-800 text-base">No Subscription Earnings Yet</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                When users purchase hourly packages or passes for your profile, the payments and pass details will appear here automatically!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {earnings.sessions.map((sess: any) => {
+                const u = sess.user || {};
+                return (
+                  <div
+                    key={sess.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-xl gap-4 transition"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-full bg-teal-100 text-teal-800 font-bold text-sm flex items-center justify-center shrink-0 border border-teal-200">
+                        {u.name ? u.name[0].toUpperCase() : "U"}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-800 text-sm">{u.name || "Client Subscriber"}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            ✓ PAID
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 font-medium mt-0.5">
+                          {sess.sessionType || "Hourly Unlimited Subscription Pass"}
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                          <span>📅 {new Date(sess.scheduledAt || sess.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          {u.city && <span>• 📍 {u.city}</span>}
+                          {u.email && <span>• ✉️ {u.email}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right sm:self-center shrink-0">
+                      <div className="text-xl font-black text-emerald-600 tracking-tight">
+                        +₹{sess.amountEarned}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                        Credit Payout
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
-      
-      {earnings.sessions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No earning history.</div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Recent Transactions</h3>
-          {earnings.sessions.map((sess: any) => (
-            <div key={sess.id} className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <div>
-                <p className="font-bold text-slate-800">Session • {sess.sessionType}</p>
-                <p className="text-xs text-slate-500">{new Date(sess.scheduledAt).toLocaleDateString()}</p>
-              </div>
-              <div className="text-lg font-bold text-emerald-600">+₹{sess.amountEarned}</div>
+    );
+  };
+
+
+  const renderHistory = () => {
+    const totalMinutes = history.reduce((acc: number, h: any) => acc + (h.durationMinutes || 60), 0);
+    const totalHours = (totalMinutes / 60).toFixed(1);
+    const totalRevenue = history.reduce((acc: number, h: any) => acc + (h.amountEarned || 0), 0);
+
+    const filteredHistory = history.filter((h: any) => {
+      const q = historySearch.toLowerCase();
+      const userName = (h.user?.name || "").toLowerCase();
+      const userEmail = (h.user?.email || "").toLowerCase();
+      const userCity = (h.user?.city || "").toLowerCase();
+      const sessionType = (h.sessionType || "").toLowerCase();
+
+      const matchesQuery =
+        userName.includes(q) ||
+        userEmail.includes(q) ||
+        userCity.includes(q) ||
+        sessionType.includes(q);
+
+      if (!matchesQuery) return false;
+
+      if (historyFilter === "hourly") {
+        return sessionType.includes("hour") || sessionType.includes("pass") || sessionType.includes("unlimited");
+      }
+      if (historyFilter === "session") {
+        return !sessionType.includes("hour") && !sessionType.includes("pass");
+      }
+      return true;
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold font-serif text-slate-800">Session & Package History</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                {history.length} Completed
+              </span>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+            <p className="text-slate-500 text-sm mt-0.5">
+              Historical log of all client subscriptions, hourly unlimited passes, and completed consultations.
+            </p>
+          </div>
 
-
-  const renderHistory = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold font-serif text-slate-800 mb-1">Session History</h2>
-      {history.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 shadow-sm">No past sessions found.</div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
-              <tr>
-                <th className="px-6 py-3 font-semibold">User</th>
-                <th className="px-6 py-3 font-semibold">Date</th>
-                <th className="px-6 py-3 font-semibold">Type</th>
-                <th className="px-6 py-3 font-semibold">Duration</th>
-                <th className="px-6 py-3 font-semibold text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {history.map((h: any) => (
-                <tr key={h.id}>
-                  <td className="px-6 py-4 font-bold">{h.user?.name || 'User'}</td>
-                  <td className="px-6 py-4">{new Date(h.scheduledAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">{h.sessionType}</td>
-                  <td className="px-6 py-4">{h.durationMinutes}m</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-semibold">Completed</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <button
+            onClick={handleRefreshHistory}
+            disabled={isRefreshingHistory}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer disabled:opacity-60"
+          >
+            <span className={`inline-block ${isRefreshingHistory ? "animate-spin" : ""}`}>🔄</span>
+            <span>{isRefreshingHistory ? "Refreshing..." : "Refresh History"}</span>
+          </button>
         </div>
-      )}
-    </div>
-  );
+
+        {/* 3 Summary Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-xl font-bold">
+              📜
+            </div>
+            <div>
+              <p className="text-2xl font-black text-slate-800">{history.length}</p>
+              <p className="text-xs text-slate-500 font-semibold">Completed Passes</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center text-xl font-bold">
+              ⏱️
+            </div>
+            <div>
+              <p className="text-2xl font-black text-sky-600">{totalHours} hrs</p>
+              <p className="text-xs text-slate-500 font-semibold">Total Duration Delivered</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-xl font-bold">
+              💰
+            </div>
+            <div>
+              <p className="text-2xl font-black text-emerald-600">₹{totalRevenue}</p>
+              <p className="text-xs text-slate-500 font-semibold">Total Package Revenue</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters & Search Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+            {(
+              [
+                { id: "all", label: "All Completed" },
+                { id: "hourly", label: "Hourly Passes" },
+                { id: "session", label: "1-on-1 Sessions" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setHistoryFilter(tab.id)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  historyFilter === tab.id
+                    ? "bg-white text-teal-800 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-full sm:w-72">
+            <input
+              type="text"
+              placeholder="Search by client, plan, or city..."
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-teal-500 shadow-sm transition"
+            />
+          </div>
+        </div>
+
+        {/* History Cards / Table */}
+        {filteredHistory.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
+              📜
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">
+              {historySearch ? "No matching history found" : "No Completed Passes or Sessions Yet"}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {historySearch
+                ? "Try adjusting your search keywords."
+                : "When users complete their purchased hourly passes or scheduled consultations with you, complete timestamped history will appear here."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredHistory.map((h: any) => {
+              const u = h.user || {};
+              const startedDate = h.startedAt ? new Date(h.startedAt) : new Date(h.scheduledAt || h.createdAt);
+              const completedDate = h.completedAt
+                ? new Date(h.completedAt)
+                : new Date(startedDate.getTime() + (h.durationMinutes || 60) * 60000);
+
+              const formattedStart = startedDate.toLocaleString(undefined, {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              });
+
+              const formattedEnd = completedDate.toLocaleString(undefined, {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              });
+
+              return (
+                <div
+                  key={h.id}
+                  className="bg-white border border-slate-200 hover:border-teal-300 rounded-2xl p-5 shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-5"
+                >
+                  {/* Left: User & Package Info */}
+                  <div className="flex items-start sm:items-center gap-4 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-800 font-black text-base flex items-center justify-center shrink-0 border border-teal-200 shadow-sm overflow-hidden">
+                      {u.profileImage ? (
+                        <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
+                      ) : (
+                        u.name ? u.name[0].toUpperCase() : "👤"
+                      )}
+                    </div>
+
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-800 text-sm">{u.name || "Client Subscriber"}</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          ✓ COMPLETED
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-100">
+                          ⏱️ {h.durationMinutes || 60} mins
+                        </span>
+                      </div>
+
+                      <p className="text-xs font-semibold text-teal-700">
+                        📦 {h.sessionType || "Hourly Unlimited Subscription Pass"}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                        {u.city && <span>📍 {u.city}</span>}
+                        {u.email && <span>✉️ {u.email}</span>}
+                        {u.phone && <span>📞 {u.phone}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Date, Time Taken, Time Completed & Amount */}
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 md:gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 justify-between md:justify-end">
+                    {/* Timestamp Grid */}
+                    <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-xs space-y-1 text-slate-600 min-w-[210px]">
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <span className="text-slate-400 font-medium">🚀 Started / Taken:</span>
+                        <span className="font-bold text-slate-700 text-right">{formattedStart}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-[11px] border-t border-slate-200/60 pt-1">
+                        <span className="text-slate-400 font-medium">🏁 Completed / Over:</span>
+                        <span className="font-bold text-emerald-700 text-right">{formattedEnd}</span>
+                      </div>
+                    </div>
+
+                    {/* Price Payout */}
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-semibold text-slate-400 block">Package Amount</span>
+                      <div className="text-xl font-black text-emerald-600 tracking-tight">
+                        ₹{h.amountEarned || 0}
+                      </div>
+                      <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 inline-block mt-0.5">
+                        Credit Settled
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
 
   const renderCallLogs = () => {
@@ -1202,15 +1543,17 @@ export default function BreakupBuddyDashboardPage() {
           </div>
 
           <button
-            onClick={fetchData}
-            className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer"
+            onClick={handleRefreshCallLogs}
+            disabled={isRefreshingLogs}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer disabled:opacity-60"
           >
-            🔄 Refresh Log
+            <span className={`inline-block ${isRefreshingLogs ? "animate-spin" : ""}`}>🔄</span>
+            <span>{isRefreshingLogs ? "Refreshing..." : "Refresh Log"}</span>
           </button>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-xl font-bold">
               📞
@@ -1228,18 +1571,6 @@ export default function BreakupBuddyDashboardPage() {
             <div>
               <p className="text-2xl font-bold text-rose-600">{missedCalls}</p>
               <p className="text-xs text-slate-500 font-semibold">Missed Calls</p>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center text-xl font-bold">
-              ⏱️
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-sky-600">
-                {Math.round(callLogs.reduce((acc, c) => acc + (c.durationSec || 0), 0) / 60)} mins
-              </p>
-              <p className="text-xs text-slate-500 font-semibold">Total Call Duration</p>
             </div>
           </div>
         </div>
