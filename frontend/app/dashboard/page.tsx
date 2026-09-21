@@ -21,6 +21,7 @@ import NotificationsView from "./components/NotificationsView";
 import PaymentsView from "./components/PaymentsView";
 import SettingsView from "./components/SettingsView";
 import CallHistoryView from "./components/CallHistoryView";
+import PackagesView from "./components/PackagesView";
 
 interface UserProfile {
   id: string;
@@ -63,6 +64,7 @@ function DashboardContent() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
+  const [userBookedSpotsMap, setUserBookedSpotsMap] = useState<Record<string, number>>({});
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [messageAnnouncements, setMessageAnnouncements] = useState<AnnouncementItem[]>([]);
@@ -127,20 +129,29 @@ function DashboardContent() {
               if (bookingData.success && Array.isArray(bookingData.bookings)) {
                 const dbIds = bookingData.bookings.map((b: any) => b.eventId || b.event?.id);
                 setRegisteredEventIds(dbIds);
+                const sMap: Record<string, number> = {};
+                bookingData.bookings.forEach((b: any) => {
+                  const evId = b.eventId || b.event?.id;
+                  if (evId) sMap[evId] = b.spots || 1;
+                });
+                setUserBookedSpotsMap(sMap);
                 localStorage.setItem(`jwm_rsvps_${data.user.id}`, JSON.stringify(dbIds));
+                localStorage.setItem(`jwm_spots_${data.user.id}`, JSON.stringify(sMap));
               }
             } else {
               const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
               if (savedRsvps) {
                 setRegisteredEventIds(JSON.parse(savedRsvps));
               }
+              const savedSpots = localStorage.getItem(`jwm_spots_${data.user.id}`);
+              if (savedSpots) {
+                try { setUserBookedSpotsMap(JSON.parse(savedSpots)); } catch (e) {}
+              }
             }
           } catch (e) {
             const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
             if (savedRsvps) {
-              try {
-                setRegisteredEventIds(JSON.parse(savedRsvps));
-              } catch (err) {}
+              try { setRegisteredEventIds(JSON.parse(savedRsvps)); } catch (err) {}
             }
           }
 
@@ -277,73 +288,201 @@ function DashboardContent() {
     } catch (e) {}
   };
 
-  // Handle Event RSVP
-  const handleRegisterEvent = async (evt: EventItem) => {
-    if (!user || registeredEventIds.includes(evt.id)) return;
-    const updated = [...registeredEventIds, evt.id];
-    setRegisteredEventIds(updated);
-    // Optimistically decrement available spot count in events list
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === evt.id
-          ? { ...e, confirmedBookings: (e.confirmedBookings ?? 0) + 1 }
-          : e
-      )
-    );
-    try {
-      localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
-    } catch (e) {}
+  // Helper to dynamically load Razorpay SDK
+  const loadRazorpay = () => {
+    return new Promise<boolean>((resolve) => {
+      if (typeof window !== "undefined" && (window as any).Razorpay) {
+        return resolve(true);
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
-    // Synchronize to backend database in real-time
+  // Helper to reload user bookings
+  const reloadBookings = async () => {
     try {
-      const res = await fetch(`/api/events/${evt.id}/book`, {
+      const res = await fetch("/api/events/my-bookings", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.bookings)) {
+          const ids = data.bookings.map((b: any) => b.eventId || b.event?.id);
+          setRegisteredEventIds(ids);
+          const sMap: Record<string, number> = {};
+          data.bookings.forEach((b: any) => {
+            const evId = b.eventId || b.event?.id;
+            if (evId) sMap[evId] = b.spots || 1;
+          });
+          setUserBookedSpotsMap(sMap);
+          if (user) {
+            localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(ids));
+            localStorage.setItem(`jwm_spots_${user.id}`, JSON.stringify(sMap));
+          }
+        }
+      }
+    } catch (e) {}
+  };
+
+  // Handle Event Ticket Booking (Complimentary or Razorpay Paid)
+  const handleRegisterEvent = async (evt: EventItem, spots: number = 1) => {
+    if (!user) return;
+    const ticketCount = Math.max(1, spots);
+
+    // Free event path
+    if (!evt.price || evt.price <= 0) {
+      try {
+        const res = await fetch(`/api/events/${evt.id}/book`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spots: ticketCount }),
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.success) {
+          const updated = Array.from(new Set([...registeredEventIds, evt.id]));
+          setRegisteredEventIds(updated);
+          setUserBookedSpotsMap((prev) => ({
+            ...prev,
+            [evt.id]: (prev[evt.id] || 0) + ticketCount,
+          }));
+          setEvents((prev) =>
+            prev.map((e) =>
+              e.id === evt.id
+                ? { ...e, confirmedBookings: (e.confirmedBookings ?? 0) + ticketCount }
+                : e
+            )
+          );
+          try {
+            localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
+          } catch (e) {}
+          setReservationToast(`🎉 Confirmed ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} for "${evt.title}"!`);
+          setTimeout(() => setReservationToast(null), 4500);
+          reloadBookings();
+        } else {
+          alert(data.message || "Failed to reserve spot.");
+        }
+      } catch (err) {
+        console.error("Free booking error:", err);
+        alert("Failed to connect to server. Please try again.");
+      }
+      return;
+    }
+
+    // Paid event path via Razorpay
+    const loaded = await loadRazorpay();
+    if (!loaded) {
+      alert("Razorpay checkout failed to load. Please verify your internet connection.");
+      return;
+    }
+
+    try {
+      const orderRes = await fetch(`/api/events/${evt.id}/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spots: 1 }),
+        body: JSON.stringify({ spots: ticketCount }),
         credentials: "include",
       });
-      const data = await res.json();
-      if (!data.success && res.status !== 401) {
-        console.warn("Reservation notice:", data.message);
+      const orderData = await orderRes.json();
+
+      if (!orderData.success) {
+        alert(orderData.message || "Failed to create payment order.");
+        return;
       }
-    } catch (err) {
-      console.error("Booking API error:", err);
-    }
 
-    setReservationToast(`Confirmed spot for "${evt.title}"! Digital admission pass ready.`);
-    setTimeout(() => setReservationToast(null), 4500);
+      if (orderData.free) {
+        const updated = Array.from(new Set([...registeredEventIds, evt.id]));
+        setRegisteredEventIds(updated);
+        setUserBookedSpotsMap((prev) => ({ ...prev, [evt.id]: (prev[evt.id] || 0) + ticketCount }));
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.id === evt.id
+              ? { ...e, confirmedBookings: (e.confirmedBookings ?? 0) + ticketCount }
+              : e
+          )
+        );
+        setReservationToast(`🎉 Confirmed ${ticketCount} seat(s) for "${evt.title}"!`);
+        setTimeout(() => setReservationToast(null), 4500);
+        reloadBookings();
+        return;
+      }
+
+      const options = {
+        key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
+        amount: orderData.order.amount,
+        currency: orderData.order.currency || "INR",
+        name: "JabWeMeet",
+        description: `${ticketCount} Ticket(s) — ${evt.title}`,
+        order_id: orderData.order.id,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch(`/api/events/${evt.id}/verify-payment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                spots: ticketCount,
+              }),
+              credentials: "include",
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              const updated = Array.from(new Set([...registeredEventIds, evt.id]));
+              setRegisteredEventIds(updated);
+              setUserBookedSpotsMap((prev) => ({
+                ...prev,
+                [evt.id]: (prev[evt.id] || 0) + ticketCount,
+              }));
+              setEvents((prev) =>
+                prev.map((e) =>
+                  e.id === evt.id
+                    ? { ...e, confirmedBookings: (e.confirmedBookings ?? 0) + ticketCount }
+                    : e
+                )
+              );
+              try {
+                localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
+              } catch (e) {}
+              setReservationToast(
+                `🎉 Payment verified! ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} secured for "${evt.title}".`
+              );
+              setTimeout(() => setReservationToast(null), 4500);
+              reloadBookings();
+            } else {
+              alert(verifyData.message || "Payment verification failed.");
+            }
+          } catch (verErr) {
+            console.error("Payment verification error:", verErr);
+            alert("Error confirming payment. Please contact support.");
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone,
+        },
+        theme: {
+          color: "#e06d53",
+        },
+        modal: {
+          ondismiss: function () {
+            console.log("Payment window closed without completion.");
+          },
+        },
+      };
+
+      const paymentObj = new (window as any).Razorpay(options);
+      paymentObj.open();
+    } catch (err) {
+      console.error("Booking error:", err);
+      alert("Failed to initiate payment. Please try again.");
+    }
   };
 
-  // Handle Cancel Event RSVP
-  const handleCancelReservation = async (eventId: string) => {
-    if (!user) return;
-    const updated = registeredEventIds.filter((id) => id !== eventId);
-    setRegisteredEventIds(updated);
-    // Optimistically increment available spot count back
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === eventId
-          ? { ...e, confirmedBookings: Math.max(0, (e.confirmedBookings ?? 1) - 1) }
-          : e
-      )
-    );
-    try {
-      localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
-    } catch (e) {}
-
-    // Synchronize to backend database in real-time
-    try {
-      await fetch(`/api/events/${eventId}/cancel`, {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (err) {
-      console.error("Cancel reservation API error:", err);
-    }
-
-    setReservationToast("RSVP released. Spot is now open for other members.");
-    setTimeout(() => setReservationToast(null), 3500);
-  };
 
   // Handle Update Connection
   const handleUpdateConnection = async (id: string, action: "Approve" | "Reject") => {
@@ -440,8 +579,17 @@ function DashboardContent() {
     );
   }
 
-  const registeredEvents = events.filter((e) => registeredEventIds.includes(e.id));
-  const localEvents = events.filter(
+  const registeredEvents = events
+    .filter((e) => registeredEventIds.includes(e.id))
+    .map((e) => ({
+      ...e,
+      bookedSpots: userBookedSpotsMap[e.id] || 1,
+    }));
+  const eventsWithUserSpots = events.map((e) => ({
+    ...e,
+    bookedSpots: userBookedSpotsMap[e.id] || 1,
+  }));
+  const localEvents = eventsWithUserSpots.filter(
     (e) => (e.city || "").toLowerCase() === (user.city || "").toLowerCase()
   );
   const completionPercentage = calculateProfileCompletion();
@@ -653,14 +801,13 @@ function DashboardContent() {
 
               {/* Dynamic Upcoming Events Section */}
               <UpcomingEventsSection
-                events={events}
+                events={eventsWithUserSpots}
                 userCity={user.city}
                 userName={user.name}
                 registeredEventIds={registeredEventIds}
                 selectedCategory={selectedCategory}
                 onSelectCategory={(cat) => setSelectedCategory(cat)}
                 onRegisterEvent={handleRegisterEvent}
-                onCancelReservation={handleCancelReservation}
                 onExploreClick={() => scrollToElement("experiences")}
               />
 
@@ -718,14 +865,13 @@ function DashboardContent() {
           {/* TAB 2: DISCOVER EVENTS */}
           {activeSection === "events" && (
             <UpcomingEventsSection
-              events={events}
+              events={eventsWithUserSpots}
               userCity={user.city}
               userName={user.name}
               registeredEventIds={registeredEventIds}
               selectedCategory={selectedCategory}
               onSelectCategory={(cat) => setSelectedCategory(cat)}
               onRegisterEvent={handleRegisterEvent}
-              onCancelReservation={handleCancelReservation}
               onExploreClick={() => {
                 setActiveSection("dashboard");
                 window.history.replaceState(null, "", "/dashboard");
@@ -738,7 +884,6 @@ function DashboardContent() {
             <MyEventsView
               registeredEvents={registeredEvents}
               userName={user.name}
-              onCancelReservation={handleCancelReservation}
               onExploreEvents={() => {
                 setActiveSection("events");
                 window.history.replaceState(null, "", "/dashboard?tab=events");
@@ -807,6 +952,11 @@ function DashboardContent() {
           {/* TAB 10: CALL HISTORY */}
           {activeSection === "call-history" && (
             <CallHistoryView />
+          )}
+
+          {/* TAB 11: PACKAGES */}
+          {activeSection === "packages" && (
+            <PackagesView user={user} />
           )}
         </main>
 

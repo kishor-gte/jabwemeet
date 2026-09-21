@@ -33,6 +33,14 @@ model User {
   identityVerified   Boolean?  @default(false)
   mobileVerified     Boolean?  @default(true)
   lastActiveAt       DateTime? @default(now())
+
+  // Breakup Buddy User Limits (Free Tier & Packages)
+  bbPackageId             String?
+  bbPackageStatus         String?   @default("NONE") // NONE, ACTIVE, EXHAUSTED
+  bbSessionsRemaining     Int       @default(0)
+  bbCallMinutesRemaining  Int       @default(5)  // 5 mins free initial
+  bbChatMinutesRemaining  Int       @default(15) // 15 mins free initial
+  bbPackageExpiresAt      DateTime?
   internalNotes      String?
   events             Event[]
 

@@ -74,8 +74,8 @@ const TRAVEL_STYLES = [
 
 const BUDGET_PREFERENCES = [
   "Budget-friendly & Backpacking",
-  "Comfort / Mid-range ($$)",
-  "Premium & Luxury ($$$)",
+  "Comfort / Mid-range (₹₹)",
+  "Premium & Luxury (₹₹₹)",
   "Flexible depending on itinerary",
 ];
 

@@ -14,6 +14,9 @@ import {
   Users,
   QrCode,
   ShieldCheck,
+  Minus,
+  Plus,
+  CreditCard,
 } from "lucide-react";
 
 export interface EventItem {
@@ -27,6 +30,7 @@ export interface EventItem {
   price: number;
   maxAttendees?: number;
   confirmedBookings?: number; // real-time count from backend
+  bookedSpots?: number; // spots booked by this user
 }
 
 interface UpcomingEventsSectionProps {
@@ -36,8 +40,7 @@ interface UpcomingEventsSectionProps {
   registeredEventIds: string[];
   selectedCategory: string;
   onSelectCategory: (cat: string) => void;
-  onRegisterEvent: (event: EventItem) => void;
-  onCancelReservation: (eventId: string) => void;
+  onRegisterEvent: (event: EventItem, spots?: number) => void;
   onExploreClick: () => void;
 }
 
@@ -49,11 +52,12 @@ export default function UpcomingEventsSection({
   selectedCategory,
   onSelectCategory,
   onRegisterEvent,
-  onCancelReservation,
   onExploreClick,
 }: UpcomingEventsSectionProps) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeModalEvent, setActiveModalEvent] = useState<EventItem | null>(null);
+  const [bookingModalEvent, setBookingModalEvent] = useState<EventItem | null>(null);
+  const [selectedSpots, setSelectedSpots] = useState<number>(1);
   const [onlyLocal, setOnlyLocal] = useState<boolean>(false);
 
   // Derive unique categories dynamically
@@ -213,8 +217,8 @@ export default function UpcomingEventsSection({
             const relativeTime = getRelativeTime(evt.date);
             const isLocalCity = evt.city?.toLowerCase() === (userCity || "").toLowerCase();
             const capacity = evt.maxAttendees || 40;
-            // Use real booking count from backend; +1 optimistically when user has just reserved
-            const bookedCount = (evt.confirmedBookings ?? 0) + (isRegistered ? 1 : 0);
+            // Real booking count from backend
+            const bookedCount = evt.confirmedBookings ?? 0;
             const spotsRemaining = Math.max(0, capacity - bookedCount);
 
             return (
@@ -306,29 +310,52 @@ export default function UpcomingEventsSection({
                   </div>
 
                   {/* Actions */}
-                  <div className="grid grid-cols-2 gap-2 pt-2">
-                    <button
-                      onClick={() => setActiveModalEvent(evt)}
-                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
-                    >
-                      {isRegistered ? "View Ticket Pass" : "View Details"}
-                    </button>
-
+                  <div className="pt-2">
                     {isRegistered ? (
-                      <button
-                        onClick={() => onCancelReservation(evt.id)}
-                        className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/20 transition"
-                        title="Click to release reservation"
-                      >
-                        Cancel RSVP
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setActiveModalEvent(evt)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-bold border border-emerald-500/30 transition flex items-center justify-center gap-1.5"
+                        >
+                          <Ticket className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>View Ticket Pass ({evt.bookedSpots || 1})</span>
+                        </button>
+                        {spotsRemaining > 0 && (
+                          <button
+                            onClick={() => {
+                              setSelectedSpots(1);
+                              setBookingModalEvent(evt);
+                            }}
+                            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
+                            title="Book additional tickets"
+                          >
+                            + Add Seats
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <button
-                        onClick={() => onRegisterEvent(evt)}
-                        className="px-3 py-2 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold shadow-md shadow-[#e06d53]/25 transition"
-                      >
-                        Reserve Spot
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setActiveModalEvent(evt)}
+                          className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
+                        >
+                          View Details
+                        </button>
+                        <button
+                          disabled={spotsRemaining === 0}
+                          onClick={() => {
+                            setSelectedSpots(1);
+                            setBookingModalEvent(evt);
+                          }}
+                          className={`px-3 py-2 rounded-xl text-white text-xs font-bold shadow-md transition cursor-pointer ${
+                            spotsRemaining === 0
+                              ? "bg-slate-700 opacity-50 cursor-not-allowed"
+                              : "bg-[#e06d53] hover:bg-[#c95940] shadow-[#e06d53]/25"
+                          }`}
+                        >
+                          {spotsRemaining === 0 ? "Sold Out" : "Book Tickets"}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -436,7 +463,9 @@ export default function UpcomingEventsSection({
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] uppercase">Admit</span>
-                    <p className="font-semibold text-white">1 Person (Free/Paid)</p>
+                    <p className="font-semibold text-white">
+                      {activeModalEvent.bookedSpots ? `${activeModalEvent.bookedSpots} ${activeModalEvent.bookedSpots > 1 ? 'Guests' : 'Guest'}` : '1 Guest'}
+                    </p>
                   </div>
                 </div>
 
@@ -493,30 +522,212 @@ export default function UpcomingEventsSection({
               </button>
 
               {registeredEventIds.includes(activeModalEvent.id) ? (
-                <button
-                  onClick={() => {
-                    onCancelReservation(activeModalEvent.id);
-                    setActiveModalEvent(null);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-bold border border-rose-500/30 transition"
-                >
-                  Cancel RSVP
-                </button>
+                <div className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Pass Confirmed</span>
+                </div>
               ) : (
                 <button
                   onClick={() => {
-                    onRegisterEvent(activeModalEvent);
+                    setSelectedSpots(1);
+                    setBookingModalEvent(activeModalEvent);
                     setActiveModalEvent(null);
                   }}
-                  className="px-5 py-2 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold shadow-lg transition"
+                  className="px-5 py-2 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold shadow-lg transition cursor-pointer"
                 >
-                  Confirm Reservation
+                  Book Tickets
                 </button>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Interactive Ticket Booking & Quantity Selection Modal */}
+      {bookingModalEvent && (() => {
+        const capacity = bookingModalEvent.maxAttendees || 40;
+        const booked = bookingModalEvent.confirmedBookings ?? 0;
+        const remaining = Math.max(0, capacity - booked);
+        const maxSelectable = Math.max(1, remaining);
+        const unitPrice = bookingModalEvent.price || 0;
+        const totalPrice = unitPrice * selectedSpots;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="relative w-full max-w-lg bg-[#131d2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30">
+                    {bookingModalEvent.category || "Event Pass"}
+                  </span>
+                  <h3 className="text-xl font-extrabold text-white mt-2">
+                    Book Tickets: {bookingModalEvent.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
+                    <span>{bookingModalEvent.location}, {bookingModalEvent.city}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBookingModalEvent(null)}
+                  className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Event Availability Banner */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5 text-xs">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <span>Available Seats</span>
+                </div>
+                <span className="font-bold text-emerald-400">
+                  {remaining > 0 ? `${remaining} of ${capacity} spots open` : "Sold Out"}
+                </span>
+              </div>
+
+              {/* Quantity Stepper & Counter */}
+              <div className="p-4 rounded-2xl bg-[#0c1424] border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Select Number of Seats
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    You can book up to {remaining} {remaining === 1 ? 'ticket' : 'tickets'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 pt-1">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={selectedSpots <= 1}
+                      onClick={() => setSelectedSpots((prev) => Math.max(1, prev - 1))}
+                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-base transition cursor-pointer"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxSelectable}
+                      value={selectedSpots}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (isNaN(val)) setSelectedSpots(1);
+                        else setSelectedSpots(Math.max(1, Math.min(maxSelectable, val)));
+                      }}
+                      className="w-16 h-10 text-center font-extrabold text-lg text-white bg-white/5 border border-white/15 rounded-xl focus:outline-none focus:border-[#e06d53]"
+                    />
+
+                    <button
+                      type="button"
+                      disabled={selectedSpots >= remaining}
+                      onClick={() => setSelectedSpots((prev) => Math.min(remaining, prev + 1))}
+                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-base transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Quick-Select Pills */}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {[1, 2, 4].filter((n) => n <= remaining).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setSelectedSpots(n)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                          selectedSpots === n
+                            ? "bg-[#e06d53] text-white border-[#e06d53]"
+                            : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    {remaining > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSpots(remaining)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                          selectedSpots === remaining
+                            ? "bg-[#e06d53] text-white border-[#e06d53]"
+                            : "bg-white/5 text-[#fca5a5] border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        All ({remaining})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Calculation Card */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Price per ticket</span>
+                  <span className="font-semibold text-white">
+                    {unitPrice > 0 ? `₹${unitPrice.toLocaleString("en-IN")}` : "Free"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Quantity</span>
+                  <span className="font-semibold text-white">
+                    {selectedSpots} {selectedSpots === 1 ? "seat" : "seats"}
+                  </span>
+                </div>
+
+                <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm">
+                  <span className="font-bold text-white">Total Amount</span>
+                  <span className="font-extrabold text-lg text-[#fca5a5]">
+                    {unitPrice > 0 ? `₹${totalPrice.toLocaleString("en-IN")}` : "Free Admission"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBookingModalEvent(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer"
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  disabled={remaining === 0}
+                  onClick={() => {
+                    const evtToBook = bookingModalEvent;
+                    const spotsToBook = selectedSpots;
+                    setBookingModalEvent(null);
+                    onRegisterEvent(evtToBook, spotsToBook);
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b34932] text-white text-xs font-extrabold shadow-lg shadow-[#e06d53]/30 transition transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
+                >
+                  {unitPrice > 0 ? (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>Proceed to Pay ₹{totalPrice.toLocaleString("en-IN")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Ticket className="w-4 h-4" />
+                      <span>Confirm Free Booking ({selectedSpots} {selectedSpots === 1 ? 'Seat' : 'Seats'})</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
