@@ -767,6 +767,36 @@ router.put('/connections/:id', authenticateToken, async (req, res) => {
       data: updateData
     });
 
+    // Send email to opposite user about the status update
+    try {
+      const oppositeUserId = connection.clientId === userId ? connection.suggestedProfileId : connection.clientId;
+      const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+      const oppositeUser = await prisma.user.findUnique({ where: { id: oppositeUserId } });
+      const { sendMail } = require('../services/emailService');
+
+      if (oppositeUser && oppositeUser.email && currentUser) {
+        let subject = '';
+        let messageText = '';
+        let messageHtml = '';
+
+        if (action === 'Approve') {
+          subject = 'Connection Request Accepted - JabWeMeet';
+          messageText = `Hello ${oppositeUser.name},\n\nGreat news! ${currentUser.name} has accepted your connection request.\nLog into your dashboard to check it out.\n\nBest Regards,\nJabWeMeet Team`;
+          messageHtml = `<p>Hello <strong>${oppositeUser.name}</strong>,</p><p>Great news! <strong>${currentUser.name}</strong> has accepted your connection request.</p><p>Log into your dashboard to check it out.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
+        } else if (action === 'Reject') {
+          subject = 'Connection Request Passed - JabWeMeet';
+          messageText = `Hello ${oppositeUser.name},\n\n${currentUser.name} has passed on your connection request. Don't worry, there are plenty of other matches!\n\nBest Regards,\nJabWeMeet Team`;
+          messageHtml = `<p>Hello <strong>${oppositeUser.name}</strong>,</p><p><strong>${currentUser.name}</strong> has passed on your connection request. Don't worry, there are plenty of other matches!</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
+        }
+
+        if (subject) {
+          await sendMail(oppositeUser.email, subject, messageText, messageHtml);
+        }
+      }
+    } catch (mailError) {
+      console.error('Error sending update email:', mailError);
+    }
+
     res.json({ success: true, connection: updated });
   } catch (error) {
     console.error('Error updating connection:', error);
@@ -888,14 +918,55 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
       }
     });
 
-    const packages = await prisma.$queryRawUnsafe(`
+    // Create table if it doesn't exist (to avoid crashes)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ServicePackage" (
+        "id" TEXT PRIMARY KEY,
+        "name" TEXT,
+        "description" TEXT,
+        "price" DOUBLE PRECISION,
+        "type" TEXT,
+        "sessionLimit" INTEGER DEFAULT 1
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Payment" (
+        "id" TEXT PRIMARY KEY,
+        "userId" TEXT,
+        "amount" DOUBLE PRECISION,
+        "type" TEXT,
+        "status" TEXT,
+        "gateway" TEXT,
+        "createdAt" TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    let packages = await prisma.$queryRawUnsafe(`
       SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
     `);
+
+    if (packages.length === 0) {
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "ServicePackage" ("id", "name", "description", "price", "type", "sessionLimit")
+        VALUES ('PKG-DATE-1', 'Premium Dating Pass', 'Unlock 1 additional curated date', 999.0, 'DATING', 1)
+      `);
+      packages = await prisma.$queryRawUnsafe(`
+        SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
+      `);
+    }
+
+    const purchased = await prisma.$queryRawUnsafe(`
+      SELECT COUNT(*) as count FROM "Payment" WHERE "userId" = $1 AND "type" = 'DATING_PACKAGE' AND "status" = 'SUCCESS'
+    `, userId);
+    
+    const purchasedCount = purchased && purchased.length > 0 ? Number(purchased[0].count) : 0;
+    const totalAllowed = 1 + purchasedCount;
 
     res.json({
       success: true,
       approvedMatchesCount,
-      freeDatesRemaining: Math.max(0, 1 - approvedMatchesCount),
+      freeDatesRemaining: Math.max(0, totalAllowed - approvedMatchesCount),
       packages
     });
   } catch (err) {
@@ -1006,6 +1077,22 @@ router.post('/connections/:id/feedback', authenticateToken, async (req, res) => 
 // Get Public Feedbacks (Testimonials)
 router.get('/public/feedbacks', async (req, res) => {
   try {
+    // Ensure table exists to prevent crash on fresh db
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT NOT NULL,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        "isPublished" BOOLEAN DEFAULT FALSE,
+        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
     const feedbacks = await prisma.$queryRawUnsafe(`
       SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
       FROM "DateFeedback" f

@@ -383,6 +383,36 @@ router.patch('/requests/:id', async (req, res) => {
       });
     }
 
+    // Send email to user
+    try {
+      if (existing.client && existing.client.email) {
+        const { sendMail } = require('../services/emailService');
+        if (status === 'Approved') {
+          await sendMail(
+            existing.client.email,
+            '💖 Your Matchmaking Request is Approved!',
+            `Hello ${existing.client.name},\n\nWOW! Great news! Your relationship manager has accepted your matchmaking request.\nGo check your dashboard to see your new matches and start your journey!\n\nCheers,\nJabWeMeet Team`,
+            `<div style="font-family: sans-serif; text-align: center; color: #333;">
+               <h1 style="color: #e11d48;">🎉 WOW! Great news! 🎉</h1>
+               <p style="font-size: 18px;">Hello <strong>${existing.client.name}</strong>,</p>
+               <p style="font-size: 16px;">Your relationship manager has <strong>accepted</strong> your matchmaking request.</p>
+               <p style="font-size: 16px;">Go and check your dashboard right away to see what's waiting for you and start your beautiful journey!</p>
+               <br><p>Cheers,<br>JabWeMeet Team</p>
+             </div>`
+          );
+        } else if (status === 'Rejected') {
+          await sendMail(
+            existing.client.email,
+            'Update on your Matchmaking Request',
+            `Hello ${existing.client.name},\n\nWe wanted to let you know that your relationship manager has unfortunately passed on your matchmaking request at this time.\n\nWarm Regards,\nJabWeMeet Team`,
+            `<p>Hello <strong>${existing.client.name}</strong>,</p><p>We wanted to let you know that your relationship manager has unfortunately passed on your matchmaking request at this time.</p><br><p>Warm Regards,<br>JabWeMeet Team</p>`
+          );
+        }
+      }
+    } catch (mailError) {
+      console.error('Error sending request status email:', mailError);
+    }
+
     return res.json({
       success: true,
       message: `Request status updated to ${status}`,
@@ -634,6 +664,33 @@ router.post('/suggestions', async (req, res) => {
       }
     });
 
+    // Send emails to both clients
+    try {
+      const client1 = await prisma.user.findUnique({ where: { id: clientId } });
+      const client2 = await prisma.user.findUnique({ where: { id: suggestedProfileId } });
+      
+      const { sendMail } = require('../services/emailService');
+      
+      if (client1 && client1.email) {
+        await sendMail(
+          client1.email,
+          'New Connection Request - JabWeMeet',
+          `Hello ${client1.name},\n\nYou have a new connection request from ${client2.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
+          `<p>Hello <strong>${client1.name}</strong>,</p><p>You have a new connection request from <strong>${client2.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
+        );
+      }
+      if (client2 && client2.email) {
+        await sendMail(
+          client2.email,
+          'New Connection Request - JabWeMeet',
+          `Hello ${client2.name},\n\nYou have a new connection request from ${client1.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
+          `<p>Hello <strong>${client2.name}</strong>,</p><p>You have a new connection request from <strong>${client1.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
+        );
+      }
+    } catch (mailError) {
+      console.error('Error sending suggestion emails:', mailError);
+    }
+
     res.json({ success: true, suggestion });
   } catch (error) {
     console.error('Error creating suggestion:', error);
@@ -681,8 +738,56 @@ router.put('/connections/:id/date', async (req, res) => {
         meetingLocation,
         meetingVenue,
         meetingMessage: meetingMessage || 'Your first date is on us! Try it for free!'
+      },
+      include: {
+        client: true,
+        suggestedProfile: true
       }
     });
+
+    try {
+      const { sendMail } = require('../services/emailService');
+      const dateStr = new Date(meetingDate).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
+      
+      const emailHtml = (userName, partnerName) => `
+        <div style="font-family: sans-serif; text-align: center; color: #333;">
+          <h1 style="color: #e11d48;">💖 It's a Date! 💖</h1>
+          <p style="font-size: 18px;">Hello <strong>${userName}</strong>,</p>
+          <p style="font-size: 16px;">Wow! Your relationship manager has fixed a wonderful date for you and <strong>${partnerName}</strong>!</p>
+          <div style="background-color: #ffe4e6; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px; text-align: left;">
+            <p><strong>📅 Date & Time:</strong> ${dateStr}</p>
+            <p><strong>📍 Location:</strong> ${meetingLocation}</p>
+            <p><strong>🏛️ Venue:</strong> ${meetingVenue}</p>
+            <p><strong>💌 Message:</strong> ${meetingMessage || 'Your first date is on us! Try it for free!'}</p>
+          </div>
+          <p style="font-size: 18px; font-weight: bold; color: #e11d48;">Enjoy your date with your partner!</p>
+          <br>
+          <p>Best regards,<br>JabWeMeet Matchmaking Team</p>
+        </div>
+      `;
+
+      const emailText = (userName, partnerName) => `Hello ${userName},\n\nWow! Your relationship manager has fixed a wonderful date for you and ${partnerName}!\n\nDate & Time: ${dateStr}\nLocation: ${meetingLocation}\nVenue: ${meetingVenue}\nMessage: ${meetingMessage || 'Your first date is on us! Try it for free!'}\n\nEnjoy your date with your partner!\n\nBest regards,\nJabWeMeet Matchmaking Team`;
+
+      if (connection.client?.email) {
+        await sendMail(
+          connection.client.email,
+          "💖 Your Date is Fixed! 💖",
+          emailText(connection.client.name, connection.suggestedProfile.name),
+          emailHtml(connection.client.name, connection.suggestedProfile.name)
+        );
+      }
+
+      if (connection.suggestedProfile?.email) {
+        await sendMail(
+          connection.suggestedProfile.email,
+          "💖 Your Date is Fixed! 💖",
+          emailText(connection.suggestedProfile.name, connection.client.name),
+          emailHtml(connection.suggestedProfile.name, connection.client.name)
+        );
+      }
+    } catch (mailError) {
+      console.error('Error sending date fixed emails:', mailError);
+    }
 
     res.json({ success: true, connection });
   } catch (error) {
