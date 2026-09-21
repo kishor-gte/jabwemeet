@@ -1623,18 +1623,301 @@ router.post('/approve/:id', async (req, res) => {
 // ==========================================
 router.get('/reviews', async (req, res) => {
   try {
+    const { sortBy = 'createdAt', order = 'desc', rating, search } = req.query;
+
+    // 1. Fetch real buddy reviews
     const buddyReviews = await prisma.buddyReview.findMany({
       include: {
-        user: { select: { id: true, name: true, email: true } },
-        buddy: { select: { id: true, name: true, displayName: true } },
+        user: { select: { id: true, name: true, email: true, role: true } },
+        buddy: { select: { id: true, name: true, displayName: true, role: true } },
       },
-      orderBy: { createdAt: 'desc' },
     });
 
-    return res.json({ success: true, reviews: buddyReviews });
+    // 2. Fetch real date feedbacks (if any exist)
+    let dateFeedbacks = [];
+    try {
+      dateFeedbacks = await prisma.$queryRawUnsafe(`
+        SELECT f."id", f."rating", f."feedback", f."createdAt", f."userId", f."matchId",
+               u."name" as "userName", u."email" as "userEmail",
+               m."clientId", m."suggestedProfileId",
+               u_client."name" as "clientName",
+               u_sugg."name" as "suggName"
+        FROM "DateFeedback" f
+        LEFT JOIN "User" u ON f."userId" = u."id"
+        LEFT JOIN "MatchSuggestion" m ON f."matchId" = m."id"
+        LEFT JOIN "User" u_client ON m."clientId" = u_client."id"
+        LEFT JOIN "User" u_sugg ON m."suggestedProfileId" = u_sugg."id"
+      `);
+    } catch (e) {
+      dateFeedbacks = [];
+    }
+
+    const formattedDateFeedbacks = (dateFeedbacks || []).map(df => {
+      const isClient = df.userId === df.clientId;
+      const partnerName = isClient ? (df.suggName || 'Date Connection') : (df.clientName || 'Date Connection');
+      return {
+        id: df.id,
+        rating: df.rating,
+        comment: df.feedback,
+        createdAt: df.createdAt,
+        user: {
+          id: df.userId,
+          name: df.userName || 'Member',
+          email: df.userEmail || '',
+          role: 'USER',
+        },
+        buddy: {
+          id: df.matchId,
+          name: partnerName,
+          displayName: partnerName,
+          role: 'DATE_MATCH',
+        },
+      };
+    });
+
+    // 3. Combine all genuine reviews
+    let allReviews = [
+      ...buddyReviews.map(r => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        user: r.user,
+        buddy: r.buddy,
+      })),
+      ...formattedDateFeedbacks,
+    ];
+
+    // Compute stats across ALL real reviews before filtering
+    const totalCount = allReviews.length;
+    const avgRating = totalCount > 0
+      ? Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / totalCount) * 10) / 10
+      : 0;
+    const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    allReviews.forEach(r => {
+      if (ratingBreakdown[r.rating] !== undefined) ratingBreakdown[r.rating]++;
+    });
+
+    // 4. Apply Rating Filter
+    if (rating && !isNaN(parseInt(rating, 10)) && parseInt(rating, 10) > 0) {
+      const targetRating = parseInt(rating, 10);
+      allReviews = allReviews.filter(r => r.rating === targetRating);
+    }
+
+    // 5. Apply Search Filter
+    if (search && String(search).trim()) {
+      const q = String(search).trim().toLowerCase();
+      allReviews = allReviews.filter(r => {
+        const commentMatch = r.comment && r.comment.toLowerCase().includes(q);
+        const userMatch = r.user?.name && r.user.name.toLowerCase().includes(q);
+        const emailMatch = r.user?.email && r.user.email.toLowerCase().includes(q);
+        const buddyMatch = (r.buddy?.name && r.buddy.name.toLowerCase().includes(q)) ||
+                           (r.buddy?.displayName && r.buddy.displayName.toLowerCase().includes(q));
+        return commentMatch || userMatch || emailMatch || buddyMatch;
+      });
+    }
+
+    // 6. Dynamic Sorting
+    allReviews.sort((a, b) => {
+      if (sortBy === 'rating') {
+        return order === 'asc' ? a.rating - b.rating : b.rating - a.rating;
+      } else if (sortBy === 'userName') {
+        const nameA = (a.user?.name || '').toLowerCase();
+        const nameB = (b.user?.name || '').toLowerCase();
+        return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      } else if (sortBy === 'buddyName') {
+        const nameA = (a.buddy?.displayName || a.buddy?.name || '').toLowerCase();
+        const nameB = (b.buddy?.displayName || b.buddy?.name || '').toLowerCase();
+        return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      } else {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return order === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+    });
+
+    // 7. Providers & Members dropdown lists for admin modal
+    const [providers, members] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: { in: ['BREAKUP_BUDDY', 'MATCHMAKER'] } },
+        select: { id: true, name: true, displayName: true, role: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.user.findMany({
+        where: { role: 'USER' },
+        select: { id: true, name: true, email: true },
+        orderBy: { name: 'asc' },
+        take: 50,
+      }),
+    ]);
+
+    return res.json({
+      success: true,
+      reviews: allReviews,
+      providers,
+      members,
+      stats: {
+        total: totalCount,
+        avgRating,
+        ratingBreakdown,
+      },
+    });
   } catch (error) {
     console.error('Error fetching reviews:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+  }
+});
+
+// Update / Edit Review
+router.put('/reviews/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body;
+
+    // Handle DateFeedback if prefix is FB-
+    if (id.startsWith('FB-')) {
+      const existing = await prisma.$queryRawUnsafe(`SELECT * FROM "DateFeedback" WHERE "id" = $1`, id);
+      if (!existing || existing.length === 0) {
+        return res.status(404).json({ success: false, message: 'Review not found' });
+      }
+      const newRating = rating !== undefined ? Math.min(5, Math.max(1, parseInt(rating, 10))) : existing[0].rating;
+      const newComment = comment !== undefined ? String(comment).trim() : existing[0].feedback;
+
+      await prisma.$executeRawUnsafe(
+        `UPDATE "DateFeedback" SET "rating" = $1, "feedback" = $2 WHERE "id" = $3`,
+        newRating, newComment, id
+      );
+
+      await logAudit(req, {
+        action: 'DATE_REVIEW_EDITED',
+        targetType: 'DATE_REVIEW',
+        targetId: id,
+        before: { rating: existing[0].rating, feedback: existing[0].feedback },
+        after: { rating: newRating, feedback: newComment },
+        reason: req.body.reason || 'Admin modified date feedback',
+      });
+
+      return res.json({ success: true, message: 'Review updated successfully' });
+    }
+
+    const existing = await prisma.buddyReview.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    const dataToUpdate = {};
+    if (rating !== undefined && !isNaN(parseInt(rating, 10))) {
+      dataToUpdate.rating = Math.min(5, Math.max(1, parseInt(rating, 10)));
+    }
+    if (comment !== undefined) {
+      dataToUpdate.comment = String(comment).trim();
+    }
+
+    const updated = await prisma.buddyReview.update({
+      where: { id },
+      data: dataToUpdate,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        buddy: { select: { id: true, name: true, displayName: true, role: true } },
+      },
+    });
+
+    await logAudit(req, {
+      action: 'REVIEW_EDITED',
+      targetType: 'REVIEW',
+      targetId: id,
+      before: { rating: existing.rating, comment: existing.comment },
+      after: { rating: updated.rating, comment: updated.comment },
+      reason: req.body.reason || 'Admin modified rating/comment',
+    });
+
+    return res.json({ success: true, message: 'Review updated successfully', review: updated });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update review' });
+  }
+});
+
+// Delete Review
+router.delete('/reviews/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Handle DateFeedback if prefix is FB-
+    if (id.startsWith('FB-')) {
+      const existing = await prisma.$queryRawUnsafe(`SELECT * FROM "DateFeedback" WHERE "id" = $1`, id);
+      if (!existing || existing.length === 0) {
+        return res.status(404).json({ success: false, message: 'Review not found' });
+      }
+      await prisma.$executeRawUnsafe(`DELETE FROM "DateFeedback" WHERE "id" = $1`, id);
+
+      await logAudit(req, {
+        action: 'DATE_REVIEW_DELETED',
+        targetType: 'DATE_REVIEW',
+        targetId: id,
+        before: existing[0],
+        reason: req.body?.reason || 'Admin deleted date feedback',
+      });
+
+      return res.json({ success: true, message: 'Review deleted successfully' });
+    }
+
+    const existing = await prisma.buddyReview.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    await prisma.buddyReview.delete({ where: { id } });
+
+    await logAudit(req, {
+      action: 'REVIEW_DELETED',
+      targetType: 'REVIEW',
+      targetId: id,
+      before: existing,
+      reason: req.body?.reason || 'Admin deleted review',
+    });
+
+    return res.json({ success: true, message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete review' });
+  }
+});
+
+// Create / Add Review (admin entry)
+router.post('/reviews', async (req, res) => {
+  try {
+    const { userId, buddyId, rating, comment } = req.body;
+
+    if (!userId || !buddyId || !rating) {
+      return res.status(400).json({ success: false, message: 'Reviewer (userId), Provider (buddyId), and rating are required.' });
+    }
+
+    const newReview = await prisma.buddyReview.create({
+      data: {
+        userId,
+        buddyId,
+        rating: Math.min(5, Math.max(1, parseInt(rating, 10))),
+        comment: comment ? String(comment).trim() : '',
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        buddy: { select: { id: true, name: true, displayName: true, role: true } },
+      },
+    });
+
+    await logAudit(req, {
+      action: 'REVIEW_CREATED',
+      targetType: 'REVIEW',
+      targetId: newReview.id,
+      after: newReview,
+      reason: 'Admin manually recorded review',
+    });
+
+    return res.json({ success: true, message: 'Review created successfully', review: newReview });
+  } catch (error) {
+    console.error('Error creating review:', error);
+    return res.status(500).json({ success: false, message: 'Failed to create review' });
   }
 });
 
@@ -2110,31 +2393,107 @@ router.patch('/settings', async (req, res) => {
   }
 });
 
-// Fetch Admin Earnings (10% of Dating Packages)
+// Fetch Admin Earnings (5% cut from every package and payment across the website)
 router.get('/earnings', async (req, res) => {
   try {
-    const packages = await prisma.$queryRawUnsafe(`
-      SELECT p.*, u."name" as "userName", u."email" as "userEmail"
+    const rawPayments = await prisma.$queryRawUnsafe(`
+      SELECT 
+        p."id",
+        p."amount"::float as "sourceAmount",
+        p."createdAt",
+        p."type",
+        COALESCE(p."description", p."type") as "description",
+        p."referenceId",
+        p."gateway",
+        COALESCE(u."name", 'User') as "userName",
+        COALESCE(u."email", 'N/A') as "userEmail"
       FROM "Payment" p
-      JOIN "User" u ON p."userId" = u."id"
-      WHERE p."type" = 'DATING_PACKAGE' AND p."status" = 'SUCCESS'
-      ORDER BY p."createdAt" DESC
+      LEFT JOIN "User" u ON p."userId" = u."id"
+      WHERE UPPER(p."status") = 'SUCCESS' AND p."type" != 'RM_EARNING_DATING'
+      UNION ALL
+      SELECT
+        hp."id",
+        hp."amount"::float as "sourceAmount",
+        hp."createdAt",
+        'HOST_SUBSCRIPTION' as "type",
+        CONCAT('Host Subscription (', hp."plan", ')') as "description",
+        hp."razorpayPaymentId" as "referenceId",
+        'Razorpay' as "gateway",
+        COALESCE(u."name", 'Host') as "userName",
+        COALESCE(u."email", 'N/A') as "userEmail"
+      FROM "HostPayment" hp
+      LEFT JOIN "User" u ON hp."hostId" = u."id"
+      WHERE UPPER(hp."status") = 'PAID'
+        AND NOT EXISTS (
+          SELECT 1 FROM "Payment" p2 
+          WHERE p2."referenceId" = hp."razorpayPaymentId" 
+             OR p2."referenceId" = hp."razorpayOrderId"
+        )
+      ORDER BY "createdAt" DESC
     `);
-    
-    // Map to 10% cut
-    const earnings = packages.map(pkg => ({
-      id: pkg.id,
-      createdAt: pkg.createdAt,
-      sourceAmount: pkg.amount,
-      amount: pkg.amount * 0.10, // 10% cut
-      userName: pkg.userName,
-      userEmail: pkg.userEmail,
-      type: 'Admin Revenue Share (10%)'
-    }));
 
-    const totalEarned = earnings.reduce((sum, e) => sum + e.amount, 0);
+    // Map each payment to 5% cut
+    const breakdown = {
+      EVENT_TICKET: { count: 0, volume: 0, earned: 0 },
+      DATING_PACKAGE: { count: 0, volume: 0, earned: 0 },
+      HOST_SUBSCRIPTION: { count: 0, volume: 0, earned: 0 },
+      OTHER: { count: 0, volume: 0, earned: 0 },
+    };
 
-    res.json({ success: true, earnings, totalEarned });
+    const earnings = rawPayments.map(pkg => {
+      const sourceAmount = Number(pkg.sourceAmount) || 0;
+      const adminCut = Math.round((sourceAmount * 0.05) * 100) / 100; // Exact 5% cut
+
+      let typeLabel = 'Platform Payment (5%)';
+      let categoryKey = 'OTHER';
+
+      if (pkg.type === 'EVENT_TICKET') {
+        typeLabel = 'Event Ticket Booking (5%)';
+        categoryKey = 'EVENT_TICKET';
+      } else if (pkg.type === 'DATING_PACKAGE') {
+        typeLabel = 'Dating Package (5%)';
+        categoryKey = 'DATING_PACKAGE';
+      } else if (pkg.type === 'HOST_SUBSCRIPTION') {
+        typeLabel = 'Host Subscription (5%)';
+        categoryKey = 'HOST_SUBSCRIPTION';
+      } else if (pkg.type) {
+        typeLabel = `${pkg.type.replace(/_/g, ' ')} (5%)`;
+      }
+
+      if (breakdown[categoryKey]) {
+        breakdown[categoryKey].count += 1;
+        breakdown[categoryKey].volume = Math.round((breakdown[categoryKey].volume + sourceAmount) * 100) / 100;
+        breakdown[categoryKey].earned = Math.round((breakdown[categoryKey].earned + adminCut) * 100) / 100;
+      }
+
+      return {
+        id: pkg.id,
+        createdAt: pkg.createdAt,
+        sourceAmount,
+        amount: adminCut, // 5% cut
+        userName: pkg.userName || 'User',
+        userEmail: pkg.userEmail || 'N/A',
+        paymentType: pkg.type || 'PAYMENT',
+        category: categoryKey,
+        type: typeLabel,
+        description: pkg.description || typeLabel,
+        referenceId: pkg.referenceId || pkg.id,
+        gateway: pkg.gateway || 'Razorpay',
+      };
+    });
+
+    const totalEarned = Math.round(earnings.reduce((sum, e) => sum + e.amount, 0) * 100) / 100;
+    const totalVolume = Math.round(earnings.reduce((sum, e) => sum + e.sourceAmount, 0) * 100) / 100;
+
+    res.json({
+      success: true,
+      cutPercentage: 5,
+      totalEarned,
+      totalVolume,
+      count: earnings.length,
+      breakdown,
+      earnings,
+    });
   } catch (error) {
     console.error('Error fetching admin earnings:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch admin earnings' });

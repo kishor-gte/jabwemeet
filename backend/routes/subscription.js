@@ -6,9 +6,21 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
+function getRazorpayConfig() {
+  const parseVal = (v) => {
+    if (!v) return '';
+    const m = String(v).match(/\$\{[^:]+:(.+)\}/);
+    return (m ? m[1] : String(v)).replace(/['"]/g, '').trim();
+  };
+  const key_id = parseVal(process.env.RAZORPAY_KEY_ID || process.env['razorpay.key.id'] || 'rzp_test_RIlD5bEKRjyn3h');
+  const key_secret = parseVal(process.env.RAZORPAY_KEY_SECRET || process.env['razorpay.key.secret'] || 'Ltg6uo9vI8TiFMVfj2cGm4I8');
+  return { key_id, key_secret };
+}
+
+const razorpayConfig = getRazorpayConfig();
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_dummy',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret',
+  key_id: razorpayConfig.key_id,
+  key_secret: razorpayConfig.key_secret,
 });
 
 const PLANS = {
@@ -156,10 +168,10 @@ router.post('/verify-payment', async (req, res) => {
     
     if (razorpay_order_id.startsWith('order_mock_') || razorpay_signature === 'mock_signature') {
       isSignatureValid = true;
-    } else if (process.env.RAZORPAY_KEY_SECRET) {
+    } else if (razorpayConfig.key_secret) {
       const body = razorpay_order_id + '|' + razorpay_payment_id;
       const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .createHmac('sha256', razorpayConfig.key_secret)
         .update(body.toString())
         .digest('hex');
       
@@ -185,6 +197,17 @@ router.post('/verify-payment', async (req, res) => {
         razorpaySignature: razorpay_signature,
       },
     });
+
+    // Also record in central Payment table for unified revenue tracking
+    try {
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "Payment" ("id", "userId", "type", "amount", "currency", "status", "gateway", "referenceId", "description", "createdAt")
+        VALUES ($1, $2, 'HOST_SUBSCRIPTION', $3, 'INR', 'SUCCESS', 'Razorpay', $4, $5, CURRENT_TIMESTAMP)
+        ON CONFLICT ("id") DO NOTHING;
+      `, `pay_sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, req.user.userId, planDetails.price, razorpay_payment_id || razorpay_order_id, `Host Subscription - ${plan} Plan`);
+    } catch (payErr) {
+      console.warn('Subscription payment record insert notice:', payErr.message);
+    }
 
     // Mark previous subscriptions as EXPIRED
     await prisma.hostSubscription.updateMany({

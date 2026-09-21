@@ -746,7 +746,7 @@ export default function HomePage() {
                             {ev.category}
                           </span>
                           <span className="text-emerald-400 font-extrabold text-sm">
-                            {ev.price && ev.price > 0 ? `$${ev.price}` : "Free"}
+                            {ev.price && ev.price > 0 ? `₹${ev.price.toLocaleString("en-IN")}` : "Free"}
                           </span>
                         </div>
 
@@ -831,33 +831,16 @@ export default function HomePage() {
                           </div>
                         ) : (
                           <button
-                            onClick={async () => {
+                            onClick={() => {
                               if (!currentUser) {
                                 setShowRegisterModal(true);
                                 return;
                               }
-                              // Optimistic UI update
-                              setBookedEventSuccess(ev.id);
-                              setTimeout(() => setBookedEventSuccess(null), 4000);
-                              // Persist booking to database
-                              try {
-                                const res = await fetch(`/api/events/${ev.id}/book`, {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ spots: 1 }),
-                                  credentials: "include",
-                                });
-                                const data = await res.json();
-                                if (!data.success && res.status !== 401) {
-                                  console.warn("Booking notice:", data.message);
-                                }
-                              } catch (e) {
-                                console.error("Booking API error:", e);
-                              }
+                              router.push("/dashboard?tab=events");
                             }}
                             className="w-full py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs transition shadow-md shadow-[#e06d53]/25"
                           >
-                            {currentUser ? "RSVP / Book Spot" : "Join to Reserve"}
+                            {currentUser ? "Book Tickets / Reserve" : "Join to Reserve"}
                           </button>
                         )}
                       </div>

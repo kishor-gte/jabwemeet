@@ -632,7 +632,81 @@ router.get("/content", async (req, res) => {
   } catch (error) {
     console.error("Error fetching public CMS content:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch content" });
+  }
+});
 
+// 14. POST /api/services/buddy-review
+// Submit a real member review for a Breakup Buddy
+router.post("/buddy-review", async (req, res) => {
+  try {
+    let userId = null;
+
+    // Check auth token if available
+    let token = null;
+    if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (token) {
+      try {
+        const jwt = require("jsonwebtoken");
+        const JWT_SECRET = process.env.JWT_SECRET || "jabweemeet_secret_key_prod_2026_super_secure_random";
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.userId;
+      } catch (err) {
+        // Token invalid/expired
+      }
+    }
+
+    if (!userId && req.body.userId) {
+      userId = req.body.userId;
+    }
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Please log in to submit a review." });
+    }
+
+    const { buddyId, rating, comment } = req.body;
+    if (!buddyId || !rating) {
+      return res.status(400).json({ success: false, message: "Buddy ID and rating (1-5) are required." });
+    }
+
+    const numRating = parseInt(rating, 10);
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ success: false, message: "Rating must be a number between 1 and 5." });
+    }
+
+    const targetBuddy = await prisma.user.findUnique({
+      where: { id: buddyId },
+      select: { id: true, name: true, displayName: true }
+    });
+    if (!targetBuddy) {
+      return res.status(404).json({ success: false, message: "Breakup buddy not found." });
+    }
+
+    const review = await prisma.buddyReview.create({
+      data: {
+        userId,
+        buddyId,
+        rating: numRating,
+        comment: comment ? String(comment).trim() : null,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        buddy: { select: { id: true, name: true, displayName: true } },
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Thank you! Your review has been submitted successfully.",
+      review,
+    });
+  } catch (error) {
+    console.error("Error submitting buddy review:", error);
+    return res.status(500).json({ success: false, message: "Failed to submit review", error: error.message });
   }
 });
 
