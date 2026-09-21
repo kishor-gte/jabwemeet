@@ -1099,7 +1099,7 @@ router.get('/services/packages', async (req, res) => {
 
 router.post('/services/packages', async (req, res) => {
   try {
-    const { type, name, price, billingCycle = 'MONTHLY', durationDays = 30, sessionLimit = 4, callLimit = 8, chatLimit = 100, description = '', features = [] } = req.body;
+    const { type, name, price, billingCycle = 'MONTHLY', durationDays = 30, durationHours = 1, sessionLimit = 0, callLimit = 0, chatLimit = 0, description = '', features = [] } = req.body;
     if (!type || !name || price === undefined) {
       return res.status(400).json({ success: false, message: 'Package type, name and price are required' });
     }
@@ -1107,9 +1107,9 @@ router.post('/services/packages', async (req, res) => {
     const packageId = 'pkg-' + Date.now();
 
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "ServicePackage" ("id", "type", "name", "price", "billingCycle", "durationDays", "sessionLimit", "callLimit", "chatLimit", "description", "features", "isActive")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, true)
-    `, packageId, type, name, parseFloat(price), billingCycle, parseInt(durationDays, 10), parseInt(sessionLimit, 10), parseInt(callLimit, 10), parseInt(chatLimit, 10), description, JSON.stringify(features));
+      INSERT INTO "ServicePackage" ("id", "type", "name", "price", "billingCycle", "durationDays", "durationHours", "sessionLimit", "callLimit", "chatLimit", "description", "features", "isActive")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, true)
+    `, packageId, type, name, parseFloat(price), billingCycle, parseInt(durationDays, 10) || 0, parseInt(durationHours, 10) || 1, parseInt(sessionLimit, 10) || 0, parseInt(callLimit, 10) || 0, parseInt(chatLimit, 10) || 0, description, JSON.stringify(features));
 
     await logAudit(req, {
       action: 'SERVICE_PACKAGE_CREATE',
@@ -1149,6 +1149,10 @@ router.patch('/services/packages/:id', async (req, res) => {
     if (body.durationDays !== undefined) {
       updates.push(`"durationDays" = $${pIdx++}`);
       params.push(parseInt(body.durationDays, 10));
+    }
+    if (body.durationHours !== undefined) {
+      updates.push(`"durationHours" = $${pIdx++}`);
+      params.push(parseInt(body.durationHours, 10));
     }
     if (body.sessionLimit !== undefined) {
       updates.push(`"sessionLimit" = $${pIdx++}`);

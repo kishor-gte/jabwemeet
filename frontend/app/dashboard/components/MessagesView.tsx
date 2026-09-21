@@ -10,9 +10,11 @@ import {
   User,
   Clock,
   Lock,
-  CreditCard
+  CreditCard,
+  Phone
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 
 interface MessagesViewProps {
   userName: string;
@@ -30,6 +32,10 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
   const [newMessage, setNewMessage] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(15 * 60); // 15 mins
   const [chatLimitSeconds, setChatLimitSeconds] = useState(900);
+  const [remainingVoiceMinutes, setRemainingVoiceMinutes] = useState(5);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [packagesViewMode, setPackagesViewMode] = useState<"summary" | "plans">("summary");
+  const [activeCallOverlay, setActiveCallOverlay] = useState<any | null>(null);
   const [bothActive, setBothActive] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success">("idle");
@@ -37,32 +43,51 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
 
   useEffect(() => {
     fetchRequests();
+    fetchPackages();
     const interval = setInterval(fetchRequests, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const handlePayment = async (durationSeconds: number) => {
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch("/api/services/packages/breakup-buddy", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && data.packages) {
+        setAvailablePackages(data.packages);
+      }
+    } catch (e) {}
+  };
+
+  const handlePayment = async (pkg: any) => {
     setPaymentStatus("processing");
-    setTimeout(async () => {
-      try {
-        if (activeReqId) {
-          await fetch(`/api/services/buddy-subscribe/${activeReqId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: 'chat', durationSeconds }),
-            credentials: "include"
-          });
-          setChatLimitSeconds(durationSeconds);
-          setTimerSeconds(durationSeconds); // update UI timer
+    try {
+      if (activeReqId) {
+        const res = await fetch(`/api/services/buddy-subscribe/${activeReqId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ packageId: pkg.id, durationHours: pkg.durationHours }),
+          credentials: "include"
+        });
+        const data = await res.json();
+        if (data.success) {
+          const durSec = (pkg.durationHours || 1) * 3600;
+          setChatLimitSeconds(durSec);
+          setTimerSeconds(durSec); // update UI timer
+          setPaymentStatus("success");
+          setTimeout(() => {
+            setShowSubscription(false);
+            setPaymentStatus("idle");
+            setPackagesViewMode("summary");
+          }, 1500);
+        } else {
+          alert(data.message || "Failed to activate subscription");
+          setPaymentStatus("idle");
         }
-      } catch(e) {}
-      
-      setPaymentStatus("success");
-      setTimeout(() => {
-        setShowSubscription(false);
-        setPaymentStatus("idle");
-      }, 2000);
-    }, 1500);
+      }
+    } catch(e) {
+      alert("Error activating subscription");
+      setPaymentStatus("idle");
+    }
   };
 
   const fetchRequests = async () => {
@@ -154,6 +179,10 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
           if (data.timeUsedSeconds !== undefined) {
             const limit = data.chatLimitSeconds || 900;
             setTimerSeconds(Math.max(0, limit - data.timeUsedSeconds));
+          }
+          if (data.voiceCallLimitSeconds !== undefined) {
+            const voiceLeft = Math.max(0, (data.voiceCallLimitSeconds || 300) - (data.voiceCallSeconds || 0));
+            setRemainingVoiceMinutes(Math.ceil(voiceLeft / 60));
           }
           scrollToBottom();
         }
@@ -330,20 +359,34 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                 </div>
                 
                 {activeChat.type === "buddy" && (
-                  <div className="flex items-center gap-4">
-                      {chatLimitSeconds > 900 ? (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                          <span className="text-xs font-bold">Premium Active</span>
-                        </div>
-                      ) : (
-                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${timerSeconds < 300 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
-                          <Clock className="w-3.5 h-3.5" />
-                          <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)}</span>
-                        </div>
-                      )}
-                      <span className={`text-[11px] font-medium flex items-center gap-1 ${bothActive ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setActiveCallOverlay({
+                        requestId: activeReqId,
+                        targetName: activeChat.name,
+                        role: "USER",
+                        isInitiator: true,
+                      })}
+                      className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition flex items-center gap-1.5 text-xs font-bold"
+                      title="Voice Call"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call</span>
+                    </button>
+
+                    {chatLimitSeconds > 900 ? (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                        <span className="text-xs font-bold">Unlimited Pass</span>
+                      </div>
+                    ) : (
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${timerSeconds < 300 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
+                        <Clock className="w-3.5 h-3.5" />
+                        <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)}</span>
+                      </div>
+                    )}
+                    <span className={`text-[11px] font-medium flex items-center gap-1 ${bothActive ? 'text-emerald-400' : 'text-amber-400'}`}>
                       <span className={`w-2 h-2 rounded-full ${bothActive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                      {bothActive ? 'Live' : 'Paused (Buddy Away)'}
+                      {bothActive ? 'Live' : 'Away'}
                     </span>
                   </div>
                 )}
@@ -386,7 +429,7 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={activeChat.type === 'buddy' && timerSeconds === 0 ? "Time's up! Subscription required." : "Type your message..."}
+                  placeholder={activeChat.type === 'buddy' && timerSeconds === 0 ? "Free chat time over. Subscription required." : "Type your message..."}
                   disabled={activeChat.type === 'buddy' && timerSeconds === 0}
                   className="flex-1 bg-[#131d2e] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
@@ -411,74 +454,148 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
       {/* Subscription Paywall Modal */}
       {showSubscription && activeChat?.type === 'buddy' && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-2xl w-full p-8 shadow-2xl relative transition-all duration-300">
+          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative transition-all">
             {paymentStatus === "success" ? (
               <div className="text-center py-10 space-y-4 animate-in zoom-in duration-300">
                 <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 mx-auto">
                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <h2 className="text-3xl font-bold text-white">Payment Successful!</h2>
-                <p className="text-slate-400">Your limits have been reset. Resuming your session...</p>
+                <h2 className="text-2xl font-bold text-white">Subscription Activated!</h2>
+                <p className="text-slate-400 text-sm">Unlimited calls and chats are now active with {activeChat.name}.</p>
               </div>
             ) : paymentStatus === "processing" ? (
               <div className="text-center py-10 space-y-6">
                 <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto"></div>
-                <h2 className="text-xl font-bold text-white animate-pulse">Processing Payment securely...</h2>
+                <h2 className="text-xl font-bold text-white animate-pulse">Activating Subscription...</h2>
               </div>
             ) : (
               <>
-                <div className="text-center space-y-3 mb-8">
-                  <div className="w-16 h-16 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
-                    <Clock className="w-8 h-8" />
+                <div className="text-center space-y-3 mb-6">
+                  <div className="w-14 h-14 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+                    <Clock className="w-7 h-7" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white">Time Limit Reached</h2>
-                <p className="text-sm text-slate-400 max-w-md mx-auto">
-                  Your current chat time with {activeChat?.name || 'your buddy'} has ended. Subscribe to a plan to continue your session securely.
-                </p>
+                  <h2 className="text-2xl font-black text-white tracking-tight">15-Minute Free Chat Ended</h2>
+                  
+                  <div className="space-y-3">
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                      You have hit your <strong>15 minutes of free chat</strong> with <strong>{activeChat.name}</strong>.
+                    </p>
+                    
+                    {remainingVoiceMinutes > 0 ? (
+                      <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 max-w-md mx-auto">
+                        📞 You still have <strong>{remainingVoiceMinutes} minutes of free voice call</strong> available with {activeChat.name} to use!
+                      </div>
+                    ) : (
+                      <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300 max-w-md mx-auto">
+                        ⚠️ You have also used all free voice call time with {activeChat.name}.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { name: "Quick Check-in", duration: "2 Hours", price: "₹199", popular: false, seconds: 2 * 3600 },
-                    { name: "Full Day Support", duration: "24 Hours", price: "₹399", popular: true, seconds: 24 * 3600 },
-                    { name: "Weekly Guidance", duration: "1 Week", price: "₹999", popular: false, seconds: 7 * 24 * 3600 },
-                    { name: "Healing Journey", duration: "1 Month", price: "₹2,499", popular: false, seconds: 30 * 24 * 3600 },
-                  ].map((plan, i) => (
+                {packagesViewMode === "summary" ? (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    {remainingVoiceMinutes > 0 && (
+                      <button
+                        onClick={() => {
+                          setShowSubscription(false);
+                          setActiveCallOverlay({
+                            requestId: activeReqId,
+                            targetName: activeChat.name,
+                            role: "USER",
+                            isInitiator: true,
+                          });
+                        }}
+                        className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
+                      >
+                        <Phone className="w-4 h-4" />
+                        <span>📞 Start Free Call ({remainingVoiceMinutes}m remaining)</span>
+                      </button>
+                    )}
+
                     <button
-                      key={i}
-                      onClick={() => handlePayment(plan.seconds)}
-                      className={`relative p-5 rounded-2xl border text-left transition hover:scale-[1.02] active:scale-95 flex flex-col justify-between ${
-                        plan.popular
-                          ? "bg-gradient-to-br from-[#e06d53]/10 to-amber-500/10 border-[#e06d53]/50 hover:border-[#e06d53]"
-                          : "bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10"
-                      }`}
+                      onClick={() => setPackagesViewMode("plans")}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
                     >
-                      {plan.popular && (
-                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#e06d53] text-white text-[10px] font-bold px-3 py-1 rounded-full">
-                          Most Popular
-                        </span>
-                      )}
-                      <div>
-                        <h3 className="text-sm font-bold text-white">{plan.duration}</h3>
-                        <p className="text-[11px] text-slate-400 mb-4">{plan.name}</p>
-                      </div>
-                      <div className="flex items-center justify-between w-full mt-2">
-                        <div className="text-xl font-bold text-emerald-400">{plan.price}</div>
-                        <div className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition">
-                          Pay Now
-                        </div>
-                      </div>
+                      <span>⭐ View Packages / Buy Unlimited Pass</span>
                     </button>
-                  ))}
-                </div>
 
-                <div className="mt-8 flex justify-center text-slate-400 text-xs items-center gap-2">
-                  <Lock className="w-4 h-4" /> 100% Secure & Confidential Payment
-                </div>
+                    <div className="text-center pt-2">
+                      <button onClick={() => setShowSubscription(false)} className="text-xs text-slate-400 hover:text-white transition underline">
+                        Close & View Chat
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                      <button
+                        onClick={() => setPackagesViewMode("summary")}
+                        className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+                      >
+                        ← Back
+                      </button>
+                      <span className="text-xs text-emerald-400 font-bold">Unlimited Calls & Chats</span>
+                    </div>
+
+                    {availablePackages.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs bg-white/5 rounded-2xl">
+                        No packages currently available.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+                        {availablePackages.map((pkg) => (
+                          <div
+                            key={pkg.id}
+                            className="p-4 rounded-2xl bg-[#182337] border border-white/10 hover:border-emerald-500/50 transition flex flex-col justify-between text-left"
+                          >
+                            <div>
+                              <h4 className="text-sm font-bold text-white">{pkg.name}</h4>
+                              <div className="text-xs text-indigo-300 font-semibold mt-0.5">
+                                {pkg.durationHours || 1} {pkg.durationHours === 1 ? "Hour" : "Hours"} Pass
+                              </div>
+                              <div className="text-lg font-black text-emerald-400 mt-2">
+                                ₹{pkg.price}
+                              </div>
+                              {pkg.description && (
+                                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{pkg.description}</p>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => handlePayment(pkg)}
+                              className="mt-3 w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow"
+                            >
+                              Buy & Continue
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex justify-center text-slate-400 text-[11px] items-center gap-1.5 pt-2">
+                      <Lock className="w-3.5 h-3.5" /> 100% Secure & Confidential
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
+      )}
+
+      {/* Voice Call Overlay Modal */}
+      {activeCallOverlay && (
+        <VoiceCallOverlay
+          requestId={activeCallOverlay.requestId}
+          targetName={activeCallOverlay.targetName}
+          role={activeCallOverlay.role}
+          isInitiator={activeCallOverlay.isInitiator}
+          onClose={() => {
+            setActiveCallOverlay(null);
+            fetchMessages();
+          }}
+        />
       )}
     </div>
   );

@@ -21,6 +21,7 @@ import NotificationsView from "./components/NotificationsView";
 import PaymentsView from "./components/PaymentsView";
 import SettingsView from "./components/SettingsView";
 import CallHistoryView from "./components/CallHistoryView";
+import PackagesView from "./components/PackagesView";
 
 interface UserProfile {
   id: string;
@@ -807,6 +808,11 @@ function DashboardContent() {
           {/* TAB 10: CALL HISTORY */}
           {activeSection === "call-history" && (
             <CallHistoryView />
+          )}
+
+          {/* TAB 11: PACKAGES */}
+          {activeSection === "packages" && (
+            <PackagesView user={user} />
           )}
         </main>
 

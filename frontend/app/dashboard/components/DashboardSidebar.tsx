@@ -17,6 +17,7 @@ import {
   CreditCard,
   Settings,
   LogOut,
+  Package,
   X,
   Sparkles,
   ShieldCheck,
@@ -281,6 +282,21 @@ export default function DashboardSidebar({
                 Premium
               </span>
             </Link>
+
+            <button
+              onClick={() => {
+                onSelectSection("packages");
+                onCloseMobile();
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+                activeSection === "packages"
+                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Package className="w-4 h-4 text-emerald-400" />
+              <span>My Packages</span>
+            </button>
           </div>
         </div>
 

@@ -43,15 +43,29 @@ export default function VoiceCallOverlay({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
 
+  const [remainingChatMinutes, setRemainingChatMinutes] = useState(15);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [packagesViewMode, setPackagesViewMode] = useState<"summary" | "plans">("summary");
+
   useEffect(() => {
-    // Fetch current limits dynamically
+    // Fetch current limits and available packages dynamically
     const fetchLimits = async () => {
       try {
         const res = await fetch(`/api/services/buddy-chat/${requestId}`, { credentials: "include" });
         const data = await res.json();
-        if (data.success && data.voiceCallLimitSeconds !== undefined) {
-          setVoiceLimit(data.voiceCallLimitSeconds);
-          setTimerSeconds(Math.max(0, data.voiceCallLimitSeconds - (data.voiceCallSeconds || 0)));
+        if (data.success) {
+          if (data.voiceCallLimitSeconds !== undefined) {
+            setVoiceLimit(data.voiceCallLimitSeconds);
+            setTimerSeconds(Math.max(0, data.voiceCallLimitSeconds - (data.voiceCallSeconds || 0)));
+          }
+          const chatLeft = Math.max(0, (data.chatLimitSeconds || 900) - (data.timeUsedSeconds || 0));
+          setRemainingChatMinutes(Math.ceil(chatLeft / 60));
+        }
+        
+        const pkgRes = await fetch(`/api/services/packages/breakup-buddy`, { credentials: "include" });
+        const pkgData = await pkgRes.json();
+        if (pkgData.success && pkgData.packages) {
+          setAvailablePackages(pkgData.packages);
         }
       } catch (e) {
         console.error(e);
@@ -138,28 +152,39 @@ export default function VoiceCallOverlay({
     });
 
     s.on("webrtc-offer", async (offer) => {
-      if (!isInitiator) {
-        await handleOffer(s, offer);
+      if (!peerConnectionRef.current) {
+        await startWebRTC(s, false);
       }
+      await peerConnectionRef.current?.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peerConnectionRef.current?.createAnswer();
+      await peerConnectionRef.current?.setLocalDescription(answer);
+      s.emit("webrtc-answer", { requestId, answer });
     });
 
     s.on("webrtc-answer", async (answer) => {
-      if (isInitiator && peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-      }
+      await peerConnectionRef.current?.setRemoteDescription(new RTCSessionDescription(answer));
     });
 
-    s.on("ice-candidate", async (candidate) => {
-      if (peerConnectionRef.current) {
-        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+    s.on("webrtc-ice", async (candidate) => {
+      try {
+        if (candidate && peerConnectionRef.current) {
+          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      } catch (e) {
+        console.error("Error adding ice candidate:", e);
       }
     });
 
     return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
       s.disconnect();
-      cleanup();
     };
-  }, []);
+  }, [requestId, isInitiator, autoAccept, buddyId, targetUserId, callerName, role]);
 
   // Web Audio API Ringtone Generator (for Receiver)
   useEffect(() => {
@@ -228,51 +253,43 @@ export default function VoiceCallOverlay({
     setShowSubscription(true);
   };
 
-  const startWebRTC = async (s: Socket, isInitiator: boolean) => {
+  const startWebRTC = async (s: Socket, isOffer: boolean) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
-      
+      if (localAudioRef.current) {
+        localAudioRef.current.srcObject = stream;
+      }
+
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
       peerConnectionRef.current = pc;
 
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
         if (remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch(e => console.error("Audio play error", e));
         }
+        setStatus("connected");
       };
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          s.emit("ice-candidate", { requestId, candidate: event.candidate });
+          s.emit("webrtc-ice", { requestId, candidate: event.candidate });
         }
       };
 
-      if (isInitiator) {
+      if (isOffer) {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         s.emit("webrtc-offer", { requestId, offer });
       }
-      setStatus("connected");
     } catch (err) {
       console.error("WebRTC Error:", err);
-      alert("Microphone permission denied or error occurred.");
-      endCall();
-    }
-  };
-
-  const handleOffer = async (s: Socket, offer: any) => {
-    await startWebRTC(s, false);
-    if (peerConnectionRef.current) {
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
-      s.emit("webrtc-answer", { requestId, answer });
+      alert("Microphone access is required for voice calls.");
+      onClose();
     }
   };
 
@@ -285,16 +302,6 @@ export default function VoiceCallOverlay({
     }
   };
 
-  const endCall = () => {
-    if (socket) socket.emit("end-call", { requestId, callLogId: callLogIdRef.current });
-    cleanup();
-    onClose();
-  };
-
-  const acceptCall = () => {
-    if (socket) socket.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
-  };
-
   const toggleMute = () => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -305,109 +312,186 @@ export default function VoiceCallOverlay({
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  const acceptCall = () => {
+    setStatus("connected");
+    socket?.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
   };
 
-  const handlePayment = async (durationSeconds: number) => {
-    setPaymentStatus("processing");
-    setTimeout(async () => {
-      try {
-        await fetch(`/api/services/buddy-subscribe/${requestId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: 'voice', durationSeconds }),
-          credentials: "include"
-        });
-        setVoiceLimit(durationSeconds);
-      } catch(e) {}
-      
-      setPaymentStatus("success");
-      setTimeout(() => {
-        setShowSubscription(false);
-        setPaymentStatus("idle");
-        onClose(); // Call ended anyway, they can call again now that limits are reset
-      }, 2000);
-    }, 1500);
+  const endCall = () => {
+    socket?.emit("end-call", { requestId, callLogId: callLogIdRef.current });
+    setStatus("ended");
+    onClose();
   };
+
+  const handlePayment = async (pkg: any) => {
+    setPaymentStatus("processing");
+    try {
+      const res = await fetch(`/api/services/buddy-subscribe/${requestId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId: pkg.id, durationHours: pkg.durationHours }),
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentStatus("success");
+        setTimeout(() => {
+          setShowSubscription(false);
+          setPaymentStatus("idle");
+          onClose();
+        }, 1500);
+      } else {
+        alert(data.message || "Failed to process payment");
+        setPaymentStatus("idle");
+      }
+    } catch (e) {
+      alert("Error activating subscription");
+      setPaymentStatus("idle");
+    }
+  };
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  };
+
+  const buddyDisplayName = targetName || callerName || (role === "USER" ? "your Breakup Buddy" : "the User");
 
   if (showSubscription) {
     return (
-      <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-2xl w-full p-8 shadow-2xl relative transition-all duration-300">
+      <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative transition-all">
           {paymentStatus === "success" ? (
             <div className="text-center py-10 space-y-4 animate-in zoom-in duration-300">
               <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 mx-auto">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
               </div>
-              <h2 className="text-3xl font-bold text-white">Payment Successful!</h2>
-              <p className="text-slate-400">Your limits have been reset. You can now call again!</p>
+              <h2 className="text-2xl font-bold text-white">Subscription Activated!</h2>
+              <p className="text-slate-400 text-sm">Unlimited calls and chats are now active with {buddyDisplayName}.</p>
             </div>
           ) : paymentStatus === "processing" ? (
             <div className="text-center py-10 space-y-6">
               <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto"></div>
-              <h2 className="text-xl font-bold text-white animate-pulse">Processing Payment securely...</h2>
+              <h2 className="text-xl font-bold text-white animate-pulse">Activating Subscription...</h2>
             </div>
           ) : (
             <>
-              <div className="text-center space-y-3 mb-8">
-                <div className="w-16 h-16 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
-                  <Clock className="w-8 h-8" />
+              <div className="text-center space-y-3 mb-6">
+                <div className="w-14 h-14 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+                  <Clock className="w-7 h-7" />
                 </div>
-                <h2 className="text-2xl font-bold text-white">Call Time Expired</h2>
-                <p className="text-sm text-slate-400 max-w-md mx-auto">
-                  {role === "USER" 
-                    ? "Your 5 minutes of free voice call has ended. Subscribe to a plan to continue." 
-                    : "The user's 5 minutes of free voice call has ended. They must subscribe to continue."}
-                </p>
+                <h2 className="text-2xl font-black text-white tracking-tight">5-Minute Free Call Ended</h2>
+                
+                {role === "USER" ? (
+                  <div className="space-y-3">
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                      You have hit your <strong>5 minutes of free voice call</strong> with <strong>{buddyDisplayName}</strong>.
+                    </p>
+                    
+                    {remainingChatMinutes > 0 ? (
+                      <div className="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs text-indigo-300 max-w-md mx-auto">
+                        💬 You still have <strong>{remainingChatMinutes} minutes of free chat</strong> available with {buddyDisplayName} to use!
+                      </div>
+                    ) : (
+                      <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300 max-w-md mx-auto">
+                        ⚠️ You have also used all free chat time with {buddyDisplayName}.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 max-w-md mx-auto">
+                    The user's 5 minutes of free voice call has ended with you.
+                  </p>
+                )}
               </div>
 
-              {role === "USER" ? (
+              {role === "USER" && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { name: "Quick Check-in", duration: "2 Hours", price: "₹199", popular: false, seconds: 2 * 3600 },
-                      { name: "Full Day Support", duration: "24 Hours", price: "₹399", popular: true, seconds: 24 * 3600 },
-                      { name: "Weekly Guidance", duration: "1 Week", price: "₹999", popular: false, seconds: 7 * 24 * 3600 },
-                      { name: "Healing Journey", duration: "1 Month", price: "₹2,499", popular: false, seconds: 30 * 24 * 3600 },
-                    ].map((plan, i) => (
+                  {packagesViewMode === "summary" ? (
+                    <div className="space-y-3 max-w-md mx-auto">
+                      {remainingChatMinutes > 0 && (
+                        <button
+                          onClick={onClose}
+                          className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
+                        >
+                          <span>💬 Use Free Chat ({remainingChatMinutes}m remaining)</span>
+                        </button>
+                      )}
+
                       <button
-                        key={i}
-                        onClick={() => handlePayment(plan.seconds)}
-                        className={`relative p-5 rounded-2xl border text-left transition hover:scale-[1.02] active:scale-95 flex flex-col justify-between ${
-                          plan.popular
-                            ? "bg-gradient-to-br from-[#e06d53]/10 to-amber-500/10 border-[#e06d53]/50 hover:border-[#e06d53]"
-                            : "bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10"
-                        }`}
+                        onClick={() => setPackagesViewMode("plans")}
+                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
                       >
-                        {plan.popular && (
-                          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#e06d53] text-white text-[10px] font-bold px-3 py-1 rounded-full">
-                            Most Popular
-                          </span>
-                        )}
-                        <div>
-                          <h3 className="text-sm font-bold text-white">{plan.duration}</h3>
-                          <p className="text-[11px] text-slate-400 mb-4">{plan.name}</p>
-                        </div>
-                        <div className="flex items-center justify-between w-full mt-2">
-                          <div className="text-xl font-bold text-emerald-400">{plan.price}</div>
-                          <div className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition">
-                            Pay Now
-                          </div>
-                        </div>
+                        <span>⭐ View Packages / Buy Unlimited Pass</span>
                       </button>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-8 flex justify-center text-slate-400 text-xs items-center gap-2">
-                    <Lock className="w-4 h-4" /> 100% Secure & Confidential Payment
-                  </div>
+
+                      <div className="text-center pt-2">
+                        <button onClick={onClose} className="text-xs text-slate-400 hover:text-white transition underline">
+                          Close Call
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                        <button
+                          onClick={() => setPackagesViewMode("summary")}
+                          className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+                        >
+                          ← Back
+                        </button>
+                        <span className="text-xs text-emerald-400 font-bold">Unlimited Calls & Chats</span>
+                      </div>
+
+                      {availablePackages.length === 0 ? (
+                        <div className="p-6 text-center text-slate-400 text-xs bg-white/5 rounded-2xl">
+                          No packages currently available.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+                          {availablePackages.map((pkg) => (
+                            <div
+                              key={pkg.id}
+                              className="p-4 rounded-2xl bg-[#182337] border border-white/10 hover:border-emerald-500/50 transition flex flex-col justify-between text-left"
+                            >
+                              <div>
+                                <h4 className="text-sm font-bold text-white">{pkg.name}</h4>
+                                <div className="text-xs text-indigo-300 font-semibold mt-0.5">
+                                  {pkg.durationHours || 1} {pkg.durationHours === 1 ? "Hour" : "Hours"} Pass
+                                </div>
+                                <div className="text-lg font-black text-emerald-400 mt-2">
+                                  ₹{pkg.price}
+                                </div>
+                                {pkg.description && (
+                                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{pkg.description}</p>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => handlePayment(pkg)}
+                                className="mt-3 w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow"
+                              >
+                                Buy & Continue
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex justify-center text-slate-400 text-[11px] items-center gap-1.5 pt-2">
+                        <Lock className="w-3.5 h-3.5" /> 100% Secure & Confidential
+                      </div>
+                    </div>
+                  )}
                 </>
-              ) : (
+              )}
+
+              {role === "BUDDY" && (
                 <div className="flex justify-center">
-                  <button onClick={onClose} className="px-6 py-3 rounded-full bg-white/10 text-white hover:bg-white/20">Close</button>
+                  <button onClick={onClose} className="px-6 py-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 text-xs font-semibold">
+                    Close Call
+                  </button>
                 </div>
               )}
             </>
