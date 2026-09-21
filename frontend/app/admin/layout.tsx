@@ -36,6 +36,7 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  MessageCircle,
 } from "lucide-react";
 
 interface AdminUser {
@@ -64,6 +65,7 @@ const NAV_SECTIONS = [
       { label: "Buddy Sessions", href: "/admin/breakup-buddy/sessions", icon: Clock },
       { label: "Matchmaking Center", href: "/admin/matchmaking", icon: Sparkles },
       { label: "Date Scheduling", href: "/admin/matchmaking/dates", icon: Calendar },
+      { label: "Messages", href: "/admin/messages", icon: MessageCircle },
     ],
   },
   {

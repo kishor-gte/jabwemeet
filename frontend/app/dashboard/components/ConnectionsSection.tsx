@@ -83,30 +83,113 @@ export default function ConnectionsSection({
     }
   };
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && (window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePurchasePackage = async (pkg: any) => {
     if (!pendingConnId) return;
     setIsProcessing(true);
     try {
-      const res = await fetch("/api/auth/payments/package", {
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        alert("Razorpay SDK failed to load. Please check your internet connection.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // 1. Create order on backend
+      const res = await fetch("/api/auth/payments/create-razorpay-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packageId: pkg.id, amount: pkg.price }),
         credentials: "include"
       });
-      const data = await res.json();
-      if (data.success) {
-        setEligibility(prev => prev ? { ...prev, freeDatesRemaining: prev.freeDatesRemaining + (pkg.sessionLimit || 1) } : null);
-        setShowPaymentModal(false);
-        onUpdateConnection(pendingConnId, "Approve");
-        setPendingConnId(null);
-        alert("Payment Successful! Connection approved.");
-      } else {
-        alert("Payment failed. Please try again.");
+      const orderData = await res.json();
+      
+      if (!orderData.success) {
+        alert(orderData.message || "Failed to initialize payment.");
+        setIsProcessing(false);
+        return;
       }
+
+      // 2. Configure Razorpay Options
+      const options = {
+        key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "JabWeMeet - Dating Package",
+        description: `Unlock ${pkg.name}`,
+        image: "https://jabwemeet.com/logo.png",
+        order_id: orderData.orderId,
+        handler: async (response: any) => {
+          try {
+            // 3. Verify payment signature on backend
+            const verifyRes = await fetch("/api/auth/payments/verify-razorpay-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                packageId: pkg.id,
+                amount: pkg.price,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setEligibility(prev => prev ? { ...prev, freeDatesRemaining: prev.freeDatesRemaining + (pkg.sessionLimit || 1) } : null);
+              setShowPaymentModal(false);
+              onUpdateConnection(pendingConnId, "Approve");
+              setPendingConnId(null);
+              alert("Payment Successful! Connection approved.");
+            } else {
+              alert(verifyData.message || "Payment verification failed.");
+            }
+          } catch (e) {
+            console.error(e);
+            alert("Network error occurred while verifying payment.");
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: "User", // Can be dynamic if user context is available
+          email: "user@example.com",
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#f43f5e", // rose-500
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          },
+        },
+      };
+
+      const razorpayInstance = new (window as any).Razorpay(options);
+      razorpayInstance.on("payment.failed", (response: any) => {
+        alert(response.error?.description || "Payment transaction was declined.");
+        setIsProcessing(false);
+      });
+
+      razorpayInstance.open();
     } catch (e) {
       console.error(e);
       alert("Error processing payment");
-    } finally {
       setIsProcessing(false);
     }
   };

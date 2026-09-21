@@ -975,16 +975,75 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
   }
 });
 
-// Process Payment
-router.post('/payments/package', authenticateToken, async (req, res) => {
+const Razorpay = require('razorpay');
+
+// Helper to get Razorpay instance
+function getRazorpayInstance() {
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RIlD5bEKRjyn3h',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'Ltg6uo9vI8TiFMVfj2cGm4I8',
+  });
+}
+
+// 1. Create Razorpay Order for Dating Package
+router.post('/payments/create-razorpay-order', authenticateToken, async (req, res) => {
+  try {
+    const { packageId, amount } = req.body;
+    if (!packageId || !amount) {
+      return res.status(400).json({ success: false, message: 'Missing package details' });
+    }
+
+    const amountInPaise = Math.round(parseFloat(amount) * 100);
+    const options = {
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: `rcpt_pkg_${Date.now().toString().slice(-6)}`,
+      notes: {
+        packageId,
+        userId: req.user.userId
+      },
+    };
+
+    const razorpay = getRazorpayInstance();
+    const order = await razorpay.orders.create(options);
+
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_RIlD5bEKRjyn3h'
+    });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    res.status(500).json({ success: false, message: "Failed to create payment order" });
+  }
+});
+
+// 2. Verify Razorpay Payment for Dating Package
+router.post('/payments/verify-razorpay-payment', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { packageId, amount } = req.body;
-    
-    const paymentId = 'PAY-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, packageId, amount } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Missing payment parameters" });
+    }
+
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'Ltg6uo9vI8TiFMVfj2cGm4I8';
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const generatedSignature = hmac.digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid Signature" });
+    }
+
+    // Process actual DB update
+    const paymentId = 'PAY-' + razorpay_payment_id.substring(0, 7).toUpperCase();
     await prisma.$executeRawUnsafe(`
       INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
-      VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'STRIPE', NOW())
+      VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'RAZORPAY', NOW())
     `, paymentId, userId, parseFloat(amount));
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -999,7 +1058,7 @@ router.post('/payments/package', authenticateToken, async (req, res) => {
     res.json({ success: true, paymentId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Payment verification failed" });
   }
 });
 
@@ -1105,6 +1164,101 @@ router.get('/public/feedbacks', async (req, res) => {
   } catch (err) {
     console.error('Error fetching public feedbacks:', err);
     res.status(500).json({ success: false });
+  }
+});
+
+// Generic Chat API (Admin <-> Staff)
+router.get('/chat/:contactId', authenticateToken, async (req, res) => {
+  try {
+    let { contactId } = req.params;
+    const userId = req.user.userId;
+
+    if (contactId === 'admin') {
+      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
+      if (!adminUser) return res.json({ success: true, messages: [] });
+      contactId = adminUser.id;
+    }
+
+    let conversation = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { clientId: userId, matchmakerId: contactId },
+          { clientId: contactId, matchmakerId: userId }
+        ]
+      },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: { sender: { select: { name: true } } }
+        }
+      }
+    });
+
+    if (!conversation) {
+      return res.json({ success: true, messages: [] });
+    }
+
+    // Mark as read
+    await prisma.message.updateMany({
+      where: {
+        conversationId: conversation.id,
+        senderId: contactId,
+        isRead: false
+      },
+      data: { isRead: true }
+    });
+
+    res.json({ success: true, messages: conversation.messages });
+  } catch (error) {
+    console.error('Error fetching chat:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch chat' });
+  }
+});
+
+router.post('/chat/:contactId', authenticateToken, async (req, res) => {
+  try {
+    let { contactId } = req.params;
+    const userId = req.user.userId;
+    const { text } = req.body;
+
+    if (contactId === 'admin') {
+      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
+      if (!adminUser) return res.status(404).json({ success: false, message: 'Admin not found' });
+      contactId = adminUser.id;
+    }
+
+    if (!text) return res.status(400).json({ success: false, message: 'Text is required' });
+
+    let conversation = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { clientId: userId, matchmakerId: contactId },
+          { clientId: contactId, matchmakerId: userId }
+        ]
+      }
+    });
+
+    if (!conversation) {
+      conversation = await prisma.conversation.create({
+        data: {
+          clientId: userId,
+          matchmakerId: contactId
+        }
+      });
+    }
+
+    const message = await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: userId,
+        content: text
+      }
+    });
+
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Error sending chat:', error);
+    res.status(500).json({ success: false, message: 'Failed to send chat' });
   }
 });
 
