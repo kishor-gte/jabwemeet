@@ -509,6 +509,40 @@ router.post('/chat/:requestId', async (req, res) => {
         text: text.trim(),
       },
     });
+
+    // Email notification if receiver is not active
+    try {
+      const io = req.app.get('io');
+      const receiverId = request.userId;
+      const receiverSockets = io ? await io.in(`user-${receiverId}`).fetchSockets() : [];
+      const isOnline = receiverSockets.length > 0;
+
+      if (!isOnline) {
+        const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
+        if (receiver && receiver.email) {
+          const { sendMail } = require('../services/emailService');
+          const subject = `📬 New Message from your Buddy ${req.user.name || 'someone'}`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #FF4081;">💌 You've got a new message!</h2>
+              <p>Hi ${receiver.name},</p>
+              <p>You have an unread message waiting for you on JabWeMeet from your Breakup Buddy.</p>
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF4081;">
+                <p><em>"${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"</em></p>
+              </div>
+              <p>Since you weren't active, we thought we'd let you know. Log in now to reply and keep the conversation going! ✨</p>
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?tab=messages" style="display: inline-block; padding: 10px 20px; background-color: #FF4081; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Go to Messages 🚀</a>
+              <br/><br/>
+              <p>Cheers, <br/>The JabWeMeet Team 💖</p>
+            </div>
+          `;
+          sendMail(receiver.email, subject, '', html).catch(err => console.error('Email send failed', err));
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Error notifying offline user:', notifyErr);
+    }
+
     res.json({ success: true, data: message });
   } catch (error) {
     console.error('Error sending message:', error);

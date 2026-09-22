@@ -32,6 +32,7 @@ export default function MatchmakerSidebar() {
     { name: "Matchmaking Requests", href: "/matchmaker/requests", icon: Heart },
     { name: "Connection Requests", href: "/matchmaker/suggestions", icon: Lightbulb },
     { name: "Scheduling", href: "/matchmaker/scheduling", icon: CalendarDays },
+    { name: "Availability", href: "/matchmaker/availability", icon: CalendarDays },
     { name: "Feedback", href: "/matchmaker/feedback", icon: Star },
     { name: "Messages", href: "/matchmaker/messages", icon: MessageSquare },
     { name: "Earnings", href: "/matchmaker/earnings", icon: Wallet },
