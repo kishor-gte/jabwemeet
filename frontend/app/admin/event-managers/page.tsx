@@ -35,6 +35,26 @@ export default function AdminEventManagersPage() {
     fetchManagers();
   }, []);
 
+  async function handleToggleApproval(id: string, currentApproved: boolean) {
+    if (!confirm(`Are you sure you want to ${currentApproved ? "suspend" : "approve"} this Event Host?`)) return;
+    try {
+      const res = await fetch(`/api/admin/event-managers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isApproved: !currentApproved }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchManagers();
+      } else {
+        alert(data.message || "Failed to update status");
+      }
+    } catch (e) {
+      alert("Failed to update status");
+    }
+  }
+
   return (
     <div className="space-y-6 pb-12">
       <div>
@@ -62,18 +82,20 @@ export default function AdminEventManagersPage() {
                 <th className="px-4 py-3.5">Upcoming</th>
                 <th className="px-4 py-3.5">Completed</th>
                 <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5">Approval</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-500 animate-pulse">
+                  <td colSpan={9} className="text-center py-10 text-slate-500 animate-pulse">
                     Loading Event Managers...
                   </td>
                 </tr>
               ) : managers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-500 italic">
+                  <td colSpan={9} className="text-center py-10 text-slate-500 italic">
                     No event hosts registered yet.
                   </td>
                 </tr>
@@ -120,6 +142,31 @@ export default function AdminEventManagersPage() {
                       }`}>
                         {m.status || "ACTIVE"}
                       </span>
+                    </td>
+                    
+                    <td className="px-4 py-4">
+                      {m.isApproved ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-xs">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-amber-400 font-bold text-xs">
+                          <AlertTriangle className="w-3.5 h-3.5" /> Pending
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        onClick={() => handleToggleApproval(m.id, m.isApproved)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                          m.isApproved
+                            ? "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                            : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20"
+                        }`}
+                      >
+                        {m.isApproved ? "Suspend" : "Approve"}
+                      </button>
                     </td>
                   </tr>
                 ))
