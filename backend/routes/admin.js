@@ -1923,13 +1923,24 @@ router.post('/refunds', async (req, res) => {
 
 router.get('/invoices', async (req, res) => {
   try {
-    const invoices = await prisma.$queryRawUnsafe(`
-      SELECT i.*, u."name" as "userName", u."email" as "userEmail", p."type" as "paymentType", p."gateway" as "paymentGateway"
-      FROM "Invoice" i
-      JOIN "User" u ON i."userId" = u."id"
-      LEFT JOIN "Payment" p ON i."paymentId" = p."id"
-      ORDER BY i."createdAt" DESC
-    `);
+    const payments = await prisma.hostPayment.findMany({
+      include: { host: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const invoices = payments.map((p) => ({
+      id: p.id,
+      invoiceNumber: "INV-" + p.id.substring(0, 8).toUpperCase(),
+      userName: p.host?.name || "Unknown",
+      userEmail: p.host?.email || "N/A",
+      paymentType: p.plan,
+      paymentGateway: "Razorpay",
+      amount: p.amount,
+      taxAmount: (p.amount * 0.18).toFixed(2),
+      status: p.status,
+      createdAt: p.createdAt,
+    }));
+
     return res.json({ success: true, invoices });
   } catch (error) {
     console.error('Error fetching invoices:', error);
@@ -1941,16 +1952,24 @@ router.get('/invoices', async (req, res) => {
 router.post('/invoices/:id/send', async (req, res) => {
   try {
     const { id } = req.params;
-    const invRows = await prisma.$queryRawUnsafe(`
-      SELECT i.*, u."name" as "userName", u."email" as "userEmail", p."type" as "paymentType", p."gateway" as "paymentGateway"
-      FROM "Invoice" i
-      JOIN "User" u ON i."userId" = u."id"
-      LEFT JOIN "Payment" p ON i."paymentId" = p."id"
-      WHERE i."id" = $1
-    `, id);
-
-    const invoice = invRows[0];
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+    const p = await prisma.hostPayment.findUnique({
+      where: { id },
+      include: { host: true },
+    });
+    
+    if (!p) return res.status(404).json({ success: false, message: 'Invoice not found' });
+    
+    const invoice = {
+      id: p.id,
+      invoiceNumber: "INV-" + p.id.substring(0, 8).toUpperCase(),
+      userName: p.host?.name || "Unknown",
+      userEmail: p.host?.email,
+      paymentType: p.plan,
+      amount: p.amount,
+      taxAmount: (p.amount * 0.18).toFixed(2),
+      status: p.status,
+      createdAt: p.createdAt,
+    };
 
     if (invoice.userEmail) {
       await sendInvoiceEmail({
