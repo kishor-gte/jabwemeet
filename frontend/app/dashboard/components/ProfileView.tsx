@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import ProfileProgressBar from "./profile/ProfileProgressBar";
+import { calculateProfileStrength } from "./profile/profileStrength";
 import PersonalInfoSection from "./profile/PersonalInfoSection";
 import LifestyleSection, { LifestyleData } from "./profile/LifestyleSection";
 import InterestsPersonalitySection, {
@@ -59,6 +60,7 @@ export interface UserProfile {
 interface ProfileViewProps {
   user: UserProfile;
   onUpdateUser: (updatedFields: Partial<UserProfile>) => void;
+  targetSection?: string | null;
 }
 
 type TabType =
@@ -72,7 +74,11 @@ type TabType =
   | "privacy"
   | "preview";
 
-export default function ProfileView({ user, onUpdateUser }: ProfileViewProps) {
+export default function ProfileView({
+  user,
+  onUpdateUser,
+  targetSection,
+}: ProfileViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -232,70 +238,14 @@ export default function ProfileView({ user, onUpdateUser }: ProfileViewProps) {
 
   // Calculate dynamic completion percentage and missing section shortcuts
   const { percentage, missingShortcuts } = useMemo(() => {
-    let score = 0;
-    const missing: { label: string; sectionId: string }[] = [];
-
-    // Verified basics (always 15% for authenticated members)
-    score += 15;
-
-    // City (5%)
-    if (personalInfo.city.trim()) score += 5;
-    else missing.push({ label: "Add Current City", sectionId: "personal" });
-
-    // Gender (5%)
-    if (personalInfo.gender) score += 5;
-    else missing.push({ label: "Set Gender", sectionId: "personal" });
-
-    // Relationship Intent (5%)
-    if (personalInfo.relationshipIntent) score += 5;
-    else missing.push({ label: "Choose Intent", sectionId: "personal" });
-
-    // Date of Birth (5%)
-    if (personalInfo.dateOfBirth && (!dobAge || dobAge >= 18)) score += 5;
-    else missing.push({ label: "Enter Birthday", sectionId: "personal" });
-
-    // Profession / Education (5%)
-    if (personalInfo.profession.trim() || personalInfo.education.trim()) score += 5;
-    else missing.push({ label: "Add Profession", sectionId: "personal" });
-
-    // About Me (10%)
-    if (personalInfo.aboutMe.trim().length >= 20) score += 10;
-    else missing.push({ label: "Write About Me", sectionId: "personal" });
-
-    // Lifestyle (15%)
-    let lifestyleCount = 0;
-    if (lifestyle.smoking) lifestyleCount++;
-    if (lifestyle.alcohol) lifestyleCount++;
-    if (lifestyle.foodPreference) lifestyleCount++;
-    if (lifestyle.fitness) lifestyleCount++;
-    if (lifestyle.travelFrequency) lifestyleCount++;
-    score += Math.min(15, lifestyleCount * 3);
-    if (lifestyleCount < 3) {
-      missing.push({ label: "Set Lifestyle Habits", sectionId: "lifestyle" });
-    }
-
-    // Interests & Vibe (15%)
-    if (interests.hobbies.length >= 3) score += 7;
-    else missing.push({ label: "Pick 3+ Hobbies", sectionId: "interests" });
-
-    if (interests.selfDescription) score += 4;
-    if (interests.personalityTraits.length >= 2) score += 4;
-
-    // Partner Criteria (10%)
-    if (partnerPreferences.coreQualities.length >= 2) score += 5;
-    else missing.push({ label: "Select Top Qualities", sectionId: "partner" });
-    if (partnerPreferences.preferredLocation) score += 5;
-
-    // Event Preferences (10%)
-    if (eventPreferences.eventFormats.length >= 2) score += 6;
-    else missing.push({ label: "Choose Event Formats", sectionId: "events" });
-    if (eventPreferences.preferredDays.length >= 1) score += 4;
-
-    return {
-      percentage: Math.min(100, Math.round(score)),
-      missingShortcuts: missing.slice(0, 4),
-    };
-  }, [personalInfo, lifestyle, interests, partnerPreferences, eventPreferences, dobAge]);
+    return calculateProfileStrength(user, {
+      personalInfo,
+      lifestyle,
+      interests,
+      partnerPreferences,
+      eventPreferences,
+    });
+  }, [user, personalInfo, lifestyle, interests, partnerPreferences, eventPreferences]);
 
   // Section Change Handlers
   const handlePersonalInfoChange = (field: string, value: string) => {
@@ -487,6 +437,12 @@ export default function ProfileView({ user, onUpdateUser }: ProfileViewProps) {
     }, 50);
   };
 
+  useEffect(() => {
+    if (targetSection) {
+      handleNavigateSection(targetSection);
+    }
+  }, [targetSection]);
+
   const navTabs: { id: TabType; label: string; icon: any }[] = [
     { id: "all", label: "All Sections", icon: Layers },
     { id: "personal", label: "Personal", icon: User },
@@ -582,83 +538,99 @@ export default function ProfileView({ user, onUpdateUser }: ProfileViewProps) {
       <div className="space-y-8">
         {/* 1. PERSONAL INFO */}
         {(activeTab === "all" || activeTab === "personal") && (
-          <PersonalInfoSection
-            formData={personalInfo}
-            onChange={handlePersonalInfoChange}
-            dobError={dobError}
-          />
+          <div id="section-personal">
+            <PersonalInfoSection
+              formData={personalInfo}
+              onChange={handlePersonalInfoChange}
+              dobError={dobError}
+            />
+          </div>
         )}
 
         {/* 2. LIFESTYLE */}
         {(activeTab === "all" || activeTab === "lifestyle") && (
-          <LifestyleSection data={lifestyle} onChange={handleLifestyleChange} />
+          <div id="section-lifestyle">
+            <LifestyleSection data={lifestyle} onChange={handleLifestyleChange} />
+          </div>
         )}
 
         {/* 3. INTERESTS & PERSONALITY */}
         {(activeTab === "all" || activeTab === "interests") && (
-          <InterestsPersonalitySection data={interests} onChange={handleInterestsChange} />
+          <div id="section-interests">
+            <InterestsPersonalitySection data={interests} onChange={handleInterestsChange} />
+          </div>
         )}
 
         {/* 4. PARTNER PREFERENCES */}
         {(activeTab === "all" || activeTab === "partner") && (
-          <PartnerPreferencesSection
-            data={partnerPreferences}
-            onChange={handlePartnerChange}
-            ageError={ageRangeError}
-          />
+          <div id="section-partner">
+            <PartnerPreferencesSection
+              data={partnerPreferences}
+              onChange={handlePartnerChange}
+              ageError={ageRangeError}
+            />
+          </div>
         )}
 
         {/* 5. EVENT & TRAVEL */}
         {(activeTab === "all" || activeTab === "events") && (
-          <EventTravelPreferencesSection data={eventPreferences} onChange={handleEventChange} />
+          <div id="section-events">
+            <EventTravelPreferencesSection data={eventPreferences} onChange={handleEventChange} />
+          </div>
         )}
 
         {/* 6. MATCHMAKING QUESTIONNAIRE */}
         {(activeTab === "all" || activeTab === "questionnaire") && (
-          <MatchmakingQuestionnaireSection
-            data={questionnaire}
-            onChange={handleQuestionnaireChange}
-          />
+          <div id="section-questionnaire">
+            <MatchmakingQuestionnaireSection
+              data={questionnaire}
+              onChange={handleQuestionnaireChange}
+            />
+          </div>
         )}
 
         {/* 7. PRIVACY & VERIFICATION */}
         {(activeTab === "all" || activeTab === "privacy") && (
-          <PrivacyVerificationSection
-            data={privacy}
-            onChange={handlePrivacyChange}
-            userVerification={{
-              emailVerified: true,
-              phoneVerified: true,
-              isMemberVerified: true,
-            }}
-          />
+          <div id="section-privacy">
+            <PrivacyVerificationSection
+              data={privacy}
+              onChange={handlePrivacyChange}
+              userVerification={{
+                emailVerified: true,
+                phoneVerified: true,
+                isMemberVerified: true,
+              }}
+            />
+          </div>
         )}
 
         {/* 8. PUBLIC PROFILE PREVIEW */}
         {(activeTab === "all" || activeTab === "preview") && (
-          <ProfilePreviewCard
-            fullName={personalInfo.fullName}
-            city={personalInfo.city}
-            hometown={personalInfo.hometown}
-            gender={personalInfo.gender}
-            dateOfBirth={personalInfo.dateOfBirth}
-            profession={personalInfo.profession}
-            industry={personalInfo.industry}
-            relationshipIntent={personalInfo.relationshipIntent}
-            aboutMe={personalInfo.aboutMe}
-            hobbies={interests.hobbies}
-            selfDescription={interests.selfDescription}
-            personalityTraits={interests.personalityTraits}
-            foodPreference={lifestyle.foodPreference}
-            pets={lifestyle.pets}
-            travelFrequency={lifestyle.travelFrequency}
-            fitness={lifestyle.fitness}
-            coreQualities={partnerPreferences.coreQualities}
-            eventFormats={eventPreferences.eventFormats}
-            showAgePublicly={privacy.showAgePublicly}
-            showHometownPublicly={privacy.showHometownPublicly}
-            role={user.role}
-          />
+          <div id="section-preview">
+            <ProfilePreviewCard
+              fullName={personalInfo.fullName}
+              city={personalInfo.city}
+              hometown={personalInfo.hometown}
+              gender={personalInfo.gender}
+              dateOfBirth={personalInfo.dateOfBirth}
+              profession={personalInfo.profession}
+              industry={personalInfo.industry}
+              relationshipIntent={personalInfo.relationshipIntent}
+              aboutMe={personalInfo.aboutMe}
+              hobbies={interests.hobbies}
+              selfDescription={interests.selfDescription}
+              personalityTraits={interests.personalityTraits}
+              foodPreference={lifestyle.foodPreference}
+              pets={lifestyle.pets}
+              travelFrequency={lifestyle.travelFrequency}
+              fitness={lifestyle.fitness}
+              coreQualities={partnerPreferences.coreQualities}
+              eventFormats={eventPreferences.eventFormats}
+              showAgePublicly={privacy.showAgePublicly}
+              showHometownPublicly={privacy.showHometownPublicly}
+              role={user.role}
+            />
+          </div>
         )}
       </div>
 
