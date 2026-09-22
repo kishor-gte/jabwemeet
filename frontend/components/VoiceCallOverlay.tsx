@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Phone, PhoneOff, Mic, MicOff, Clock, Lock } from "lucide-react";
 
@@ -29,6 +30,7 @@ export default function VoiceCallOverlay({
   initialCallLogId,
   onClose,
 }: VoiceCallOverlayProps) {
+  const router = useRouter();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<"connecting" | "ringing" | "connected" | "ended">("connecting");
   const [isMuted, setIsMuted] = useState(false);
@@ -420,7 +422,10 @@ export default function VoiceCallOverlay({
                       )}
 
                       <button
-                        onClick={() => setPackagesViewMode("plans")}
+                        onClick={() => {
+                          if (onClose) onClose();
+                          router.push("/dashboard?tab=packages");
+                        }}
                         className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
                       >
                         <span>⭐ View Packages / Buy Unlimited Pass</span>

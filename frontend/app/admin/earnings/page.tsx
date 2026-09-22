@@ -123,6 +123,7 @@ export default function AdminEarningsPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
+
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -145,6 +146,7 @@ export default function AdminEarningsPage() {
           <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${refreshing ? "animate-spin" : ""}`} />
           <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
         </button>
+
       </div>
 
       {/* SUMMARY CARDS */}
@@ -157,6 +159,7 @@ export default function AdminEarningsPage() {
               <IndianRupee className="w-6 h-6" />
             </div>
             <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider border border-emerald-500/20">
+
               5% Admin Share
             </span>
           </div>
@@ -239,7 +242,7 @@ export default function AdminEarningsPage() {
                 <Heart className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-300">Dating Packages</p>
+                <p className="text-xs font-semibold text-slate-300">Dating & Buddy Packages</p>
                 <p className="text-[11px] text-slate-500">{breakdown.DATING_PACKAGE?.count || 0} purchases</p>
               </div>
             </div>
@@ -446,7 +449,7 @@ export default function AdminEarningsPage() {
             <p className="text-sm text-slate-400 max-w-sm mx-auto">
               {searchQuery
                 ? `No transactions matched your search "${searchQuery}". Try a different keyword.`
-                : "When users purchase dating packages, event tickets, or host subscriptions, the 5% platform cut will automatically appear here."}
+                : "When users purchase dating packages, breakup buddy passes, event tickets, or host subscriptions, the 5% platform cut will automatically appear here."}
             </p>
           </div>
         )}

@@ -56,6 +56,7 @@ export default function AdminPackagesPage() {
     billingCycle: "MONTHLY",
     durationDays: 30,
     durationHours: 1,
+    durationMinutes: 0,
     sessionLimit: 4,
     callLimit: 8,
     chatLimit: 100,
@@ -91,6 +92,7 @@ export default function AdminPackagesPage() {
       billingCycle: "MONTHLY",
       durationDays: 30,
       durationHours: 1,
+      durationMinutes: 0,
       sessionLimit: 4,
       callLimit: 8,
       chatLimit: 100,
@@ -108,7 +110,8 @@ export default function AdminPackagesPage() {
       price: pkg.price,
       billingCycle: pkg.billingCycle || "MONTHLY",
       durationDays: pkg.durationDays || 30,
-      durationHours: pkg.durationHours || 1,
+      durationHours: pkg.durationHours !== undefined && pkg.durationHours !== null ? pkg.durationHours : 1,
+      durationMinutes: pkg.durationMinutes !== undefined && pkg.durationMinutes !== null ? pkg.durationMinutes : 0,
       sessionLimit: pkg.sessionLimit || 4,
       callLimit: pkg.callLimit || 8,
       chatLimit: pkg.chatLimit || 100,
@@ -236,7 +239,14 @@ export default function AdminPackagesPage() {
                     <>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Duration:</span>
-                        <span className="font-bold text-indigo-400">{pkg.durationHours || 1} {pkg.durationHours === 1 ? "Hour" : "Hours"}</span>
+                        <span className="font-bold text-indigo-400">
+                          {(() => {
+                            const parts = [];
+                            if (pkg.durationHours > 0) parts.push(`${pkg.durationHours} ${pkg.durationHours === 1 ? "Hour" : "Hours"}`);
+                            if (pkg.durationMinutes > 0) parts.push(`${pkg.durationMinutes} ${pkg.durationMinutes === 1 ? "Min" : "Mins"}`);
+                            return parts.length > 0 ? parts.join(" ") : (pkg.durationHours ? `${pkg.durationHours} Hours` : "0 Mins");
+                          })()}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Call Quota:</span>
@@ -391,7 +401,7 @@ export default function AdminPackagesPage() {
                 </div>
               ) : form.type === "BREAKUP_BUDDY" ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
                       <input
@@ -407,17 +417,34 @@ export default function AdminPackagesPage() {
                       <label className="block text-slate-300 font-semibold mb-1">Duration (Hours)</label>
                       <input
                         type="number"
-                        min="1"
-                        required
-                        value={form.durationHours || 1}
+                        min="0"
+                        value={form.durationHours}
                         onChange={(e) => setForm({ ...form, durationHours: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Duration (Minutes)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={form.durationMinutes}
+                        onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
                       />
                     </div>
                   </div>
                   <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2 font-medium">
                     <span>✨</span>
-                    <span>During these <strong>{form.durationHours || 1} hours</strong>, both <strong>Calls and Chats are 100% Unlimited</strong>.</span>
+                    <span>
+                      During these <strong>{(() => {
+                        const parts = [];
+                        if (form.durationHours > 0) parts.push(`${form.durationHours} ${form.durationHours === 1 ? 'hour' : 'hours'}`);
+                        if (form.durationMinutes > 0) parts.push(`${form.durationMinutes} ${form.durationMinutes === 1 ? 'minute' : 'minutes'}`);
+                        return parts.length > 0 ? parts.join(" and ") : "0 minutes";
+                      })()}</strong>, both <strong>Calls and Chats are 100% Unlimited</strong>.
+                    </span>
                   </div>
                 </div>
               ) : (

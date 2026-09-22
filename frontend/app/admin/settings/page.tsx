@@ -521,6 +521,52 @@ export default function AdminSettingsPage() {
                   className="w-5 h-5 rounded accent-red-600 cursor-pointer"
                 />
               </div>
+
+              {/* SMTP LIVE DIAGNOSTIC & TEST DISPATCH */}
+              <div className="p-5 bg-gradient-to-br from-[#131d31] to-[#1e1b4b] border border-purple-500/30 rounded-3xl space-y-3 mt-6 shadow-xl">
+                <div className="flex items-center gap-2 text-purple-300 font-bold text-xs uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  <span>Live SMTP Mailer Diagnostic & Test Dispatch</span>
+                </div>
+                <p className="text-slate-300 text-xs">
+                  Send a live test email directly to your inbox to verify SMTP connection, emojis, and brand styling.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <input
+                    type="email"
+                    placeholder="Enter recipient email (e.g. nehakore467@gmail.com)"
+                    id="testEmailInput"
+                    defaultValue="nehakore467@gmail.com"
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-[#0f172a] border border-white/15 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const input = (document.getElementById("testEmailInput") as HTMLInputElement)?.value;
+                      if (!input) return alert("Please enter an email address");
+                      try {
+                        const res = await fetch("/api/admin/test-email", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ toEmail: input }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          alert(data.message || "Test email sent successfully! Please check your inbox and Spam folder.");
+                        } else {
+                          alert(data.message || "Failed to send test email");
+                        }
+                      } catch (err: any) {
+                        alert("Error sending test email: " + err.message);
+                      }
+                    }}
+                    className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-purple-500/25 flex items-center justify-center gap-1.5"
+                  >
+                    <span>🚀</span> Send Test Email
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

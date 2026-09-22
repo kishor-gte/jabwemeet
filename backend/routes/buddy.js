@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { sendSessionScheduledEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -13,8 +14,25 @@ router.get('/dashboard', async (req, res) => {
     const newRequests = await prisma.buddyRequest.count({ where: { buddyId, status: 'Pending' } });
     const upcomingSessions = await prisma.buddySession.count({ where: { buddyId, status: 'Scheduled' } });
     const completedSessions = await prisma.buddySession.count({ where: { buddyId, status: 'Completed' } });
-    res.json({ success: true, data: { newRequests, upcomingSessions, completedSessions } });
+    
+    // Calculate total earnings across all completed sessions & subscriptions
+    const completedList = await prisma.buddySession.findMany({
+      where: { buddyId, status: 'Completed' },
+      select: { amountEarned: true }
+    });
+    const totalEarnings = completedList.reduce((acc, curr) => acc + (curr.amountEarned || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        newRequests,
+        upcomingSessions,
+        completedSessions,
+        totalEarnings,
+      }
+    });
   } catch (error) {
+    console.error("Buddy dashboard error:", error);
     res.status(500).json({ success: false });
   }
 });
@@ -120,8 +138,24 @@ router.get('/history', async (req, res) => {
       },
       orderBy: { scheduledAt: 'desc' },
     });
-    res.json({ success: true, data: history });
+
+    const formatted = history.map(item => {
+      const startTime = item.scheduledAt || item.createdAt || new Date();
+      const durMinutes = item.durationMinutes || 60;
+      const completedTime = item.updatedAt && new Date(item.updatedAt).getTime() > new Date(startTime).getTime()
+        ? item.updatedAt
+        : new Date(new Date(startTime).getTime() + durMinutes * 60 * 1000);
+
+      return {
+        ...item,
+        startedAt: startTime,
+        completedAt: completedTime,
+      };
+    });
+
+    res.json({ success: true, data: formatted });
   } catch (error) {
+    console.error("Buddy history error:", error);
     res.status(500).json({ success: false });
   }
 });
@@ -171,14 +205,28 @@ router.post('/reviews', async (req, res) => {
 
 router.get('/earnings', async (req, res) => {
   try {
+    const buddyId = req.user.userId;
     const sessions = await prisma.buddySession.findMany({
-      where: { buddyId: req.user.userId, status: 'Completed' },
+      where: { buddyId, status: 'Completed' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            profileImage: true,
+          }
+        }
+      },
       orderBy: { scheduledAt: 'desc' }
     });
     let totalEarnings = 0;
-    sessions.forEach(s => totalEarnings += s.amountEarned);
+    sessions.forEach(s => totalEarnings += (s.amountEarned || 0));
     res.json({ success: true, data: { totalEarnings, sessions } });
   } catch (error) {
+    console.error("Buddy earnings error:", error);
     res.status(500).json({ success: false });
   }
 });
@@ -226,6 +274,23 @@ router.patch('/requests/:id', async (req, res) => {
           amountEarned: 499.0,
         },
       });
+
+      // Send Session Confirmation Email to user
+      try {
+        const buddyUser = await prisma.user.findUnique({ where: { id: buddyId }, select: { name: true, displayName: true } });
+        if (request.user?.email) {
+          sendSessionScheduledEmail({
+            userEmail: request.user.email,
+            userName: request.user.name,
+            buddyName: buddyUser?.displayName || buddyUser?.name || 'Breakup Buddy',
+            scheduledAt: session.scheduledAt,
+            durationMinutes: session.durationMinutes,
+            sessionType: session.sessionType,
+          }).catch(e => {});
+        }
+      } catch (mailErr) {
+        console.warn('Buddy session mail note:', mailErr.message);
+      }
     }
 
     return res.json({
@@ -263,7 +328,7 @@ router.post('/requests/:id/accept', async (req, res) => {
     const updatedRequest = await prisma.buddyRequest.update({
       where: { id },
       data: { status: 'Accepted' },
-      include: { user: { select: { name: true, profileImage: true } } },
+      include: { user: { select: { name: true, profileImage: true, email: true } } },
     });
 
     const session = await prisma.buddySession.create({
@@ -277,6 +342,23 @@ router.post('/requests/:id/accept', async (req, res) => {
         amountEarned: 499.0,
       },
     });
+
+    // Send Session Confirmation Email to user
+    try {
+      const buddyUser = await prisma.user.findUnique({ where: { id: buddyId }, select: { name: true, displayName: true } });
+      if (request.user?.email) {
+        sendSessionScheduledEmail({
+          userEmail: request.user.email,
+          userName: request.user.name,
+          buddyName: buddyUser?.displayName || buddyUser?.name || 'Breakup Buddy',
+          scheduledAt: session.scheduledAt,
+          durationMinutes: session.durationMinutes,
+          sessionType: session.sessionType,
+        }).catch(e => {});
+      }
+    } catch (mailErr) {
+      console.warn('Buddy accept mail note:', mailErr.message);
+    }
 
     return res.json({
       success: true,

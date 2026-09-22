@@ -3,6 +3,33 @@ const prisma = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { logAudit } = require('../services/auditLogger');
+const {
+  sendTestEmail,
+  sendBuddyApprovedEmail,
+  sendBuddyRejectedEmail,
+  sendBuddyRevokedEmail,
+  sendUserVerificationApprovedEmail,
+  sendUserVerificationRejectedEmail,
+  sendUserStatusUpdatedEmail,
+  sendRMApprovedEmail,
+  sendRMRejectedEmail,
+  sendRMRevokedEmail,
+  sendHostApprovedEmail,
+  sendHostRejectedEmail,
+  sendHostRevokedEmail,
+  sendEventPublishedEmail,
+  sendEventCancelledOrUpdatedEmail,
+  sendEventTicketResendEmail,
+  sendRefundProcessedEmail,
+  sendInvoiceEmail,
+  sendSupportTicketReplyEmail,
+  sendSupportTicketResolvedEmail,
+  sendHighPriorityTicketAdminAlert,
+  sendSafetyReportResolvedEmail,
+  sendUserSafetyWarningEmail,
+  sendBroadcastAnnouncementEmail,
+  sendCouponPromoEmail,
+} = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -474,6 +501,35 @@ router.patch('/users/:id/status', async (req, res) => {
         `UPDATE "User" SET ${updates.join(', ')}, "updatedAt" = NOW() WHERE "id" = $${pIdx}`,
         ...params
       );
+
+      // Trigger Email Notifications
+      if (existingUser.email) {
+        // 1. Account Status (ACTIVE, SUSPENDED, BLOCKED)
+        if (status && status !== existingUser.status) {
+          sendUserStatusUpdatedEmail({
+            userEmail: existingUser.email,
+            userName: existingUser.name,
+            status,
+            reason,
+          }).catch(err => console.warn('User status email note:', err.message));
+        }
+
+        // 2. Verification status change
+        if (isVerified !== undefined && isVerified !== existingUser.isVerified) {
+          if (Boolean(isVerified)) {
+            sendUserVerificationApprovedEmail({
+              userEmail: existingUser.email,
+              userName: existingUser.name,
+            }).catch(err => console.warn('Verification email note:', err.message));
+          } else {
+            sendUserVerificationRejectedEmail({
+              userEmail: existingUser.email,
+              userName: existingUser.name,
+              reason: reason || 'Verification status changed by Administrator',
+            }).catch(err => console.warn('Verification rejection note:', err.message));
+          }
+        }
+      }
     }
 
     await logAudit(req, {
@@ -647,6 +703,51 @@ router.patch('/events/:id', async (req, res) => {
         `UPDATE "Event" SET ${updates.join(', ')} WHERE "id" = $${pIdx}`,
         ...params
       );
+
+      // Email Trigger 1: Host Published Notification
+      if (body.status === 'PUBLISHED' && existingEvent.status !== 'PUBLISHED' && existingEvent.hostId) {
+        try {
+          const host = await prisma.user.findUnique({ where: { id: existingEvent.hostId } });
+          if (host && host.email) {
+            sendEventPublishedEmail({
+              hostEmail: host.email,
+              hostName: host.name,
+              eventTitle: existingEvent.title,
+              eventDate: existingEvent.date,
+              eventCity: existingEvent.city,
+            });
+          }
+        } catch (mailErr) {
+          console.warn('Host event live mail note:', mailErr.message);
+        }
+      }
+
+      // Email Trigger 2: Attendee Cancellation / Reschedule Alert
+      if (body.status === 'CANCELLED' || (body.date && new Date(body.date).getTime() !== new Date(existingEvent.date).getTime())) {
+        try {
+          const attendees = await prisma.$queryRawUnsafe(`
+            SELECT u."email", u."name"
+            FROM "EventRegistration" er
+            JOIN "User" u ON er."userId" = u."id"
+            WHERE er."eventId" = $1 AND er."status" != 'CANCELLED'
+          `, id);
+
+          for (const att of attendees) {
+            if (att.email) {
+              sendEventCancelledOrUpdatedEmail({
+                attendeeEmail: att.email,
+                attendeeName: att.name,
+                eventTitle: existingEvent.title,
+                eventDate: body.date || existingEvent.date,
+                status: body.status || 'RESCHEDULED',
+                reason: body.reason || 'Event schedule updated by Administration',
+              }).catch(e => {});
+            }
+          }
+        } catch (attErr) {
+          console.warn('Attendees update mail note:', attErr.message);
+        }
+      }
     }
 
     await logAudit(req, {
@@ -675,6 +776,31 @@ router.delete('/events/:id', async (req, res) => {
 
     await prisma.$executeRawUnsafe(`UPDATE "Event" SET "status" = 'ARCHIVED' WHERE "id" = $1`, id);
 
+    // Notify registered attendees about event cancellation/archive
+    try {
+      const attendees = await prisma.$queryRawUnsafe(`
+        SELECT u."email", u."name"
+        FROM "EventRegistration" er
+        JOIN "User" u ON er."userId" = u."id"
+        WHERE er."eventId" = $1 AND er."status" != 'CANCELLED'
+      `, id);
+
+      for (const att of attendees) {
+        if (att.email) {
+          sendEventCancelledOrUpdatedEmail({
+            attendeeEmail: att.email,
+            attendeeName: att.name,
+            eventTitle: existing.title,
+            eventDate: existing.date,
+            status: 'CANCELLED',
+            reason: 'Event has been archived/cancelled by platform administration.',
+          }).catch(e => {});
+        }
+      }
+    } catch (mailErr) {
+      console.warn('Cancel mail error:', mailErr.message);
+    }
+
     await logAudit(req, {
       action: 'EVENT_ARCHIVE',
       targetType: 'EVENT',
@@ -688,6 +814,43 @@ router.delete('/events/:id', async (req, res) => {
   } catch (error) {
     console.error('Error archiving event:', error);
     return res.status(500).json({ success: false, message: 'Failed to archive event' });
+  }
+});
+
+// Resend Ticket Pass to Attendee
+router.post('/events/:id/registrations/:regId/resend', async (req, res) => {
+  try {
+    const { id, regId } = req.params;
+
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+
+    const rows = await prisma.$queryRawUnsafe(`
+      SELECT er.*, u."email", u."name"
+      FROM "EventRegistration" er
+      JOIN "User" u ON er."userId" = u."id"
+      WHERE er."id" = $1 AND er."eventId" = $2
+    `, regId, id);
+
+    const reg = rows[0];
+    if (!reg) return res.status(404).json({ success: false, message: 'Registration not found' });
+
+    if (reg.email) {
+      await sendEventTicketResendEmail({
+        attendeeEmail: reg.email,
+        attendeeName: reg.name,
+        eventTitle: event.title,
+        eventDate: event.date,
+        eventLocation: event.location || event.address || event.city,
+        ticketCode: reg.ticketCode,
+        qrCode: reg.qrCode,
+      });
+    }
+
+    return res.json({ success: true, message: `Ticket pass resent successfully to ${reg.email}` });
+  } catch (error) {
+    console.error('Error resending ticket pass:', error);
+    return res.status(500).json({ success: false, message: 'Failed to resend ticket pass' });
   }
 });
 
@@ -799,6 +962,50 @@ router.get('/event-managers', async (req, res) => {
   }
 });
 
+router.patch('/event-managers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isApproved, status, reason } = req.body;
+
+    const host = await prisma.user.findUnique({ where: { id } });
+    if (!host) {
+      return res.status(404).json({ success: false, message: 'Event Host not found' });
+    }
+
+    if (isApproved !== undefined) {
+      const willApprove = Boolean(isApproved);
+      await prisma.user.update({ where: { id }, data: { isApproved: willApprove, isVerified: willApprove } });
+
+      if (host.email) {
+        if (willApprove) {
+          sendHostApprovedEmail({ email: host.email, name: host.name }).catch(err => console.warn('Host approval email note:', err.message));
+        } else if (host.isApproved) {
+          sendHostRevokedEmail({ email: host.email, name: host.name, reason }).catch(err => console.warn('Host revocation email note:', err.message));
+        } else {
+          sendHostRejectedEmail({ email: host.email, name: host.name, reason }).catch(err => console.warn('Host rejection email note:', err.message));
+        }
+      }
+    }
+    if (status !== undefined) {
+      await prisma.$executeRawUnsafe(`UPDATE "User" SET "status" = $1 WHERE "id" = $2`, status, id);
+    }
+
+    await logAudit(req, {
+      action: 'EVENT_HOST_UPDATE',
+      targetType: 'USER',
+      targetId: id,
+      before: { isApproved: host.isApproved },
+      after: { isApproved, status },
+      reason: reason || 'Admin updated Event Host status',
+    });
+
+    return res.json({ success: true, message: 'Event Host updated successfully' });
+  } catch (error) {
+    console.error('Error updating event host:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update event host' });
+  }
+});
+
 // ==========================================
 // 8. RELATIONSHIP MANAGERS
 // ==========================================
@@ -840,7 +1047,18 @@ router.patch('/relationship-managers/:id', async (req, res) => {
     }
 
     if (isApproved !== undefined) {
-      await prisma.user.update({ where: { id }, data: { isApproved: Boolean(isApproved) } });
+      const willApprove = Boolean(isApproved);
+      await prisma.user.update({ where: { id }, data: { isApproved: willApprove, isVerified: willApprove } });
+
+      if (manager.email) {
+        if (willApprove) {
+          sendRMApprovedEmail({ email: manager.email, name: manager.name }).catch(err => console.warn('RM approval email note:', err.message));
+        } else if (manager.isApproved) {
+          sendRMRevokedEmail({ email: manager.email, name: manager.name, reason }).catch(err => console.warn('RM revocation email note:', err.message));
+        } else {
+          sendRMRejectedEmail({ email: manager.email, name: manager.name, reason }).catch(err => console.warn('RM rejection email note:', err.message));
+        }
+      }
     }
     if (status !== undefined) {
       await prisma.$executeRawUnsafe(`UPDATE "User" SET "status" = $1 WHERE "id" = $2`, status, id);
@@ -917,7 +1135,33 @@ router.patch('/breakup-buddies/:id', async (req, res) => {
     }
 
     const updateData = {};
-    if (isApproved !== undefined) updateData.isApproved = Boolean(isApproved);
+    if (isApproved !== undefined) {
+      const willApprove = Boolean(isApproved);
+      updateData.isApproved = willApprove;
+      // Trigger approval/rejection/revocation email to the Breakup Buddy
+      try {
+        if (willApprove) {
+          sendBuddyApprovedEmail({
+            buddyEmail: buddy.email,
+            buddyName: buddy.displayName || buddy.name,
+          });
+        } else if (buddy.isApproved) {
+          sendBuddyRevokedEmail({
+            buddyEmail: buddy.email,
+            buddyName: buddy.displayName || buddy.name,
+            reason,
+          });
+        } else {
+          sendBuddyRejectedEmail({
+            buddyEmail: buddy.email,
+            buddyName: buddy.displayName || buddy.name,
+            reason: reason || 'Application status updated by Admin',
+          });
+        }
+      } catch (mailErr) {
+        console.warn('Mail dispatch note:', mailErr.message);
+      }
+    }
     if (availableDays) updateData.availableDays = availableDays;
     if (availableTimeStart) updateData.availableTimeStart = availableTimeStart;
     if (availableTimeEnd) updateData.availableTimeEnd = availableTimeEnd;
@@ -1262,7 +1506,7 @@ router.get('/services/packages', async (req, res) => {
 
 router.post('/services/packages', async (req, res) => {
   try {
-    const { type, name, price, billingCycle = 'MONTHLY', durationDays = 30, durationHours = 1, sessionLimit = 0, callLimit = 0, chatLimit = 0, description = '', features = [] } = req.body;
+    const { type, name, price, billingCycle = 'MONTHLY', durationDays = 30, durationHours = 0, durationMinutes = 0, sessionLimit = 0, callLimit = 0, chatLimit = 0, description = '', features = [] } = req.body;
     if (!type || !name || price === undefined) {
       return res.status(400).json({ success: false, message: 'Package type, name and price are required' });
     }
@@ -1270,9 +1514,9 @@ router.post('/services/packages', async (req, res) => {
     const packageId = 'pkg-' + Date.now();
 
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "ServicePackage" ("id", "type", "name", "price", "billingCycle", "durationDays", "durationHours", "sessionLimit", "callLimit", "chatLimit", "description", "features", "isActive")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, true)
-    `, packageId, type, name, parseFloat(price), billingCycle, parseInt(durationDays, 10) || 0, parseInt(durationHours, 10) || 1, parseInt(sessionLimit, 10) || 0, parseInt(callLimit, 10) || 0, parseInt(chatLimit, 10) || 0, description, JSON.stringify(features));
+      INSERT INTO "ServicePackage" ("id", "type", "name", "price", "billingCycle", "durationDays", "durationHours", "durationMinutes", "sessionLimit", "callLimit", "chatLimit", "description", "features", "isActive")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, true)
+    `, packageId, type, name, parseFloat(price), billingCycle, parseInt(durationDays, 10) || 0, parseInt(durationHours, 10) || 0, parseInt(durationMinutes, 10) || 0, parseInt(sessionLimit, 10) || 0, parseInt(callLimit, 10) || 0, parseInt(chatLimit, 10) || 0, description, JSON.stringify(features));
 
     await logAudit(req, {
       action: 'SERVICE_PACKAGE_CREATE',
@@ -1316,6 +1560,10 @@ router.patch('/services/packages/:id', async (req, res) => {
     if (body.durationHours !== undefined) {
       updates.push(`"durationHours" = $${pIdx++}`);
       params.push(parseInt(body.durationHours, 10));
+    }
+    if (body.durationMinutes !== undefined) {
+      updates.push(`"durationMinutes" = $${pIdx++}`);
+      params.push(parseInt(body.durationMinutes, 10));
     }
     if (body.sessionLimit !== undefined) {
       updates.push(`"sessionLimit" = $${pIdx++}`);
@@ -1636,6 +1884,26 @@ router.post('/refunds', async (req, res) => {
 
     if (status === 'PROCESSED') {
       await prisma.$executeRawUnsafe(`UPDATE "Payment" SET "status" = 'REFUNDED' WHERE "id" = $1`, paymentId);
+
+      // Trigger Refund Confirmation Email to user
+      try {
+        const [user, payRows] = await Promise.all([
+          prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+          prisma.$queryRawUnsafe(`SELECT "referenceId" FROM "Payment" WHERE "id" = $1`, paymentId)
+        ]);
+        if (user && user.email) {
+          sendRefundProcessedEmail({
+            userEmail: user.email,
+            userName: user.name,
+            amount: parseFloat(amount),
+            refundId,
+            referenceId: payRows[0]?.referenceId || paymentId,
+            reason,
+          }).catch(err => console.warn('Refund email note:', err.message));
+        }
+      } catch (mailErr) {
+        console.warn('Refund mail error:', mailErr.message);
+      }
     }
 
     await logAudit(req, {
@@ -1669,6 +1937,40 @@ router.get('/invoices', async (req, res) => {
   }
 });
 
+// Send Invoice Email to Customer
+router.post('/invoices/:id/send', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invRows = await prisma.$queryRawUnsafe(`
+      SELECT i.*, u."name" as "userName", u."email" as "userEmail", p."type" as "paymentType", p."gateway" as "paymentGateway"
+      FROM "Invoice" i
+      JOIN "User" u ON i."userId" = u."id"
+      LEFT JOIN "Payment" p ON i."paymentId" = p."id"
+      WHERE i."id" = $1
+    `, id);
+
+    const invoice = invRows[0];
+    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+
+    if (invoice.userEmail) {
+      await sendInvoiceEmail({
+        userEmail: invoice.userEmail,
+        userName: invoice.userName,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: invoice.amount,
+        paymentType: invoice.paymentType,
+        gateway: invoice.paymentGateway,
+        date: invoice.createdAt,
+      });
+    }
+
+    return res.json({ success: true, message: `Invoice sent to ${invoice.userEmail}` });
+  } catch (error) {
+    console.error('Error sending invoice:', error);
+    return res.status(500).json({ success: false, message: 'Failed to send invoice' });
+  }
+});
+
 // ==========================================
 // 13. SAFETY & TRUST CENTER
 // ==========================================
@@ -1697,7 +1999,14 @@ router.patch('/safety/reports/:id', async (req, res) => {
     const { id } = req.params;
     const { status, internalNotes, actionToUser, reason } = req.body;
 
-    const existingRows = await prisma.$queryRawUnsafe(`SELECT * FROM "Report" WHERE "id" = $1`, id);
+    const existingRows = await prisma.$queryRawUnsafe(`
+      SELECT r.*, u1."email" as "reporterEmail", u1."name" as "reporterName",
+             u2."email" as "reportedUserEmail", u2."name" as "reportedUserName"
+      FROM "Report" r
+      LEFT JOIN "User" u1 ON r."reporterId" = u1."id"
+      LEFT JOIN "User" u2 ON r."reportedUserId" = u2."id"
+      WHERE r."id" = $1
+    `, id);
     const existing = existingRows[0];
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Report not found' });
@@ -1732,6 +2041,25 @@ router.patch('/safety/reports/:id', async (req, res) => {
       } else if (actionToUser === 'BLOCK') {
         await prisma.$executeRawUnsafe(`UPDATE "User" SET "status" = 'BLOCKED' WHERE "id" = $1`, existing.reportedUserId);
       }
+
+      // Send warning/disciplinary notice email to reported user
+      if (existing.reportedUserEmail) {
+        sendUserSafetyWarningEmail({
+          userEmail: existing.reportedUserEmail,
+          userName: existing.reportedUserName,
+          reason: reason || `Administrative action taken (${actionToUser}) regarding platform safety violations.`,
+        }).catch(e => {});
+      }
+    }
+
+    // Send update email to reporter
+    if ((status === 'RESOLVED' || status === 'CLOSED') && existing.reporterEmail) {
+      sendSafetyReportResolvedEmail({
+        reporterEmail: existing.reporterEmail,
+        reporterName: existing.reporterName,
+        reportCategory: existing.category,
+        actionTaken: actionToUser ? `Action taken on reported account (${actionToUser})` : 'Appropriate administrative action enforced.',
+      }).catch(e => {});
     }
 
     await logAudit(req, {
@@ -1809,6 +2137,45 @@ router.post('/verification/:id', async (req, res) => {
       },
     });
 
+    if (user.email) {
+      try {
+        if (user.role === 'BREAKUP_BUDDY') {
+          if (approved) {
+            sendBuddyApprovedEmail({ buddyEmail: user.email, buddyName: user.displayName || user.name });
+          } else if (user.isApproved) {
+            sendBuddyRevokedEmail({ buddyEmail: user.email, buddyName: user.displayName || user.name, reason: notes });
+          } else {
+            sendBuddyRejectedEmail({ buddyEmail: user.email, buddyName: user.displayName || user.name, reason: notes || 'Verification rejected by Admin' });
+          }
+        } else if (user.role === 'MATCHMAKER') {
+          if (approved) {
+            sendRMApprovedEmail({ email: user.email, name: user.name });
+          } else if (user.isApproved) {
+            sendRMRevokedEmail({ email: user.email, name: user.name, reason: notes });
+          } else {
+            sendRMRejectedEmail({ email: user.email, name: user.name, reason: notes || 'Matchmaker application rejected by Admin' });
+          }
+        } else if (user.role === 'HOST' || user.role === 'EVENT_MANAGER') {
+          if (approved) {
+            sendHostApprovedEmail({ email: user.email, name: user.name });
+          } else if (user.isApproved) {
+            sendHostRevokedEmail({ email: user.email, name: user.name, reason: notes });
+          } else {
+            sendHostRejectedEmail({ email: user.email, name: user.name, reason: notes || 'Event host application rejected by Admin' });
+          }
+        } else {
+          // General Member
+          if (approved) {
+            sendUserVerificationApprovedEmail({ userEmail: user.email, userName: user.name });
+          } else {
+            sendUserVerificationRejectedEmail({ userEmail: user.email, userName: user.name, reason: notes || 'Identity verification rejected by Admin' });
+          }
+        }
+      } catch (mailErr) {
+        console.warn('Verification mail dispatch note:', mailErr.message);
+      }
+    }
+
     await logAudit(req, {
       action: approved ? 'VERIFICATION_APPROVED' : 'VERIFICATION_REJECTED',
       targetType: 'USER',
@@ -1852,10 +2219,25 @@ router.get('/pending', async (req, res) => {
 router.post('/approve/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id },
       data: { isApproved: true, isVerified: true },
     });
+    if (user.email) {
+      try {
+        if (user.role === 'BREAKUP_BUDDY') {
+          sendBuddyApprovedEmail({ buddyEmail: user.email, buddyName: user.displayName || user.name });
+        } else if (user.role === 'MATCHMAKER') {
+          sendRMApprovedEmail({ email: user.email, name: user.name });
+        } else if (user.role === 'HOST' || user.role === 'EVENT_MANAGER') {
+          sendHostApprovedEmail({ email: user.email, name: user.name });
+        } else {
+          sendUserVerificationApprovedEmail({ userEmail: user.email, userName: user.name });
+        }
+      } catch (mailErr) {
+        console.warn('Legacy approve mail dispatch note:', mailErr.message);
+      }
+    }
     await logAudit(req, {
       action: 'APPROVE_APPLICATION',
       targetType: 'USER',
@@ -2197,7 +2579,12 @@ router.post('/support/:id/reply', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Reply message is required' });
     }
 
-    const ticketRows = await prisma.$queryRawUnsafe(`SELECT * FROM "SupportTicket" WHERE "id" = $1`, id);
+    const ticketRows = await prisma.$queryRawUnsafe(`
+      SELECT t.*, u."name" as "userName", u."email" as "userEmail"
+      FROM "SupportTicket" t
+      JOIN "User" u ON t."userId" = u."id"
+      WHERE t."id" = $1
+    `, id);
     const ticket = ticketRows[0];
     if (!ticket) {
       return res.status(404).json({ success: false, message: 'Ticket not found' });
@@ -2222,6 +2609,18 @@ router.post('/support/:id/reply', async (req, res) => {
       SET "replies" = $1::jsonb, "status" = $2, "updatedAt" = NOW()
       WHERE "id" = $3
     `, JSON.stringify(existingReplies), newStatus, id);
+
+    // Send Support Reply Email to User
+    if (ticket.userEmail) {
+      sendSupportTicketReplyEmail({
+        userEmail: ticket.userEmail,
+        userName: ticket.userName,
+        ticketNumber: ticket.ticketNumber,
+        subject: ticket.subject,
+        replyMessage: message.trim(),
+        staffName: req.staff.name,
+      }).catch(err => console.warn('Support reply email note:', err.message));
+    }
 
     await logAudit(req, {
       action: 'SUPPORT_TICKET_REPLY',
@@ -2266,6 +2665,39 @@ router.patch('/support/:id/status', async (req, res) => {
         `UPDATE "SupportTicket" SET ${updates.join(', ')}, "updatedAt" = NOW() WHERE "id" = $${pIdx}`,
         ...params
       );
+
+      // Email Notification Triggers
+      try {
+        const ticketRows = await prisma.$queryRawUnsafe(`
+          SELECT t.*, u."name" as "userName", u."email" as "userEmail"
+          FROM "SupportTicket" t
+          JOIN "User" u ON t."userId" = u."id"
+          WHERE t."id" = $1
+        `, id);
+        const ticket = ticketRows[0];
+        if (ticket) {
+          if ((status === 'RESOLVED' || status === 'CLOSED') && ticket.userEmail) {
+            sendSupportTicketResolvedEmail({
+              userEmail: ticket.userEmail,
+              userName: ticket.userName,
+              ticketNumber: ticket.ticketNumber,
+              subject: ticket.subject,
+            }).catch(e => {});
+          }
+          if ((priority === 'HIGH' || priority === 'URGENT') && priority !== ticket.priority) {
+            sendHighPriorityTicketAdminAlert({
+              ticketNumber: ticket.ticketNumber,
+              subject: ticket.subject,
+              userName: ticket.userName,
+              userEmail: ticket.userEmail,
+              priority,
+              description: ticket.description,
+            }).catch(e => {});
+          }
+        }
+      } catch (mailErr) {
+        console.warn('Support status mail note:', mailErr.message);
+      }
     }
 
     return res.json({ success: true, message: 'Ticket status updated' });
@@ -2292,36 +2724,70 @@ router.get('/notifications', async (req, res) => {
 
 router.post('/notifications', async (req, res) => {
   try {
-    const { title, message, type = 'ANNOUNCEMENT', targetAudience = 'All Users' } = req.body;
+    const { title, message, type = 'ANNOUNCEMENT', targetAudience = 'All Users', sendEmail = true } = req.body;
     if (!title || !message) {
       return res.status(400).json({ success: false, message: 'Title and message are required' });
     }
 
     const annId = 'notif-' + Date.now();
-    let recipientCount = 0;
+    let recipientUsers = [];
+
     if (targetAudience === 'Upcoming Event Attendees' || targetAudience === 'Event Attendees') {
-      const resCount = await prisma.$queryRawUnsafe(`SELECT COUNT(DISTINCT "userId")::int as count FROM "EventRegistration"`);
-      recipientCount = resCount[0]?.count || 0;
+      recipientUsers = await prisma.$queryRawUnsafe(`
+        SELECT DISTINCT u."email", u."name"
+        FROM "EventRegistration" er
+        JOIN "User" u ON er."userId" = u."id"
+        WHERE u."email" IS NOT NULL
+        LIMIT 200
+      `);
     } else if (targetAudience === 'Relationship Manager Clients' || targetAudience === 'RM Subscribers') {
-      const resCount = await prisma.$queryRawUnsafe(`SELECT COUNT(DISTINCT "userId")::int as count FROM "Subscription" WHERE "status" = 'ACTIVE' AND "serviceType" = 'RELATIONSHIP_MANAGER'`);
-      recipientCount = resCount[0]?.count || 0;
+      recipientUsers = await prisma.$queryRawUnsafe(`
+        SELECT DISTINCT u."email", u."name"
+        FROM "Subscription" s
+        JOIN "User" u ON s."userId" = u."id"
+        WHERE s."status" = 'ACTIVE' AND s."serviceType" = 'RELATIONSHIP_MANAGER' AND u."email" IS NOT NULL
+        LIMIT 200
+      `);
     } else if (targetAudience === 'Breakup Buddy Circles' || targetAudience === 'Buddy Subscribers') {
-      const resCount = await prisma.$queryRawUnsafe(`SELECT COUNT(DISTINCT "userId")::int as count FROM "Subscription" WHERE "status" = 'ACTIVE' AND "serviceType" = 'BREAKUP_BUDDY'`);
-      recipientCount = resCount[0]?.count || 0;
+      recipientUsers = await prisma.$queryRawUnsafe(`
+        SELECT DISTINCT u."email", u."name"
+        FROM "Subscription" s
+        JOIN "User" u ON s."userId" = u."id"
+        WHERE s."status" = 'ACTIVE' AND s."serviceType" = 'BREAKUP_BUDDY' AND u."email" IS NOT NULL
+        LIMIT 200
+      `);
     } else {
-      const resCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "User" WHERE COALESCE("status", 'ACTIVE') = 'ACTIVE'`);
-      recipientCount = resCount[0]?.count || 0;
+      recipientUsers = await prisma.$queryRawUnsafe(`
+        SELECT "email", "name"
+        FROM "User"
+        WHERE COALESCE("status", 'ACTIVE') = 'ACTIVE' AND "email" IS NOT NULL
+        LIMIT 200
+      `);
     }
 
-    if (recipientCount === 0) {
-      const resFallback = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "User" WHERE COALESCE("status", 'ACTIVE') = 'ACTIVE'`);
-      recipientCount = resFallback[0]?.count || 0;
-    }
+    const recipientCount = recipientUsers.length;
 
     await prisma.$executeRawUnsafe(`
       INSERT INTO "NotificationAnnouncement" ("id", "title", "message", "type", "targetAudience", "sentBy", "recipientCount", "sentAt")
       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
     `, annId, title, message, type, targetAudience, req.staff.name, recipientCount);
+
+    // Dispatch emails to recipients in background
+    if (sendEmail) {
+      (async () => {
+        for (const u of recipientUsers) {
+          if (u.email) {
+            sendBroadcastAnnouncementEmail({
+              recipientEmail: u.email,
+              recipientName: u.name,
+              title,
+              message,
+              announcementType: type,
+            }).catch(e => {});
+          }
+        }
+      })().catch(err => console.warn('Broadcast background mail note:', err.message));
+    }
 
     await logAudit(req, {
       action: 'PLATFORM_ANNOUNCEMENT_BROADCAST',
@@ -2331,7 +2797,7 @@ router.post('/notifications', async (req, res) => {
       reason: 'Admin broadcast platform announcement',
     });
 
-    return res.status(201).json({ success: true, message: `Announcement broadcasted to ${recipientCount} recipients`, annId });
+    return res.status(201).json({ success: true, message: `Announcement broadcasted & emailed to ${recipientCount} recipients`, annId });
   } catch (error) {
     console.error('Error broadcasting notification:', error);
     return res.status(500).json({ success: false, message: 'Failed to broadcast notification' });
@@ -2399,7 +2865,7 @@ router.get('/coupons', async (req, res) => {
 
 router.post('/coupons', async (req, res) => {
   try {
-    const { code, discountType = 'PERCENTAGE', discountAmount, applicableService = 'ALL', minOrderAmount = 0, maxUses = 100, perUserLimit = 1, expiryDate } = req.body;
+    const { code, discountType = 'PERCENTAGE', discountAmount, applicableService = 'ALL', minOrderAmount = 0, maxUses = 100, perUserLimit = 1, expiryDate, sendEmail = false } = req.body;
     if (!code || discountAmount === undefined) {
       return res.status(400).json({ success: false, message: 'Coupon code and discount amount required' });
     }
@@ -2411,6 +2877,28 @@ router.post('/coupons', async (req, res) => {
       INSERT INTO "Coupon" ("id", "code", "discountType", "discountAmount", "applicableService", "minOrderAmount", "maxUses", "usedCount", "perUserLimit", "startDate", "expiryDate", "isActive")
       VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, NOW(), $9, true)
     `, couponId, cleanCode, discountType, parseFloat(discountAmount), applicableService, parseFloat(minOrderAmount), parseInt(maxUses, 10), parseInt(perUserLimit, 10), expiryDate ? new Date(expiryDate) : null);
+
+    // Optional promotional email blast
+    if (sendEmail) {
+      (async () => {
+        const users = await prisma.$queryRawUnsafe(`
+          SELECT "email", "name" FROM "User" WHERE COALESCE("status", 'ACTIVE') = 'ACTIVE' AND "email" IS NOT NULL LIMIT 150
+        `);
+        for (const u of users) {
+          if (u.email) {
+            sendCouponPromoEmail({
+              userEmail: u.email,
+              userName: u.name,
+              code: cleanCode,
+              discountAmount: parseFloat(discountAmount),
+              discountType,
+              minOrderAmount: parseFloat(minOrderAmount),
+              expiryDate,
+            }).catch(e => {});
+          }
+        }
+      })().catch(err => console.warn('Coupon promo mail note:', err.message));
+    }
 
     await logAudit(req, {
       action: 'COUPON_CREATE',
@@ -2703,6 +3191,9 @@ router.get('/earnings', async (req, res) => {
       } else if (pkg.type === 'DATING_PACKAGE') {
         typeLabel = 'Dating Package (5%)';
         categoryKey = 'DATING_PACKAGE';
+      } else if (pkg.type === 'BREAKUP_BUDDY_PACKAGE' || pkg.type === 'SERVICE_PACKAGE') {
+        typeLabel = 'Breakup Buddy Package (5%)';
+        categoryKey = 'DATING_PACKAGE';
       } else if (pkg.type === 'HOST_SUBSCRIPTION') {
         typeLabel = 'Host Subscription (5%)';
         categoryKey = 'HOST_SUBSCRIPTION';
@@ -2735,7 +3226,7 @@ router.get('/earnings', async (req, res) => {
     const totalEarned = Math.round(earnings.reduce((sum, e) => sum + e.amount, 0) * 100) / 100;
     const totalVolume = Math.round(earnings.reduce((sum, e) => sum + e.sourceAmount, 0) * 100) / 100;
 
-    res.json({
+    return res.json({
       success: true,
       cutPercentage: 5,
       totalEarned,
@@ -2746,7 +3237,42 @@ router.get('/earnings', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching admin earnings:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch admin earnings' });
+    return res.status(500).json({ success: false, message: 'Failed to fetch admin earnings' });
+  }
+});
+
+// ==========================================
+// 24. SMTP DIAGNOSTICS & TEST EMAIL
+// ==========================================
+router.post('/test-email', async (req, res) => {
+  try {
+    const { toEmail, previewNote } = req.body;
+    const targetEmail = toEmail || req.staff.email || process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com';
+
+    const result = await sendTestEmail({
+      toEmail: targetEmail,
+      subject: `✨ [Live Test] JabWeMeet Admin Email Dispatch to ${targetEmail}`,
+      previewNote: previewNote || 'Live test triggered directly from JabWeMeet Admin Command Center.',
+    });
+
+    await logAudit(req, {
+      action: 'ADMIN_SMTP_TEST_EMAIL_SENT',
+      targetType: 'EMAIL',
+      targetId: targetEmail,
+      reason: 'Admin triggered diagnostic SMTP test',
+    });
+
+    return res.json({
+      success: true,
+      message: `Test email successfully sent to ${targetEmail}! Please check the inbox (and Spam/Promotions folder).`,
+      result,
+    });
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to send test email: ${error.message}`,
+    });
   }
 });
 

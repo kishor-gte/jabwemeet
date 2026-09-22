@@ -312,7 +312,27 @@ export default function EventRegistrationsPage() {
                       {new Date(r.createdAt).toLocaleDateString()}
                     </td>
 
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/events/${eventId}/registrations/${r.id}/resend`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const data = await res.json();
+                            alert(data.message || "Ticket pass sent successfully! 🎟️✨");
+                          } catch (e) {
+                            alert("Failed to resend ticket pass.");
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 font-semibold text-xs transition inline-flex items-center gap-1"
+                        title="Resend ticket code & pass via email"
+                      >
+                        <Ticket className="w-3 h-3" />
+                        <span>Resend Pass 🎟️</span>
+                      </button>
+
                       <button
                         onClick={() => handleToggleAttendance(r.id, r.checkedIn)}
                         disabled={actionLoading}
