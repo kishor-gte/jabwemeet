@@ -615,6 +615,20 @@ router.post('/events', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required event fields' });
     }
 
+    const eventDate = new Date(date);
+    if (isNaN(eventDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid event start date format' });
+    }
+    if (eventDate.getTime() < Date.now() - 2 * 60 * 1000) {
+      return res.status(400).json({ success: false, message: 'Event date cannot be in the past or yesterday. Please select a future date and time.' });
+    }
+    if (endDate) {
+      const endEventDate = new Date(endDate);
+      if (isNaN(endEventDate.getTime()) || endEventDate.getTime() <= eventDate.getTime()) {
+        return res.status(400).json({ success: false, message: 'Event return/end date must be after the start date' });
+      }
+    }
+
     const eventId = 'evt-' + Date.now();
     const hostId = req.staff.id;
 
