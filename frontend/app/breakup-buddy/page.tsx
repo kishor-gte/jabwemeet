@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import DashboardSidebar from "../dashboard/components/DashboardSidebar";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
+import { io } from "socket.io-client";
 
 interface BreakupBuddy {
   id: string;
@@ -48,13 +49,11 @@ interface BreakupBuddy {
   availableTimeStart: string | null;
   availableTimeEnd: string | null;
   weeklySchedule?: any;
-  isAvailableForRequests: boolean;
+  isAvailableForRequests?: boolean;
   isVerified: boolean;
   isApproved: boolean;
   createdAt: string;
 }
-
-import { io } from "socket.io-client";
 
 export default function BreakupBuddyPage() {
   const router = useRouter();
@@ -554,6 +553,7 @@ export default function BreakupBuddyPage() {
                 const displayName = buddy.displayName || buddy.name;
                 const displayCity =
                   buddy.city && buddy.city !== "N/A" ? buddy.city : "Remote / Pan-India";
+                const isAvailable = buddy.isAvailableForRequests !== false;
 
                 const defaultBio =
                   "Compassionate and trained active listener. Dedicated to providing a safe, confidential space where you can speak your heart, unpack emotions, and move forward at your own pace.";
@@ -573,7 +573,9 @@ export default function BreakupBuddyPage() {
                 return (
                   <div
                     key={buddy.id}
-                    className="rounded-3xl bg-[#131d2e] border border-white/10 overflow-hidden shadow-xl hover:border-indigo-500/40 transition-all flex flex-col justify-between group"
+                    className={`rounded-3xl bg-[#131d2e] border overflow-hidden shadow-xl transition-all flex flex-col justify-between group ${
+                      isAvailable ? "border-white/10 hover:border-indigo-500/40" : "border-amber-500/20 opacity-95"
+                    }`}
                   >
                     <div>
                       {/* Card Top Banner / Avatar Header */}
@@ -604,12 +606,22 @@ export default function BreakupBuddyPage() {
                               {displayName.charAt(0).toUpperCase()}
                             </div>
 
-                            <div
-                              title="Admin Approved Breakup Buddy"
-                              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#131d2e] flex items-center justify-center text-white"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </div>
+                            {/* Status Indicator Icon on Avatar */}
+                            {isAvailable ? (
+                              <div
+                                title="Accepting Requests"
+                                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#131d2e] flex items-center justify-center text-white"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </div>
+                            ) : (
+                              <div
+                                title="Unavailable for Requests"
+                                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 border-2 border-[#131d2e] flex items-center justify-center text-white"
+                              >
+                                <Clock className="w-3 h-3" />
+                              </div>
+                            )}
                           </div>
 
                           {/* Name and Badges */}
@@ -635,9 +647,22 @@ export default function BreakupBuddyPage() {
                               <span>{displayCity}</span>
                             </p>
 
-                            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-semibold">
-                              <ShieldCheck className="w-3 h-3" />
-                              <span>Admin Approved Safe Space</span>
+                            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-semibold">
+                                <ShieldCheck className="w-3 h-3" />
+                                <span>Admin Approved</span>
+                              </div>
+                              {isAvailable ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  Available
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                  Unavailable for Requests
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -685,7 +710,16 @@ export default function BreakupBuddyPage() {
                         </div>
 
                         {/* Availability Details if present */}
-                        {(() => {
+                        {!isAvailable ? (
+                          <div className="pt-3 border-t border-white/5 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 space-y-1">
+                            <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-amber-400" /> Unavailable for Requests
+                            </span>
+                            <p className="text-[11px] text-slate-300 leading-relaxed">
+                              This Breakup Buddy is currently not taking new session requests right now.
+                            </p>
+                          </div>
+                        ) : (() => {
                           let activeDays = [];
                           let hasSlots = false;
                           if (Array.isArray(buddy.weeklySchedule) && buddy.weeklySchedule.length > 0) {
@@ -778,31 +812,33 @@ export default function BreakupBuddyPage() {
                           );
                         }
 
+                        if (!isAvailable) {
+                          return (
+                            <div className="space-y-1.5">
+                              <button
+                                type="button"
+                                disabled={true}
+                                className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed opacity-75 select-none"
+                                title="This Breakup Buddy is currently not taking new requests"
+                              >
+                                <Clock className="w-4 h-4 text-amber-400" />
+                                <span>Unavailable for Requests</span>
+                              </button>
+                            </div>
+                          );
+                        }
+
                         return (
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedBuddy(buddy);
                             }}
-                            disabled={buddy.isAvailableForRequests === false}
-                            className={`w-full py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.99] ${
-                              buddy.isAvailableForRequests !== false
-                                ? "bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white shadow-lg shadow-indigo-600/20"
-                                : "bg-white/5 text-slate-500 cursor-not-allowed border border-white/10"
-                            }`}
+                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition active:scale-[0.99] cursor-pointer"
                           >
-                            {buddy.isAvailableForRequests !== false ? (
-                              <>
-                                <MessageCircle className="w-4 h-4" />
-                                <span>Book Confidential Session</span>
-                                <ChevronRight className="w-3.5 h-3.5 opacity-70" />
-                              </>
-                            ) : (
-                              <>
-                                <Clock className="w-4 h-4" />
-                                <span>Currently Unavailable</span>
-                              </>
-                            )}
+                            <MessageCircle className="w-4 h-4" />
+                            <span>Book Confidential Session</span>
+                            <ChevronRight className="w-3.5 h-3.5 opacity-70" />
                           </button>
                         );
                       })()}
@@ -822,7 +858,7 @@ export default function BreakupBuddyPage() {
             {/* Modal Close Button */}
             <button
               onClick={() => setSelectedBuddy(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition"
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -843,7 +879,7 @@ export default function BreakupBuddyPage() {
                 <div className="pt-3">
                   <button
                     onClick={() => setSelectedBuddy(null)}
-                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition"
+                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
                   >
                     Close & Return to Directory
                   </button>
@@ -864,6 +900,13 @@ export default function BreakupBuddyPage() {
                     Choose your preferred session format. Your details remain confidential and are only shared to coordinate your support session.
                   </p>
                 </div>
+
+                {selectedBuddy.isAvailableForRequests === false && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                    <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+                    <span>This Breakup Buddy is currently unavailable and not accepting new requests right now.</span>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <div>
@@ -902,8 +945,8 @@ export default function BreakupBuddyPage() {
 
                   <button
                     type="submit"
-                    disabled={bookingSending}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition disabled:opacity-50"
+                    disabled={bookingSending || selectedBuddy.isAvailableForRequests === false}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition disabled:opacity-50 cursor-pointer"
                   >
                     {bookingSending ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -920,13 +963,14 @@ export default function BreakupBuddyPage() {
           </div>
         </div>
       )}
+
       {/* Feedback Modal */}
       {feedbackBuddyId && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             <button
               onClick={() => setFeedbackBuddyId(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition"
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -986,7 +1030,7 @@ export default function BreakupBuddyPage() {
                 <button
                   type="submit"
                   disabled={feedbackSending}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
                 >
                   {feedbackSending ? "Submitting..." : "Submit Feedback"}
                 </button>
@@ -1026,4 +1070,3 @@ export default function BreakupBuddyPage() {
     </div>
   );
 }
-

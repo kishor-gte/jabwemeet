@@ -86,6 +86,44 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
       return res.status(400).json({ success: false, message: 'Missing required event fields' });
     }
 
+    if (title.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Event title must be at least 3 characters' });
+    }
+
+    if (description.trim().length < 10) {
+      return res.status(400).json({ success: false, message: 'Event description must be at least 10 characters' });
+    }
+
+    const eventDate = new Date(date);
+    if (isNaN(eventDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid event start date format' });
+    }
+
+    // Must be in the future (allowing 2-minute buffer for submission latency)
+    if (eventDate.getTime() < Date.now() - 2 * 60 * 1000) {
+      return res.status(400).json({ success: false, message: 'Event date cannot be in the past or yesterday. Please select a future date and time.' });
+    }
+
+    if (endDate) {
+      const endEventDate = new Date(endDate);
+      if (isNaN(endEventDate.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid event end date format' });
+      }
+      if (endEventDate.getTime() <= eventDate.getTime()) {
+        return res.status(400).json({ success: false, message: 'Event return/end date must be after the start date' });
+      }
+    }
+
+    const parsedPrice = price !== undefined && price !== null ? parseFloat(price) : 0;
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.status(400).json({ success: false, message: 'Event price cannot be negative' });
+    }
+
+    const parsedAttendees = maxAttendees ? parseInt(maxAttendees, 10) : 50;
+    if (isNaN(parsedAttendees) || parsedAttendees < 2) {
+      return res.status(400).json({ success: false, message: 'Max attendees must be at least 2' });
+    }
+
     const hostId = req.user.userId || req.user.id;
 
     // SUBSCRIPTION CHECK
@@ -129,15 +167,15 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
 
     const newEvent = await prisma.event.create({
       data: {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         category,
-        location,
-        city,
-        date: new Date(date),
+        location: location.trim(),
+        city: city.trim(),
+        date: eventDate,
         endDate: endDate ? new Date(endDate) : null,
-        price: price ? parseFloat(price) : 0,
-        maxAttendees: maxAttendees ? parseInt(maxAttendees, 10) : 50,
+        price: parsedPrice,
+        maxAttendees: parsedAttendees,
         ageRange,
         itinerary,
         hostId,
@@ -167,20 +205,54 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized to edit this event' });
     }
 
+    if (title !== undefined && title.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Event title must be at least 3 characters' });
+    }
+    if (description !== undefined && description.trim().length < 10) {
+      return res.status(400).json({ success: false, message: 'Event description must be at least 10 characters' });
+    }
+    if (date) {
+      const eventDate = new Date(date);
+      if (isNaN(eventDate.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid event start date format' });
+      }
+      if (eventDate.getTime() < Date.now() - 2 * 60 * 1000) {
+        return res.status(400).json({ success: false, message: 'Event date cannot be in the past or yesterday. Please select a future date and time.' });
+      }
+      if (endDate) {
+        const endEventDate = new Date(endDate);
+        if (isNaN(endEventDate.getTime()) || endEventDate.getTime() <= eventDate.getTime()) {
+          return res.status(400).json({ success: false, message: 'Event return/end date must be after the start date' });
+        }
+      }
+    }
+    if (price !== undefined && price !== null) {
+      const parsedPrice = parseFloat(price);
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
+        return res.status(400).json({ success: false, message: 'Event price cannot be negative' });
+      }
+    }
+    if (maxAttendees !== undefined && maxAttendees !== null) {
+      const parsedAttendees = parseInt(maxAttendees, 10);
+      if (isNaN(parsedAttendees) || parsedAttendees < 2) {
+        return res.status(400).json({ success: false, message: 'Max attendees must be at least 2' });
+      }
+    }
+
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
-        title,
-        description,
-        category,
-        location,
-        city,
-        date: new Date(date),
-        endDate: endDate ? new Date(endDate) : null,
-        price: price ? parseFloat(price) : 0,
-        maxAttendees: maxAttendees ? parseInt(maxAttendees, 10) : 50,
-        ageRange,
-        itinerary,
+        title: title !== undefined ? title.trim() : existingEvent.title,
+        description: description !== undefined ? description.trim() : existingEvent.description,
+        category: category || existingEvent.category,
+        location: location !== undefined ? location.trim() : existingEvent.location,
+        city: city !== undefined ? city.trim() : existingEvent.city,
+        date: date ? new Date(date) : existingEvent.date,
+        endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : existingEvent.endDate,
+        price: price !== undefined ? parseFloat(price) : existingEvent.price,
+        maxAttendees: maxAttendees !== undefined ? parseInt(maxAttendees, 10) : existingEvent.maxAttendees,
+        ageRange: ageRange !== undefined ? ageRange : existingEvent.ageRange,
+        itinerary: itinerary !== undefined ? itinerary : existingEvent.itinerary,
       },
     });
 

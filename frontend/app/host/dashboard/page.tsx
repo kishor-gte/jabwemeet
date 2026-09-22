@@ -17,7 +17,7 @@ import {
   Ban,
   ArrowRight,
   TrendingUp,
-  DollarSign,
+  IndianRupee,
   UserCheck,
   Menu,
   Sparkles,
@@ -29,6 +29,7 @@ import {
   Edit,
   Trash,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 type Booking = {
@@ -90,6 +91,29 @@ const CATEGORIES = [
   "Singles Travels",
 ];
 
+const getMinLocalDateTime = () => {
+  const now = new Date();
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const year = now.getFullYear();
+  const month = pad(now.getMonth() + 1);
+  const day = pad(now.getDate());
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const formatToLocalDateTimeString = (d: Date | string) => {
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "";
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function HostDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -115,6 +139,53 @@ export default function HostDashboardPage() {
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Track seen counts per section so badges disappear once viewed and do not appear again
+  const [mounted, setMounted] = useState(false);
+  const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
+  const storageKey = `jwm_host_sidebar_seen_${user?.id || "default"}`;
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        setSeenCounts(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, [storageKey]);
+
+  const markSectionAsSeen = (section: string, currentCount: number) => {
+    setSeenCounts((prev) => {
+      const updated = {
+        ...prev,
+        [section]: Math.max(prev[section] || 0, currentCount),
+      };
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  // Automatically mark section as seen if user is currently on that section
+  useEffect(() => {
+    if (!mounted) return;
+    if (activeSection === "events" && stats.totalEvents > 0) {
+      markSectionAsSeen("events", stats.totalEvents);
+    } else if (activeSection === "attendees" && bookings.length > 0) {
+      markSectionAsSeen("attendees", bookings.length);
+    }
+  }, [activeSection, stats.totalEvents, bookings.length, mounted, storageKey]);
+
+  const getUnseenCount = (section: string, totalCount: number) => {
+    if (!mounted) return 0;
+    if (activeSection === section) return 0;
+    const seen = seenCounts[section] || 0;
+    return Math.max(0, totalCount - seen);
+  };
 
   // Form state for creating event
   const [formData, setFormData] = useState({
@@ -357,8 +428,175 @@ export default function HostDashboardPage() {
       setSubscribingPkgId(null);
     }
   };
+  const handleOpenCreateModal = () => {
+    if (subStatus && !subStatus.canCreateEvent) {
+      setActiveSection("subscriptions");
+      showToast("⚠️ Event limit reached! Please upgrade your plan to create more events.");
+      return;
+    }
+    setEditingEventId(null);
+    setFormErrors({});
+    setFormData({
+      title: "",
+      description: "",
+      category: "Single events",
+      location: "",
+      city: "",
+      date: "",
+      endDate: "",
+      price: 0,
+      maxAttendees: 50,
+      ageRange: "",
+      itinerary: "",
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setEditingEventId(null);
+    setFormErrors({});
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field] || formErrors.general) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        delete next.general;
+        return next;
+      });
+    }
+  };
+
+  const handleDateChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, date: val }));
+    const d = new Date(val);
+    if (!val) {
+      setFormErrors((prev) => ({ ...prev, date: "Start date and time is required." }));
+    } else if (isNaN(d.getTime())) {
+      setFormErrors((prev) => ({ ...prev, date: "Please enter a valid date and time." }));
+    } else if (d.getTime() < Date.now() - 60 * 1000) {
+      setFormErrors((prev) => ({
+        ...prev,
+        date: "Event date cannot be in the past or yesterday. Please choose a future date.",
+      }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.date;
+        delete next.general;
+        return next;
+      });
+    }
+  };
+
+  const handleEndDateChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, endDate: val }));
+    const endD = new Date(val);
+    const startD = new Date(formData.date);
+    if (!val && formData.category === "Singles Travels") {
+      setFormErrors((prev) => ({ ...prev, endDate: "Return / End date is required for Singles Travels." }));
+    } else if (val && !isNaN(endD.getTime()) && !isNaN(startD.getTime()) && endD.getTime() <= startD.getTime()) {
+      setFormErrors((prev) => ({
+        ...prev,
+        endDate: "Return date must be after the start date and time.",
+      }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.endDate;
+        delete next.general;
+        return next;
+      });
+    }
+  };
+
+  const validateEventForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.title || !formData.title.trim()) {
+      errors.title = "Event title is required.";
+    } else if (formData.title.trim().length < 3) {
+      errors.title = "Event title must be at least 3 characters.";
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      errors.description = "Event description is required.";
+    } else if (formData.description.trim().length < 10) {
+      errors.description = "Please provide at least 10 characters describing the event.";
+    }
+
+    if (!formData.category) {
+      errors.category = "Please select an event category.";
+    }
+
+    if (!formData.city || !formData.city.trim()) {
+      errors.city = "City is required (e.g. Bangalore, Mumbai).";
+    }
+
+    if (!formData.location || !formData.location.trim()) {
+      errors.location = "Venue or location address is required.";
+    }
+
+    if (!formData.date) {
+      errors.date = "Start date and time is required.";
+    } else {
+      const selectedDate = new Date(formData.date);
+      if (isNaN(selectedDate.getTime())) {
+        errors.date = "Please enter a valid date and time.";
+      } else if (selectedDate.getTime() < Date.now() - 60 * 1000) {
+        errors.date = "Event date cannot be in the past or yesterday. Please select a future date and time.";
+      }
+    }
+
+    if (formData.category === "Singles Travels") {
+      if (!formData.endDate) {
+        errors.endDate = "Return / End date is required for Singles Travels.";
+      } else {
+        const endD = new Date(formData.endDate);
+        const startD = new Date(formData.date);
+        if (isNaN(endD.getTime())) {
+          errors.endDate = "Please enter a valid return date.";
+        } else if (!isNaN(startD.getTime()) && endD.getTime() <= startD.getTime()) {
+          errors.endDate = "Return date must be after the start date.";
+        }
+      }
+    } else if (formData.endDate && formData.date) {
+      const endD = new Date(formData.endDate);
+      const startD = new Date(formData.date);
+      if (!isNaN(endD.getTime()) && !isNaN(startD.getTime()) && endD.getTime() <= startD.getTime()) {
+        errors.endDate = "End date must be after the start date.";
+      }
+    }
+
+    if (formData.price < 0) {
+      errors.price = "Ticket price cannot be negative.";
+    }
+
+    if (formData.maxAttendees === undefined || formData.maxAttendees === null || formData.maxAttendees < 2) {
+      errors.maxAttendees = "Capacity must be at least 2 attendees.";
+    } else if (formData.maxAttendees > 10000) {
+      errors.maxAttendees = "Capacity cannot exceed 10,000 attendees.";
+    }
+
+    if (formData.category === "Speed dating" && !formData.ageRange?.trim()) {
+      errors.ageRange = "Please specify an age bracket (e.g. 24 - 32).";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateEventForm()) {
+      showToast("⚠️ Please fix the highlighted errors before publishing.");
+      return;
+    }
+
+    setFormSubmitting(true);
     try {
       const url = editingEventId ? `/api/events/${editingEventId}` : "/api/events";
       const method = editingEventId ? "PUT" : "POST";
@@ -372,6 +610,7 @@ export default function HostDashboardPage() {
       const data = await res.json();
       if (data.success) {
         setShowCreateModal(false);
+        setFormErrors({});
         showToast(`Event "${formData.title}" ${editingEventId ? "updated" : "published"} successfully! 🚀`);
         loadHostData();
         setEditingEventId(null);
@@ -394,10 +633,14 @@ export default function HostDashboardPage() {
         setActiveSection("subscriptions");
         showToast("⚠️ Event limit reached! Please upgrade your plan to create more events.");
       } else {
-        showToast(data.message || `Failed to ${editingEventId ? "update" : "create"} event`);
+        const msg = data.message || `Failed to ${editingEventId ? "update" : "create"} event`;
+        showToast(msg);
+        setFormErrors((prev) => ({ ...prev, general: msg }));
       }
     } catch (error) {
       showToast(`Error ${editingEventId ? "updating" : "creating"} event. Please try again.`);
+    } finally {
+      setFormSubmitting(false);
     }
   };
 
@@ -422,14 +665,15 @@ export default function HostDashboardPage() {
 
   const openEditModal = (evt: Event) => {
     setEditingEventId(evt.id);
+    setFormErrors({});
     setFormData({
       title: evt.title,
       description: evt.description,
       category: evt.category,
       location: evt.location,
       city: evt.city,
-      date: new Date(evt.date).toISOString().slice(0, 16),
-      endDate: evt.endDate ? new Date(evt.endDate).toISOString().slice(0, 16) : "",
+      date: formatToLocalDateTimeString(evt.date),
+      endDate: evt.endDate ? formatToLocalDateTimeString(evt.endDate) : "",
       price: evt.price || 0,
       maxAttendees: evt.maxAttendees || 50,
       ageRange: evt.ageRange || "",
@@ -524,6 +768,7 @@ export default function HostDashboardPage() {
             <button
               onClick={() => {
                 setActiveSection("events");
+                markSectionAsSeen("events", stats.totalEvents);
                 setMobileSidebarOpen(false);
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
@@ -536,9 +781,9 @@ export default function HostDashboardPage() {
                 <Calendar className="w-4 h-4 text-slate-400" />
                 <span>My Hosted Events</span>
               </div>
-              {stats.totalEvents > 0 && (
+              {getUnseenCount("events", stats.totalEvents) > 0 && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300">
-                  {stats.totalEvents}
+                  {getUnseenCount("events", stats.totalEvents)}
                 </span>
               )}
             </button>
@@ -546,6 +791,7 @@ export default function HostDashboardPage() {
             <button
               onClick={() => {
                 setActiveSection("attendees");
+                markSectionAsSeen("attendees", bookings.length);
                 setMobileSidebarOpen(false);
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
@@ -558,9 +804,9 @@ export default function HostDashboardPage() {
                 <UserCheck className="w-4 h-4 text-slate-400" />
                 <span>Attendees & RSVPs</span>
               </div>
-              {bookings.length > 0 && (
+              {getUnseenCount("attendees", bookings.length) > 0 && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30">
-                  {bookings.length}
+                  {getUnseenCount("attendees", bookings.length)}
                 </span>
               )}
             </button>
@@ -581,7 +827,7 @@ export default function HostDashboardPage() {
                 <span>Sales & Revenue</span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
-                ${stats.totalRevenue}
+                ₹{stats.totalRevenue.toLocaleString("en-IN")}
               </span>
             </button>
 
@@ -614,30 +860,6 @@ export default function HostDashboardPage() {
           </div>
         </div>
 
-        {/* QUICK ACTIONS */}
-        <div>
-          <div className="px-3 mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            <span>Actions</span>
-            <Sparkles className="w-3.5 h-3.5 text-[#e06d53]" />
-          </div>
-          <div className="space-y-1">
-            <button
-              onClick={() => {
-                if (subStatus && !subStatus.canCreateEvent) {
-                  setActiveSection("subscriptions");
-                  showToast("Please upgrade your plan to create more events.");
-                } else {
-                  setShowCreateModal(true);
-                }
-                setMobileSidebarOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] transition shadow-md shadow-[#e06d53]/20"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Create New Event</span>
-            </button>
-          </div>
-        </div>
 
         {/* ACCOUNT & SWITCH */}
         <div>
@@ -716,14 +938,7 @@ export default function HostDashboardPage() {
           </div>
         </div>
         <button
-          onClick={() => {
-            if (subStatus && !subStatus.canCreateEvent) {
-              setActiveSection("subscriptions");
-              showToast("⚠️ Event limit reached! Please upgrade your plan to create more events.");
-            } else {
-              setShowCreateModal(true);
-            }
-          }}
+          onClick={handleOpenCreateModal}
           className="bg-[#e06d53] text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -776,7 +991,7 @@ export default function HostDashboardPage() {
                 Refresh
               </button>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={handleOpenCreateModal}
                 className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] px-5 py-2.5 rounded-xl font-bold text-sm text-white flex items-center gap-2 transition shadow-lg shadow-[#e06d53]/25"
               >
                 <Plus className="w-4 h-4" />
@@ -834,7 +1049,7 @@ export default function HostDashboardPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Revenue</span>
                 <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5" />
+                  <IndianRupee className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-2">
@@ -885,7 +1100,7 @@ export default function HostDashboardPage() {
                       Create an event under "{selectedCategory}" to start accepting attendee registrations.
                     </p>
                     <button
-                      onClick={() => setShowCreateModal(true)}
+                      onClick={handleOpenCreateModal}
                       className="bg-[#e06d53] hover:bg-[#c95940] px-6 py-2.5 rounded-full font-bold text-sm text-white inline-flex items-center gap-2 transition"
                     >
                       <Plus className="w-4 h-4" />
@@ -1042,7 +1257,7 @@ export default function HostDashboardPage() {
                             </td>
                             <td className="px-4 py-3.5">
                               <div className="font-bold text-white">{b.spots} spot(s)</div>
-                              <div className="text-amber-400 text-[11px]">${b.totalAmount}</div>
+                              <div className="text-amber-400 text-[11px]">₹{b.totalAmount.toLocaleString("en-IN")}</div>
                             </td>
                             <td className="px-4 py-3.5 text-slate-400">
                               {new Date(b.createdAt).toLocaleDateString()}
@@ -1115,7 +1330,7 @@ export default function HostDashboardPage() {
                   <p className="text-xs text-slate-400">Review attendance and event configurations</p>
                 </div>
                 <button
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={handleOpenCreateModal}
                   className="bg-[#e06d53] hover:bg-[#c95940] px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-2 transition"
                 >
                   <Plus className="w-4 h-4" />
@@ -1373,7 +1588,7 @@ export default function HostDashboardPage() {
                               <button
                                 onClick={() => {
                                   setActiveSection("events");
-                                  setShowCreateModal(true);
+                                  handleOpenCreateModal();
                                 }}
                                 className="px-5 py-3 rounded-2xl bg-[#e06d53] hover:bg-[#d05c42] text-white text-sm font-bold shadow-lg shadow-[#e06d53]/25 flex items-center justify-center gap-2 transition self-start sm:self-auto shrink-0"
                               >
@@ -1722,8 +1937,8 @@ export default function HostDashboardPage() {
               </div>
               <button
                 type="button"
-                onClick={() => { setShowCreateModal(false); setEditingEventId(null); }}
-                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition"
+                onClick={handleCloseModal}
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition cursor-pointer"
                 title="Close"
               >
                 <X size={20} />
@@ -1736,7 +1951,16 @@ export default function HostDashboardPage() {
                 className="flex-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-6 space-y-4"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
+                {/* Validation Error Alert Banner */}
+                {Object.keys(formErrors).length > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{formErrors.general || "Please fix the highlighted validation errors before saving."}</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Event Title */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       Event Title *
@@ -1746,11 +1970,20 @@ export default function HostDashboardPage() {
                       placeholder="e.g. Bangalore Friday Speed Dating Mixer"
                       name="title"
                       value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      onChange={(e) => handleFieldChange("title", e.target.value)}
+                      className={`w-full bg-[#0b111e] border ${
+                        formErrors.title ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                     />
+                    {formErrors.title && (
+                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.title}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Description */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       Description *
@@ -1760,11 +1993,20 @@ export default function HostDashboardPage() {
                       placeholder="Describe the vibe, icebreakers, agenda, and what participants should expect..."
                       name="description"
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-24"
+                      onChange={(e) => handleFieldChange("description", e.target.value)}
+                      className={`w-full bg-[#0b111e] border ${
+                        formErrors.description ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition h-24`}
                     />
+                    {formErrors.description && (
+                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.description}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Category */}
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       Category *
@@ -1772,7 +2014,7 @@ export default function HostDashboardPage() {
                     <select
                       name="category"
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      onChange={(e) => handleFieldChange("category", e.target.value)}
                       className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
                     >
                       {CATEGORIES.map((c) => (
@@ -1783,6 +2025,7 @@ export default function HostDashboardPage() {
                     </select>
                   </div>
 
+                  {/* City */}
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       City *
@@ -1792,11 +2035,20 @@ export default function HostDashboardPage() {
                       placeholder="e.g. Bangalore, Mumbai, Delhi"
                       name="city"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      onChange={(e) => handleFieldChange("city", e.target.value)}
+                      className={`w-full bg-[#0b111e] border ${
+                        formErrors.city ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                     />
+                    {formErrors.city && (
+                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.city}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Location */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       Venue / Location *
@@ -1806,11 +2058,20 @@ export default function HostDashboardPage() {
                       placeholder="e.g. The Bier Library, Koramangala"
                       name="location"
                       value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      onChange={(e) => handleFieldChange("location", e.target.value)}
+                      className={`w-full bg-[#0b111e] border ${
+                        formErrors.location ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                     />
+                    {formErrors.location && (
+                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.location}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Start Date & Time */}
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       Start Date & Time *
@@ -1818,13 +2079,26 @@ export default function HostDashboardPage() {
                     <input
                       required
                       type="datetime-local"
+                      min={getMinLocalDateTime()}
                       name="date"
                       value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      className={`w-full bg-[#0b111e] border ${
+                        formErrors.date ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                     />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Must be a future date and time (past dates and yesterday are disabled).
+                    </p>
+                    {formErrors.date && (
+                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.date}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Return / End Date or Ticket Price */}
                   {formData.category === "Singles Travels" ? (
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
@@ -1833,16 +2107,28 @@ export default function HostDashboardPage() {
                       <input
                         required
                         type="datetime-local"
+                        min={formData.date || getMinLocalDateTime()}
                         name="endDate"
                         value={formData.endDate}
-                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                        onChange={(e) => handleEndDateChange(e.target.value)}
+                        className={`w-full bg-[#0b111e] border ${
+                          formErrors.endDate ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                       />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Must be after the start date and time.
+                      </p>
+                      {formErrors.endDate && (
+                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {formErrors.endDate}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                        Ticket Price (₹)
+                        Ticket Price (₹) *
                       </label>
                       <input
                         required
@@ -1850,16 +2136,25 @@ export default function HostDashboardPage() {
                         min="0"
                         name="price"
                         value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                        onChange={(e) => handleFieldChange("price", Number(e.target.value))}
+                        className={`w-full bg-[#0b111e] border ${
+                          formErrors.price ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                       />
+                      {formErrors.price && (
+                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {formErrors.price}
+                        </p>
+                      )}
                     </div>
                   )}
 
+                  {/* Trip Package Price (Singles Travels) */}
                   {formData.category === "Singles Travels" && (
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                        Trip Package Price (₹)
+                        Trip Package Price (₹) *
                       </label>
                       <input
                         required
@@ -1867,42 +2162,70 @@ export default function HostDashboardPage() {
                         min="0"
                         name="price"
                         value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                        onChange={(e) => handleFieldChange("price", Number(e.target.value))}
+                        className={`w-full bg-[#0b111e] border ${
+                          formErrors.price ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                       />
+                      {formErrors.price && (
+                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {formErrors.price}
+                        </p>
+                      )}
                     </div>
                   )}
 
+                  {/* Max Capacity */}
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Max Capacity / Attendees
+                      Max Capacity / Attendees *
                     </label>
                     <input
                       required
                       type="number"
-                      min="1"
+                      min="2"
+                      max="10000"
                       name="maxAttendees"
                       value={formData.maxAttendees}
-                      onChange={(e) => setFormData({ ...formData, maxAttendees: Number(e.target.value) })}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      onChange={(e) => handleFieldChange("maxAttendees", Number(e.target.value))}
+                      className={`w-full bg-[#0b111e] border ${
+                        formErrors.maxAttendees ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                     />
+                    {formErrors.maxAttendees && (
+                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.maxAttendees}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Speed Dating Age Range */}
                   {formData.category === "Speed dating" && (
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                        Age Bracket (e.g. 24 - 32 years)
+                        Age Bracket (e.g. 24 - 32 years) *
                       </label>
                       <input
                         name="ageRange"
                         placeholder="24 - 32"
                         value={formData.ageRange}
-                        onChange={(e) => setFormData({ ...formData, ageRange: e.target.value })}
-                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                        onChange={(e) => handleFieldChange("ageRange", e.target.value)}
+                        className={`w-full bg-[#0b111e] border ${
+                          formErrors.ageRange ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
+                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
                       />
+                      {formErrors.ageRange && (
+                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {formErrors.ageRange}
+                        </p>
+                      )}
                     </div>
                   )}
 
+                  {/* Singles Travels Itinerary */}
                   {formData.category === "Singles Travels" && (
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
@@ -1912,7 +2235,7 @@ export default function HostDashboardPage() {
                         name="itinerary"
                         placeholder="Day 1: Arrival & Sunset Beach Mixer... Day 2: Trekking & Bonfire..."
                         value={formData.itinerary}
-                        onChange={(e) => setFormData({ ...formData, itinerary: e.target.value })}
+                        onChange={(e) => handleFieldChange("itinerary", e.target.value)}
                         className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-20"
                       />
                     </div>
@@ -1924,16 +2247,18 @@ export default function HostDashboardPage() {
               <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0c1322] flex items-center justify-end gap-3 shrink-0 rounded-b-3xl">
                 <button
                   type="button"
-                  onClick={() => { setShowCreateModal(false); setEditingEventId(null); }}
+                  onClick={handleCloseModal}
                   className="px-5 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 text-sm font-semibold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] px-6 py-2.5 rounded-xl font-bold text-sm text-white transition shadow-lg shadow-[#e06d53]/25 cursor-pointer"
+                  disabled={formSubmitting}
+                  className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2.5 rounded-xl font-bold text-sm text-white transition shadow-lg shadow-[#e06d53]/25 cursor-pointer inline-flex items-center gap-2"
                 >
-                  {editingEventId ? "Save Changes" : "Publish Event"}
+                  {formSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{editingEventId ? "Save Changes" : "Publish Event"}</span>
                 </button>
               </div>
             </form>

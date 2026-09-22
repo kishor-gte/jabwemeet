@@ -485,6 +485,9 @@ router.get('/me', async (req, res) => {
         availableDays: true,
         availableTimeStart: true,
         availableTimeEnd: true,
+        isAvailableForRequests: true,
+        weeklySchedule: true,
+        blockedDates: true,
       },
     });
 
@@ -507,7 +510,21 @@ router.get('/me', async (req, res) => {
 // 4b. PUT /api/auth/profile - Update editable member profile fields
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { city, gender, relationshipIntent, dateOfBirth } = req.body;
+    const {
+      city,
+      gender,
+      relationshipIntent,
+      dateOfBirth,
+      profilePhoto,
+      displayName,
+      shortBio,
+      languages,
+      areasOfExpertise,
+      sessionTypes,
+      availableDays,
+      availableTimeStart,
+      availableTimeEnd
+    } = req.body;
     const updateData = {};
 
     if (city !== undefined && typeof city === 'string') updateData.city = city.trim();
@@ -515,6 +532,16 @@ router.put('/profile', authenticateToken, async (req, res) => {
     if (relationshipIntent !== undefined && typeof relationshipIntent === 'string') {
       updateData.relationshipIntent = relationshipIntent.trim();
     }
+    if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+    if (displayName !== undefined && typeof displayName === 'string') updateData.displayName = displayName.trim();
+    if (shortBio !== undefined && typeof shortBio === 'string') updateData.shortBio = shortBio.trim();
+    if (Array.isArray(languages)) updateData.languages = languages;
+    if (Array.isArray(areasOfExpertise)) updateData.areasOfExpertise = areasOfExpertise;
+    if (Array.isArray(sessionTypes)) updateData.sessionTypes = sessionTypes;
+    if (Array.isArray(availableDays)) updateData.availableDays = availableDays;
+    if (availableTimeStart !== undefined) updateData.availableTimeStart = availableTimeStart;
+    if (availableTimeEnd !== undefined) updateData.availableTimeEnd = availableTimeEnd;
+
     if (dateOfBirth) {
       const parsedDate = new Date(dateOfBirth);
       if (!isNaN(parsedDate.getTime())) {
@@ -528,12 +555,22 @@ router.put('/profile', authenticateToken, async (req, res) => {
       select: {
         id: true,
         name: true,
+        displayName: true,
         email: true,
         phone: true,
         city: true,
         gender: true,
         relationshipIntent: true,
         role: true,
+        profilePhoto: true,
+        shortBio: true,
+        languages: true,
+        areasOfExpertise: true,
+        sessionTypes: true,
+        availableDays: true,
+        isAvailableForRequests: true,
+        weeklySchedule: true,
+        blockedDates: true,
         dateOfBirth: true,
         createdAt: true,
       },
@@ -669,42 +706,6 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// 8. PUT /api/auth/profile
-router.put('/profile', authenticateToken, async (req, res) => {
-  try {
-    const {
-      displayName,
-      shortBio,
-      languages,
-      areasOfExpertise,
-      sessionTypes,
-      availableDays,
-      availableTimeStart,
-      availableTimeEnd,
-      profilePhoto
-    } = req.body;
-
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data: {
-        ...(displayName && { displayName }),
-        ...(shortBio && { shortBio }),
-        ...(languages && { languages }),
-        ...(areasOfExpertise && { areasOfExpertise }),
-        ...(sessionTypes && { sessionTypes }),
-        ...(availableDays && { availableDays }),
-        ...(availableTimeStart && { availableTimeStart }),
-        ...(availableTimeEnd && { availableTimeEnd }),
-        ...(profilePhoto && { profilePhoto })
-      },
-    });
-
-    return res.json({ success: true, message: 'Profile updated successfully', user: updatedUser });
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    return res.status(500).json({ success: false, message: 'Failed to update profile.' });
-  }
-});
 
 // Get connections for the logged-in user
 router.get('/connections', authenticateToken, async (req, res) => {

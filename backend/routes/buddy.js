@@ -142,9 +142,16 @@ router.get('/history', async (req, res) => {
     const formatted = history.map(item => {
       const startTime = item.scheduledAt || item.createdAt || new Date();
       const durMinutes = item.durationMinutes || 60;
-      const completedTime = item.updatedAt && new Date(item.updatedAt).getTime() > new Date(startTime).getTime()
-        ? item.updatedAt
-        : new Date(new Date(startTime).getTime() + durMinutes * 60 * 1000);
+      const startMs = new Date(startTime).getTime();
+      const durMs = durMinutes * 60 * 1000;
+
+      // Calculate legitimate completion time with duration
+      let completedTime = new Date(startMs + durMs);
+      if (item.completedAt && (new Date(item.completedAt).getTime() - startMs) >= 60000) {
+        completedTime = new Date(item.completedAt);
+      } else if (item.updatedAt && (new Date(item.updatedAt).getTime() - startMs) >= durMs) {
+        completedTime = new Date(item.updatedAt);
+      }
 
       return {
         ...item,
