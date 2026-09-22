@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const prisma = require('../db');
@@ -609,7 +610,7 @@ router.post('/forgot-password', async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true, email: true },
+      select: { id: true, email: true, name: true },
     });
 
     // To prevent account enumeration, return standard response even if email doesn't exist
@@ -631,6 +632,16 @@ router.post('/forgot-password', async (req, res) => {
         expiresAt,
       },
     });
+
+    try {
+      await sendPasswordResetEmail({
+        userEmail: cleanEmail,
+        userName: user.name || 'User',
+        resetToken,
+      });
+    } catch (err) {
+      console.warn('Failed to send password reset email:', err.message);
+    }
 
     return res.json({
       success: true,
