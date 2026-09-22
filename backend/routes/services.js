@@ -504,14 +504,19 @@ router.post("/buddy-subscribe/:requestId", authenticateToken, async (req, res) =
       }
     });
 
+    const displayHours = (limitSeconds / 3600).toFixed(1).replace(/\.0$/, '');
+    const durationLabel = limitSeconds >= 3600 ? `${displayHours}h` : `${Math.round(limitSeconds / 60)}m`;
+
     // Record into central Subscription table for Admin visibility
     try {
       const expiryDate = new Date(Date.now() + limitSeconds * 1000);
       let pkgPrice = 0;
+      let pkgName = "Custom Pass";
       if (packageId) {
         const pkgs = await prisma.$queryRawUnsafe(`SELECT * FROM "ServicePackage" WHERE "id" = $1 LIMIT 1`, packageId);
         if (pkgs && pkgs[0]) {
           pkgPrice = parseFloat(pkgs[0].price || 0);
+          pkgName = pkgs[0].name;
         }
       }
       await prisma.$executeRawUnsafe(`
@@ -524,16 +529,45 @@ router.post("/buddy-subscribe/:requestId", authenticateToken, async (req, res) =
         req.user.userId,
         packageId || null,
         pkgPrice,
-        `${hours} Hours`,
+        `${durationLabel} Pass`,
         expiryDate
       );
+
+      // Record Payment transaction for Admin Earnings tracking (5% commission)
+      if (pkgPrice > 0) {
+        const payId = `PAY-BB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO "Payment" ("id", "userId", "amount", "type", "currency", "status", "gateway", "referenceId", "description", "createdAt")
+          VALUES ($1, $2, $3, 'BREAKUP_BUDDY_PACKAGE', 'INR', 'SUCCESS', 'Direct', $4, $5, NOW())
+        `, payId, req.user.userId, pkgPrice, requestId, `Breakup Buddy Package - ${pkgName} (${durationLabel})`);
+      }
+
+      // Send Earning Alert Email to Breakup Buddy
+      const buddyUser = await prisma.user.findUnique({
+        where: { id: updatedRequest.buddyId },
+        select: { email: true, name: true, displayName: true }
+      });
+      const payingUser = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { name: true }
+      });
+      if (buddyUser && buddyUser.email) {
+        sendPassPurchasedEmail({
+          buddyEmail: buddyUser.email,
+          buddyName: buddyUser.displayName || buddyUser.name,
+          userName: payingUser?.name || "A Member",
+          packageName: `${pkgName} (${durationLabel} Pass)`,
+          durationHours: durationLabel,
+          amountEarned: pkgPrice
+        }).catch(e => {});
+      }
     } catch (subErr) {
       console.warn("Buddy subscription admin sync notice:", subErr.message);
     }
 
     res.json({ 
       success: true, 
-      message: `Subscription activated! Unlimited calls and chats granted with ${updatedRequest.buddy?.displayName || updatedRequest.buddy?.name || 'your buddy'} for ${hours} hour(s).`,
+      message: `Subscription activated! Unlimited calls and chats granted with ${updatedRequest.buddy?.displayName || updatedRequest.buddy?.name || 'your buddy'} (${durationLabel}).`,
       data: updatedRequest
     });
   } catch (error) {

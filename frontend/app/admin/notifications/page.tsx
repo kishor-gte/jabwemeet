@@ -18,6 +18,7 @@ export default function AdminNotificationsPage() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [targetAudience, setTargetAudience] = useState("All Users");
+  const [sendEmail, setSendEmail] = useState(true);
   const [sending, setSending] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -44,7 +45,7 @@ export default function AdminNotificationsPage() {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
 
-    if (!confirm(`Confirm broadcasting this notification to: ${targetAudience}?`)) return;
+    if (!confirm(`Confirm broadcasting this notification${sendEmail ? ' and sending emails' : ''} to: ${targetAudience}?`)) return;
 
     setSending(true);
     setSuccessMsg(null);
@@ -53,7 +54,7 @@ export default function AdminNotificationsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title, message, targetAudience }),
+        body: JSON.stringify({ title, message, targetAudience, sendEmail }),
       });
       const data = await res.json();
       if (data.success) {
@@ -139,11 +140,23 @@ export default function AdminNotificationsPage() {
             />
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="w-4 h-4 rounded text-purple-600 bg-[#182337] border-white/20 focus:ring-purple-500 focus:ring-offset-0"
+              />
+              <span className="text-slate-300 text-xs font-semibold flex items-center gap-1.5">
+                <span>✉️</span> Also send Email Blast to recipient list
+              </span>
+            </label>
+
             <button
               type="submit"
               disabled={sending}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold transition disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{sending ? "Broadcasting..." : "Broadcast Announcement"}</span>

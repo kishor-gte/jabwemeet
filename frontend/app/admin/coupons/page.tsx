@@ -54,6 +54,7 @@ export default function AdminCouponsPage() {
     maxUses: 100,
     perUserLimit: 1,
     expiryDate: "",
+    sendEmail: false,
   });
 
   async function fetchCoupons() {
@@ -85,6 +86,7 @@ export default function AdminCouponsPage() {
       maxUses: 100,
       perUserLimit: 1,
       expiryDate: "",
+      sendEmail: false,
     });
     setErrorMsg("");
     setModalOpen(true);
@@ -530,6 +532,20 @@ export default function AdminCouponsPage() {
                   onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
                 />
+              </div>
+
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={form.sendEmail}
+                    onChange={(e) => setForm({ ...form, sendEmail: e.target.checked })}
+                    className="w-4 h-4 rounded text-red-600 bg-[#182337] border-white/20 focus:ring-red-500 focus:ring-offset-0"
+                  />
+                  <span className="text-slate-300 text-xs font-semibold flex items-center gap-1.5">
+                    <span>✉️</span> Blast Promotional Voucher to Members via Email
+                  </span>
+                </label>
               </div>
 
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">

@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { sendSessionScheduledEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -273,6 +274,23 @@ router.patch('/requests/:id', async (req, res) => {
           amountEarned: 499.0,
         },
       });
+
+      // Send Session Confirmation Email to user
+      try {
+        const buddyUser = await prisma.user.findUnique({ where: { id: buddyId }, select: { name: true, displayName: true } });
+        if (request.user?.email) {
+          sendSessionScheduledEmail({
+            userEmail: request.user.email,
+            userName: request.user.name,
+            buddyName: buddyUser?.displayName || buddyUser?.name || 'Breakup Buddy',
+            scheduledAt: session.scheduledAt,
+            durationMinutes: session.durationMinutes,
+            sessionType: session.sessionType,
+          }).catch(e => {});
+        }
+      } catch (mailErr) {
+        console.warn('Buddy session mail note:', mailErr.message);
+      }
     }
 
     return res.json({
@@ -310,7 +328,7 @@ router.post('/requests/:id/accept', async (req, res) => {
     const updatedRequest = await prisma.buddyRequest.update({
       where: { id },
       data: { status: 'Accepted' },
-      include: { user: { select: { name: true, profileImage: true } } },
+      include: { user: { select: { name: true, profileImage: true, email: true } } },
     });
 
     const session = await prisma.buddySession.create({
@@ -324,6 +342,23 @@ router.post('/requests/:id/accept', async (req, res) => {
         amountEarned: 499.0,
       },
     });
+
+    // Send Session Confirmation Email to user
+    try {
+      const buddyUser = await prisma.user.findUnique({ where: { id: buddyId }, select: { name: true, displayName: true } });
+      if (request.user?.email) {
+        sendSessionScheduledEmail({
+          userEmail: request.user.email,
+          userName: request.user.name,
+          buddyName: buddyUser?.displayName || buddyUser?.name || 'Breakup Buddy',
+          scheduledAt: session.scheduledAt,
+          durationMinutes: session.durationMinutes,
+          sessionType: session.sessionType,
+        }).catch(e => {});
+      }
+    } catch (mailErr) {
+      console.warn('Buddy accept mail note:', mailErr.message);
+    }
 
     return res.json({
       success: true,

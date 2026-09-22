@@ -67,19 +67,20 @@ export default function AdminInvoicesPage() {
                 <th className="px-4 py-3.5">Taxable (₹)</th>
                 <th className="px-4 py-3.5">GST (18%)</th>
                 <th className="px-4 py-3.5">Status</th>
-                <th className="px-5 py-3.5 text-right">Date</th>
+                <th className="px-5 py-3.5">Date</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-500 animate-pulse">
+                  <td colSpan={8} className="text-center py-10 text-slate-500 animate-pulse">
                     Loading invoices...
                   </td>
                 </tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-500 italic">
+                  <td colSpan={8} className="text-center py-10 text-slate-500 italic">
                     No invoices generated yet.
                   </td>
                 </tr>
@@ -99,8 +100,28 @@ export default function AdminInvoicesPage() {
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right text-slate-400 text-[11px]">
+                    <td className="px-5 py-4 text-slate-400 text-[11px]">
                       {new Date(inv.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/invoices/${inv.id}/send`, {
+                              method: "POST",
+                              credentials: "include",
+                            });
+                            const data = await res.json();
+                            alert(data.message || "Invoice emailed successfully! 🧾✨");
+                          } catch (e) {
+                            alert("Failed to send invoice email.");
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 text-xs font-semibold transition inline-flex items-center gap-1.5"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Email Receipt 📩</span>
+                      </button>
                     </td>
                   </tr>
                 ))
