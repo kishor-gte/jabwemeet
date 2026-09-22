@@ -48,6 +48,7 @@ interface BreakupBuddy {
   availableTimeStart: string | null;
   availableTimeEnd: string | null;
   weeklySchedule?: any;
+  isAvailableForRequests: boolean;
   isVerified: boolean;
   isApproved: boolean;
   createdAt: string;
@@ -613,10 +614,20 @@ export default function BreakupBuddyPage() {
 
                           {/* Name and Badges */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
                               <h3 className="text-base font-bold text-white truncate">
                                 {displayName}
                               </h3>
+                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                buddy.isAvailableForRequests !== false
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                  : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                              }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${
+                                  buddy.isAvailableForRequests !== false ? "bg-emerald-400" : "bg-rose-400"
+                                }`} />
+                                {buddy.isAvailableForRequests !== false ? "Available" : "Unavailable"}
+                              </div>
                             </div>
 
                             <p className="text-xs text-indigo-400 font-medium flex items-center gap-1 mt-0.5">
@@ -773,11 +784,25 @@ export default function BreakupBuddyPage() {
                             onClick={() => {
                               setSelectedBuddy(buddy);
                             }}
-                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition active:scale-[0.99]"
+                            disabled={buddy.isAvailableForRequests === false}
+                            className={`w-full py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.99] ${
+                              buddy.isAvailableForRequests !== false
+                                ? "bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white shadow-lg shadow-indigo-600/20"
+                                : "bg-white/5 text-slate-500 cursor-not-allowed border border-white/10"
+                            }`}
                           >
-                            <MessageCircle className="w-4 h-4" />
-                            <span>Book Confidential Session</span>
-                            <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                            {buddy.isAvailableForRequests !== false ? (
+                              <>
+                                <MessageCircle className="w-4 h-4" />
+                                <span>Book Confidential Session</span>
+                                <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-4 h-4" />
+                                <span>Currently Unavailable</span>
+                              </>
+                            )}
                           </button>
                         );
                       })()}

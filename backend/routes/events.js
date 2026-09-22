@@ -415,6 +415,35 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
       console.warn('Registration record notice:', regErr.message);
     }
 
+    // Send confirmation email
+    try {
+      const { sendMail } = require('../services/emailService');
+      const emailSubject = `🎟️ Ticket Confirmed: ${event.title}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #4CAF50;">🎉 You're all set!</h2>
+          <p>Hi ${booking.user.name},</p>
+          <p>Your ticket(s) for <strong>${event.title}</strong> have been successfully confirmed. 🎊</p>
+          
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">📅 Event Details</h3>
+            <p><strong>🕒 Date:</strong> ${new Date(event.date).toLocaleString()}</p>
+            <p><strong>📍 Location:</strong> ${event.location}, ${event.city}</p>
+            <p><strong>🎟️ Tickets:</strong> ${spots}</p>
+            <p><strong>💰 Amount Paid:</strong> ₹${paidAmount}</p>
+          </div>
+          
+          <p>We can't wait to see you there! Get ready for an amazing experience. ✨</p>
+          
+          <br/>
+          <p>Cheers, <br/>The JabWeMeet Team 💖</p>
+        </div>
+      `;
+      sendMail(booking.user.email, emailSubject, '', emailHtml).catch(err => console.error('Failed to send confirmation email', err));
+    } catch (emailErr) {
+      console.error('Email module error:', emailErr);
+    }
+
     return res.status(201).json({
       success: true,
       message: `🎉 Success! ${spots} ${spots === 1 ? 'ticket' : 'tickets'} confirmed for "${event.title}".`,
@@ -512,6 +541,35 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
         ON CONFLICT ("ticketCode") DO NOTHING;
       `, `reg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, id, userId, ticketCode);
     } catch (regErr) {}
+
+    // Send confirmation email
+    try {
+      const { sendMail } = require('../services/emailService');
+      const emailSubject = `🎟️ Ticket Confirmed: ${event.title}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #4CAF50;">🎉 You're all set!</h2>
+          <p>Hi ${booking.user.name},</p>
+          <p>Your ticket(s) for <strong>${event.title}</strong> have been successfully confirmed. 🎊</p>
+          
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">📅 Event Details</h3>
+            <p><strong>🕒 Date:</strong> ${new Date(event.date).toLocaleString()}</p>
+            <p><strong>📍 Location:</strong> ${event.location}, ${event.city}</p>
+            <p><strong>🎟️ Tickets:</strong> ${spots}</p>
+            <p><strong>💰 Amount Paid:</strong> Free</p>
+          </div>
+          
+          <p>We can't wait to see you there! Get ready for an amazing experience. ✨</p>
+          
+          <br/>
+          <p>Cheers, <br/>The JabWeMeet Team 💖</p>
+        </div>
+      `;
+      sendMail(booking.user.email, emailSubject, '', emailHtml).catch(err => console.error('Failed to send confirmation email', err));
+    } catch (emailErr) {
+      console.error('Email module error:', emailErr);
+    }
 
     return res.status(201).json({
       success: true,
