@@ -9,6 +9,7 @@ import DashboardSidebar from "./components/DashboardSidebar";
 import DashboardHeader from "./components/DashboardHeader";
 import QuickStats from "./components/QuickStats";
 import ProfileCompletionCard from "./components/ProfileCompletionCard";
+import { calculateProfileStrength } from "./components/profile/profileStrength";
 import UpcomingEventsSection, { EventItem } from "./components/UpcomingEventsSection";
 import ExperiencesSection from "./components/ExperiencesSection";
 import PremiumServicesSection from "./components/PremiumServicesSection";
@@ -86,6 +87,7 @@ function DashboardContent() {
     status: "New" | "Approved" | "Rejected";
   } | null>(null);
   const [reservationToast, setReservationToast] = useState<string | null>(null);
+  const [profileTargetSection, setProfileTargetSection] = useState<string | null>(null);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -519,20 +521,10 @@ function DashboardContent() {
     setTimeout(() => setReservationToast(null), 4500);
   };
 
-  // Calculate profile completion percentage dynamically
+  // Calculate profile completion percentage dynamically using unified profile strength model
   const calculateProfileCompletion = () => {
     if (!user) return 0;
-    const required = [
-      Boolean(user.name?.trim()),
-      Boolean(user.email?.trim()),
-      Boolean(user.phone?.trim()),
-      Boolean(user.city?.trim()),
-      Boolean(user.dateOfBirth),
-      Boolean(user.gender?.trim()),
-      Boolean(user.relationshipIntent?.trim()),
-    ];
-    const completed = required.filter(Boolean).length;
-    return Math.round((completed / required.length) * 100);
+    return calculateProfileStrength(user).percentage;
   };
 
   const scrollToElement = (elementId: string) => {
@@ -797,6 +789,17 @@ function DashboardContent() {
               <ProfileCompletionCard
                 user={user}
                 onUpdateUser={handleUpdateUser}
+                onNavigateSection={(sectionId) => {
+                  setProfileTargetSection(sectionId);
+                  setActiveSection("profile");
+                  window.history.replaceState(null, "", "/dashboard?tab=profile");
+                  setTimeout(() => {
+                    const el = document.getElementById(`section-${sectionId}`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }, 150);
+                }}
               />
 
               {/* Dynamic Upcoming Events Section */}
@@ -915,6 +918,7 @@ function DashboardContent() {
             <ProfileView
               user={user}
               onUpdateUser={handleUpdateUser}
+              targetSection={profileTargetSection}
             />
           )}
 

@@ -87,6 +87,66 @@ export default function DashboardSidebar({
     };
   }, [user?.id]);
 
+  // Track seen counts per section so badges disappear once viewed and do not appear again
+  const [mounted, setMounted] = useState(false);
+  const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
+  const storageKey = `jwm_sidebar_seen_${user?.id || "default"}`;
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        setSeenCounts(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, [storageKey]);
+
+  const markSectionAsSeen = (section: string, currentCount: number) => {
+    setSeenCounts((prev) => {
+      const updated = {
+        ...prev,
+        [section]: Math.max(prev[section] || 0, currentCount),
+      };
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  // Automatically mark section as seen if user is currently on that section
+  useEffect(() => {
+    if (!mounted) return;
+    if (activeSection === "events" && eventsCount > 0) {
+      markSectionAsSeen("events", eventsCount);
+    } else if (activeSection === "my-events" && myEventsCount > 0) {
+      markSectionAsSeen("my-events", myEventsCount);
+    } else if (activeSection === "connections" && connectionsCount > 0) {
+      markSectionAsSeen("connections", connectionsCount);
+    } else if (activeSection === "notifications" && notificationsCount > 0) {
+      markSectionAsSeen("notifications", notificationsCount);
+    } else if (activeSection === "messages" && unreadMessagesCount > 0) {
+      markSectionAsSeen("messages", unreadMessagesCount);
+    }
+  }, [
+    activeSection,
+    eventsCount,
+    myEventsCount,
+    connectionsCount,
+    notificationsCount,
+    unreadMessagesCount,
+    mounted,
+    storageKey,
+  ]);
+
+  const getUnseenCount = (section: string, totalCount: number) => {
+    if (!mounted) return 0;
+    if (activeSection === section) return 0;
+    const seen = seenCounts[section] || 0;
+    return Math.max(0, totalCount - seen);
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -174,6 +234,7 @@ export default function DashboardSidebar({
 
             <button
               onClick={() => {
+                markSectionAsSeen("events", eventsCount);
                 onSelectSection("events");
                 onCloseMobile();
               }}
@@ -187,15 +248,16 @@ export default function DashboardSidebar({
                 <Calendar className="w-4 h-4 text-slate-400" />
                 <span>Discover Events</span>
               </div>
-              {eventsCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300">
-                  {eventsCount}
+              {getUnseenCount("events", eventsCount) > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300 transition-opacity">
+                  {getUnseenCount("events", eventsCount)}
                 </span>
               )}
             </button>
 
             <button
               onClick={() => {
+                markSectionAsSeen("my-events", myEventsCount);
                 onSelectSection("my-events");
                 onCloseMobile();
               }}
@@ -209,15 +271,16 @@ export default function DashboardSidebar({
                 <CalendarCheck className="w-4 h-4 text-slate-400" />
                 <span>My Events</span>
               </div>
-              {myEventsCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30">
-                  {myEventsCount}
+              {getUnseenCount("my-events", myEventsCount) > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30 transition-opacity">
+                  {getUnseenCount("my-events", myEventsCount)}
                 </span>
               )}
             </button>
 
             <button
               onClick={() => {
+                markSectionAsSeen("connections", connectionsCount);
                 onSelectSection("connections");
                 onCloseMobile();
               }}
@@ -231,9 +294,9 @@ export default function DashboardSidebar({
                 <Users className="w-4 h-4 text-slate-400" />
                 <span>My Connections</span>
               </div>
-              {connectionsCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
-                  {connectionsCount}
+              {getUnseenCount("connections", connectionsCount) > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 transition-opacity">
+                  {getUnseenCount("connections", connectionsCount)}
                 </span>
               )}
             </button>
@@ -323,6 +386,7 @@ export default function DashboardSidebar({
 
             <button
               onClick={() => {
+                markSectionAsSeen("messages", unreadMessagesCount);
                 onSelectSection("messages");
                 onCloseMobile();
               }}
@@ -336,9 +400,9 @@ export default function DashboardSidebar({
                 <MessageCircle className="w-4 h-4 text-slate-400" />
                 <span>Messages</span>
               </div>
-              {unreadMessagesCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {unreadMessagesCount}
+              {getUnseenCount("messages", unreadMessagesCount) > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-opacity">
+                  {getUnseenCount("messages", unreadMessagesCount)}
                 </span>
               )}
             </button>
@@ -360,6 +424,7 @@ export default function DashboardSidebar({
 
             <button
               onClick={() => {
+                markSectionAsSeen("notifications", notificationsCount);
                 onSelectSection("notifications");
                 onCloseMobile();
               }}
@@ -373,9 +438,9 @@ export default function DashboardSidebar({
                 <Bell className="w-4 h-4 text-slate-400" />
                 <span>Notifications</span>
               </div>
-              {notificationsCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  {notificationsCount}
+              {getUnseenCount("notifications", notificationsCount) > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-opacity">
+                  {getUnseenCount("notifications", notificationsCount)}
                 </span>
               )}
             </button>
