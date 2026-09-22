@@ -1397,6 +1397,7 @@ async function sendTestEmail({ toEmail, email, subject, previewNote }) {
 }
 
 module.exports = {
+  sendPasswordResetEmail,
   transporter,
   // Diagnostic
   sendTestEmail,
@@ -1439,3 +1440,33 @@ module.exports = {
   sendSessionScheduledEmail,
 };
 
+
+async function sendPasswordResetEmail({ userEmail, userName, resetToken }) {
+  const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+  const htmlBody = `
+    <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;'>
+      <h2 style='color: #e06d53; text-align: center;'>Password Reset Request</h2>
+      <p>Hi <b>${userName || 'User'}</b>,</p>
+      <p>We received a request to reset your JabWeMeet password. If you didn't make this request, you can safely ignore this email.</p>
+      <p>Click the button below to set a new password:</p>
+      <div style='text-align: center; margin: 30px 0;'>
+        <a href='${resetLink}' style='background: #e06d53; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Reset Password</a>
+      </div>
+      <p>Or copy and paste this link in your browser:</p>
+      <p style='word-break: break-all; color: #555; font-size: 14px;'>${resetLink}</p>
+      <hr style='border: 0; border-top: 1px solid #eee; margin: 30px 0;' />
+      <p style='font-size: 12px; color: #777; text-align: center;'>JabWeMeet Team</p>
+    </div>
+  `;
+  try {
+    await transporter.sendMail({
+      from: '"JabWeMeet Notifications" <yogithamgowdayogitha@gmail.com>',
+      to: userEmail,
+      subject: 'Reset your JabWeMeet password',
+      html: htmlBody,
+    });
+    console.log(`[Mailer] Password reset email sent to ${userEmail}`);
+  } catch (err) {
+    console.error(`[Mailer Error] Password Reset:`, err.message);
+  }
+}

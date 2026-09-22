@@ -2,6 +2,7 @@ require('dotenv').config();
 const prisma = require('./db');
 const bcrypt = require('bcryptjs');
 
+
 async function seed() {
   console.log('--- Starting JabWeMeet Database Seeding ---');
 
