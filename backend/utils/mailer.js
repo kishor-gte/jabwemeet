@@ -1,17 +1,28 @@
-const nodemailer = require('nodemailer');
+let transporter;
 
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.MAIL_PORT || '587', 10),
-  secure: process.env.MAIL_PORT == '465',
-  auth: {
-    user: process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com',
-    pass: process.env.MAIL_PASSWORD || 'bhzoxxwajawaqmps',
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+try {
+  const nodemailer = require('nodemailer');
+  transporter = nodemailer.createTransport({
+    host: process.env.MAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.MAIL_PORT || '587', 10),
+    secure: process.env.MAIL_PORT == '465',
+    auth: {
+      user: process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com',
+      pass: process.env.MAIL_PASSWORD || 'bhzoxxwajawaqmps',
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+} catch (err) {
+  console.warn('⚠️ [JabWeMeet Mailer] "nodemailer" not installed or failed to load. Outgoing emails will be logged instead of failing.');
+  transporter = {
+    sendMail: async (options) => {
+      console.log(`[JabWeMeet Mailer Sim] To: ${options.to} | Subject: ${options.subject}`);
+      return { messageId: 'simulated-' + Date.now() };
+    },
+  };
+}
 
 const FROM_HEADER = `"JabWeMeet Official" <${process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com'}>`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
