@@ -73,7 +73,6 @@ const NAV_SECTIONS = [
     items: [
       { label: "My Earnings", href: "/admin/earnings", icon: CreditCard },
       { label: "Payments & Revenue", href: "/admin/payments", icon: CreditCard },
-      { label: "Refund Requests", href: "/admin/payments/refunds", icon: RotateCcw },
       { label: "Invoices", href: "/admin/payments/invoices", icon: Receipt },
       { label: "Service Packages", href: "/admin/services/packages", icon: Package },
       { label: "Subscriptions", href: "/admin/services/subscriptions", icon: Repeat },
@@ -83,10 +82,8 @@ const NAV_SECTIONS = [
   {
     title: "Trust, Safety & Support",
     items: [
-      { label: "Safety Center", href: "/admin/safety", icon: ShieldAlert },
       { label: "Verification Center", href: "/admin/verification", icon: FileCheck },
       { label: "Reviews & Ratings", href: "/admin/reviews", icon: Star },
-      { label: "Customer Support", href: "/admin/support", icon: LifeBuoy },
     ],
   },
   {

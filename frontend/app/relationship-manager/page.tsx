@@ -39,6 +39,9 @@ interface RelationshipManager {
   profileImage: string | null;
   isVerified: boolean;
   isApproved: boolean;
+  isAvailableForRequests: boolean;
+  weeklySchedule: any;
+  blockedDates: string[];
   createdAt: string;
   _count?: {
     assignedClients: number;
@@ -80,6 +83,11 @@ export default function RelationshipManagerPage() {
   const [latestRequest, setLatestRequest] = useState<UserMatchmakingRequest | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
+  // Status Banner Auto-Vanish state (vanishes after 10 seconds and stays vanished)
+  const [showAssignedBanner, setShowAssignedBanner] = useState(false);
+  const [isVanishing, setIsVanishing] = useState(false);
+  const [bannerSecondsLeft, setBannerSecondsLeft] = useState(10);
+
   // Badge counts for sidebar (matching dashboard)
   const [badgeCounts, setBadgeCounts] = useState({
     eventsCount: 0,
@@ -112,6 +120,87 @@ export default function RelationshipManagerPage() {
     } finally {
       setStatusLoading(false);
     }
+  };
+
+  // Auto-dismiss assigned manager banner 10 seconds after user sees it
+  useEffect(() => {
+    if (!assignedManager) {
+      setShowAssignedBanner(false);
+      return;
+    }
+
+    const bannerKey = `jwm_rm_banner_vanished_${currentUser?.id || "guest"}_${assignedManager.id}`;
+    const firstSeenKey = `jwm_rm_banner_first_seen_${currentUser?.id || "guest"}_${assignedManager.id}`;
+
+    // If user already saw this banner and it finished vanishing, do not show again
+    try {
+      if (localStorage.getItem(bannerKey) === "true") {
+        setShowAssignedBanner(false);
+        return;
+      }
+    } catch (e) {}
+
+    let firstSeen = Date.now();
+    try {
+      const storedFirstSeen = localStorage.getItem(firstSeenKey);
+      if (storedFirstSeen) {
+        firstSeen = parseInt(storedFirstSeen, 10);
+      } else {
+        localStorage.setItem(firstSeenKey, firstSeen.toString());
+      }
+    } catch (e) {}
+
+    const elapsed = Date.now() - firstSeen;
+    const remainingMs = Math.max(0, 10000 - elapsed);
+
+    if (remainingMs <= 0) {
+      try {
+        localStorage.setItem(bannerKey, "true");
+      } catch (e) {}
+      setShowAssignedBanner(false);
+      return;
+    }
+
+    setShowAssignedBanner(true);
+    setIsVanishing(false);
+    setBannerSecondsLeft(Math.ceil(remainingMs / 1000));
+
+    const countdownInterval = setInterval(() => {
+      const nowElapsed = Date.now() - firstSeen;
+      const left = Math.max(0, Math.ceil((10000 - nowElapsed) / 1000));
+      setBannerSecondsLeft(left);
+      if (left <= 1) {
+        setIsVanishing(true);
+      }
+    }, 1000);
+
+    const vanishTimeout = setTimeout(() => {
+      setIsVanishing(true);
+      setTimeout(() => {
+        setShowAssignedBanner(false);
+        try {
+          localStorage.setItem(bannerKey, "true");
+        } catch (e) {}
+      }, 500); // 500ms smooth fade-out
+    }, remainingMs);
+
+    return () => {
+      clearInterval(countdownInterval);
+      clearTimeout(vanishTimeout);
+    };
+  }, [assignedManager, currentUser?.id]);
+
+  const handleDismissBanner = () => {
+    setIsVanishing(true);
+    setTimeout(() => {
+      setShowAssignedBanner(false);
+      if (assignedManager) {
+        const bannerKey = `jwm_rm_banner_vanished_${currentUser?.id || "guest"}_${assignedManager.id}`;
+        try {
+          localStorage.setItem(bannerKey, "true");
+        } catch (e) {}
+      }
+    }, 300);
   };
 
   useEffect(() => {
@@ -416,9 +505,33 @@ export default function RelationshipManagerPage() {
         {/* Main Content Area */}
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8 flex-1">
           {/* Real-time Matchmaking Status Banner */}
-          {assignedManager ? (
-            <div className="p-6 rounded-3xl bg-gradient-to-r from-emerald-950/70 via-[#102924] to-[#131d2e] border border-emerald-500/50 shadow-2xl shadow-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
+          {/* Real-time Matchmaking Status Banner (Vanishes after 10 seconds) */}
+          {assignedManager && showAssignedBanner ? (
+            <div
+              className={`relative p-6 rounded-3xl bg-gradient-to-r from-emerald-950/70 via-[#102924] to-[#131d2e] border border-emerald-500/50 shadow-2xl shadow-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition-all duration-500 ${
+                isVanishing
+                  ? "opacity-0 -translate-y-3 max-h-0 py-0 overflow-hidden border-transparent pointer-events-none"
+                  : "opacity-100 translate-y-0"
+              }`}
+            >
+              {/* Top right dismiss & countdown badge */}
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                <span className="text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-400" />
+                  <span>{bannerSecondsLeft}s</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDismissBanner}
+                  className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  title="Dismiss banner"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-start gap-4 pr-16 md:pr-0">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0 shadow-lg shadow-emerald-500/10">
                   <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 </div>
@@ -443,7 +556,6 @@ export default function RelationshipManagerPage() {
                       <Mail className="w-3.5 h-3.5 text-emerald-400" />
                       {assignedManager.email}
                     </span>
-
                   </div>
                 </div>
               </div>
@@ -687,9 +799,21 @@ export default function RelationshipManagerPage() {
 
                     {/* Manager Name & City */}
                     <div>
-                      <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition flex items-center gap-2">
-                        <span>{manager.name}</span>
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition flex items-center gap-2">
+                          <span>{manager.name}</span>
+                        </h3>
+                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                          manager.isAvailableForRequests !== false
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${
+                            manager.isAvailableForRequests !== false ? "bg-emerald-400" : "bg-rose-400"
+                          }`} />
+                          {manager.isAvailableForRequests !== false ? "Available" : "Unavailable"}
+                        </div>
+                      </div>
 
                       <div className="flex items-center gap-2 text-xs text-slate-400 mt-1 capitalize">
                         <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
@@ -748,10 +872,24 @@ export default function RelationshipManagerPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedManager(manager)}
-                        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] text-white text-xs font-bold transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+                        disabled={manager.isAvailableForRequests === false}
+                        className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                          manager.isAvailableForRequests !== false
+                            ? "bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] text-white shadow-lg shadow-amber-500/20"
+                            : "bg-white/5 text-slate-500 cursor-not-allowed border border-white/10"
+                        }`}
                       >
-                        <HeartHandshake className="w-4 h-4" />
-                        <span>Request Introduction with {manager.name.split(" ")[0]}</span>
+                        {manager.isAvailableForRequests !== false ? (
+                          <>
+                            <HeartHandshake className="w-4 h-4" />
+                            <span>Request Introduction with {manager.name.split(" ")[0]}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-4 h-4" />
+                            <span>Currently Unavailable</span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
