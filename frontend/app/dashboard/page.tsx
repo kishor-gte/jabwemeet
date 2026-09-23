@@ -86,7 +86,7 @@ function DashboardContent() {
     managerName: string | null;
     status: "New" | "Approved" | "Rejected";
   } | null>(null);
-  const [reservationToast, setReservationToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{text: string, type: 'success' | 'error'} | null>(null);
   const [profileTargetSection, setProfileTargetSection] = useState<string | null>(null);
 
   useEffect(() => {
@@ -360,15 +360,17 @@ function DashboardContent() {
           try {
             localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
           } catch (e) {}
-          setReservationToast(`🎉 Confirmed ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} for "${evt.title}"!`);
-          setTimeout(() => setReservationToast(null), 4500);
+          setToast({ text: `🎉 Confirmed ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} for "${evt.title}"!`, type: 'success' });
+          setTimeout(() => setToast(null), 4500);
           reloadBookings();
         } else {
-          alert(data.message || "Failed to reserve spot.");
+          setToast({ text: data.message || "Failed to reserve spot.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
         }
       } catch (err) {
         console.error("Free booking error:", err);
-        alert("Failed to connect to server. Please try again.");
+        setToast({ text: "Failed to connect to server. Please try again.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
       }
       return;
     }
@@ -376,7 +378,8 @@ function DashboardContent() {
     // Paid event path via Razorpay
     const loaded = await loadRazorpay();
     if (!loaded) {
-      alert("Razorpay checkout failed to load. Please verify your internet connection.");
+      setToast({ text: "Razorpay checkout failed to load. Please verify your internet connection.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
       return;
     }
 
@@ -390,7 +393,8 @@ function DashboardContent() {
       const orderData = await orderRes.json();
 
       if (!orderData.success) {
-        alert(orderData.message || "Failed to create payment order.");
+        setToast({ text: orderData.message || "Failed to create payment order.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
         return;
       }
 
@@ -405,8 +409,8 @@ function DashboardContent() {
               : e
           )
         );
-        setReservationToast(`🎉 Confirmed ${ticketCount} seat(s) for "${evt.title}"!`);
-        setTimeout(() => setReservationToast(null), 4500);
+        setToast({ text: `🎉 Confirmed ${ticketCount} seat(s) for "${evt.title}"!`, type: 'success' });
+        setTimeout(() => setToast(null), 4500);
         reloadBookings();
         return;
       }
@@ -449,17 +453,17 @@ function DashboardContent() {
               try {
                 localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
               } catch (e) {}
-              setReservationToast(
-                `🎉 Payment verified! ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} secured for "${evt.title}".`
-              );
-              setTimeout(() => setReservationToast(null), 4500);
+              setToast({ text: `🎉 Payment verified! ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} secured for "${evt.title}".`, type: 'success' });
+              setTimeout(() => setToast(null), 4500);
               reloadBookings();
             } else {
-              alert(verifyData.message || "Payment verification failed.");
+              setToast({ text: verifyData.message || "Payment verification failed.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
             }
           } catch (verErr) {
             console.error("Payment verification error:", verErr);
-            alert("Error confirming payment. Please contact support.");
+            setToast({ text: "Error confirming payment. Please contact support.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
           }
         },
         prefill: {
@@ -481,7 +485,8 @@ function DashboardContent() {
       paymentObj.open();
     } catch (err) {
       console.error("Booking error:", err);
-      alert("Failed to initiate payment. Please try again.");
+      setToast({ text: "Failed to initiate payment. Please try again.", type: 'error' });
+          setTimeout(() => setToast(null), 4500);
     }
   };
 
@@ -498,8 +503,8 @@ function DashboardContent() {
       const data = await res.json();
       if (data.success) {
         setConnections(connections.map(c => c.id === id ? { ...c, ...data.connection } : c));
-        setReservationToast(action === 'Approve' ? 'Connection Approved!' : 'Passed on connection.');
-        setTimeout(() => setReservationToast(null), 4000);
+        setToast({ text: action === 'Approve' ? 'Connection Approved!' : 'Passed on connection.', type: 'success' });
+        setTimeout(() => setToast(null), 4000);
       }
     } catch (e) {
       console.error(e);
@@ -517,8 +522,8 @@ function DashboardContent() {
 
     const serviceName =
       service === "relationshipManager" ? "Relationship Manager" : "Breakup Buddy";
-    setReservationToast(`Request submitted for ${serviceName}! A specialist will reach out.`);
-    setTimeout(() => setReservationToast(null), 4500);
+    setToast({ text: `Request submitted for ${serviceName}! A specialist will reach out.`, type: 'success' });
+    setTimeout(() => setToast(null), 4500);
   };
 
   // Calculate profile completion percentage dynamically using unified profile strength model
@@ -589,11 +594,11 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white flex flex-col">
       {/* Dynamic Toast Notification */}
-      {reservationToast && (
+      {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-200">
-          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-emerald-500 text-white font-medium text-xs shadow-2xl shadow-emerald-500/40 border border-emerald-400/30">
-            <ShieldCheck className="w-4 h-4 shrink-0" />
-            <span>{reservationToast}</span>
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/40 border-emerald-400/30' : 'bg-red-500 shadow-red-500/40 border-red-400/30'}`}>
+            {toast.type === 'success' ? <ShieldCheck className="w-4 h-4 shrink-0" /> : <div className="w-4 h-4 shrink-0 font-bold text-center leading-4">!</div>}
+            <span>{toast.text}</span>
           </div>
         </div>
       )}

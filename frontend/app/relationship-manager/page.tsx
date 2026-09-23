@@ -74,6 +74,7 @@ export default function RelationshipManagerPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [managers, setManagers] = useState<RelationshipManager[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{text: string, type: 'success' | 'error'} | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCity, setSelectedCity] = useState("all");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -326,11 +327,13 @@ export default function RelationshipManagerPage() {
           setIntroNotes("");
         }, 2200);
       } else {
-        alert(data?.message || "Failed to submit request. Please try again.");
+        setToast({ text: data?.message || "Failed to submit request. Please try again.", type: 'error' });
+        setTimeout(() => setToast(null), 4500);
       }
     } catch (err) {
       console.error("Error submitting matchmaking request:", err);
-      alert("Network error sending introduction request. Please try again.");
+      setToast({ text: "Network error sending introduction request. Please try again.", type: 'error' });
+      setTimeout(() => setToast(null), 4500);
     } finally {
       setIntroSending(false);
     }
@@ -362,7 +365,15 @@ export default function RelationshipManagerPage() {
 
   return (
     <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white flex flex-col">
-      {/* Mobile Topbar */}
+      
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[9999] animate-in slide-in-from-bottom-4 duration-200">
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/40 border-emerald-400/30' : 'bg-red-500 shadow-red-500/40 border-red-400/30'}`}>
+            {toast.type === 'success' ? <ShieldCheck className="w-4 h-4 shrink-0" /> : <div className="w-4 h-4 shrink-0 font-bold text-center leading-4">!</div>}
+            <span>{toast.text}</span>
+          </div>
+        </div>
+      )}\n      {/* Mobile Topbar */}
       <header className="lg:hidden sticky top-0 z-40 bg-[#0d1526]/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
