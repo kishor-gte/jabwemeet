@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const prisma = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { sendMail } = require('../services/emailService');
+const { sendEvent24hReminder } = require('../services/eventReminderService');
 
 const router = express.Router();
 
@@ -1164,6 +1165,44 @@ router.patch('/bookings/:id/status', authenticateToken, requireRole(['ADMIN', 'H
   } catch (error) {
     console.error('Error updating booking status:', error);
     return res.status(500).json({ success: false, message: 'Failed to update booking status' });
+  }
+});
+
+// POST /api/events/:id/send-reminder - Host or Admin sends 24-hour reminder email to event attendees
+router.post('/:id/send-reminder', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const hostId = req.user.userId || req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+    const { userId } = req.body;
+
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        host: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
+    }
+
+    if (!isAdmin && event.hostId !== hostId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to manage reminders for this event.' });
+    }
+
+    const result = await sendEvent24hReminder({
+      eventId: id,
+      targetUserId: userId || null,
+      triggeredByHost: true,
+    });
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Error sending event reminder:', error);
+    return res.status(500).json({ success: false, message: 'Failed to send event reminder emails.' });
   }
 });
 
