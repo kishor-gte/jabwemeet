@@ -54,8 +54,8 @@ function wrapTemplate({ title, badge, contentHtml, buttonText, buttonUrl }) {
       table { border-collapse:collapse; }
       .container { max-width:600px; margin:30px auto; background:#111927; border:1px solid #1e293b; border-radius:24px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.6); }
       .header { background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); padding:32px 24px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.08); }
-      .brand { font-size:26px; font-weight:900; color:#ffffff; letter-spacing:-0.5px; text-decoration:none; }
-      .brand span { color:#ec4899; }
+      .brand { font-size:26px; font-weight:900; color:#e06d53; letter-spacing:-0.5px; text-decoration:none; }
+      .brand span { color:#e06d53; }
       .badge-pill { display:inline-block; margin-top:14px; padding:6px 16px; border-radius:24px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; ${badgeStyle} }
       .content { padding:36px 32px; line-height:1.65; font-size:14px; color:#cbd5e1; }
       .card { background:#162238; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:22px; margin:22px 0; }
@@ -1118,7 +1118,7 @@ async function sendCouponPromoEmail({ userEmail, userName, code, discountAmount,
         <h2 style="color:#ffffff; margin-top:0;">A Special Gift For You, ${userName}! 🎉</h2>
         <p>We're thrilled to have you in the JabWeMeet family. Here is an exclusive promotional voucher for your next booking:</p>
         <div class="card" style="text-align:center; background:linear-gradient(135deg, #24132c, #131d33); border:2px dashed #ec4899;">
-          <p style="margin:0 0 6px 0; color:#ec4899; font-size:18px; font-weight:800;">${discountLabel}</p>
+          <p style="margin:0 0 6px 0; color:#e06d53; font-size:18px; font-weight:800;">${discountLabel}</p>
           <div style="background:#0b1120; border-radius:12px; padding:14px 28px; display:inline-block; margin:10px 0;">
             <span style="font-family:monospace; font-size:24px; font-weight:900; color:#38bdf8; letter-spacing:4px;">${code}</span>
           </div>
@@ -1396,7 +1396,53 @@ async function sendTestEmail({ toEmail, email, subject, previewNote }) {
   }
 }
 
+
+/** Registration OTP */
+async function sendRegistrationOTP({ userEmail, userName, otp }) {
+  if (!userEmail) return;
+  try {
+    const html = wrapTemplate({
+      title: 'Your Registration OTP - JabWeMeet',
+      badge: { text: '🔐 Verification', type: 'badge-info' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Hello ${userName || 'Member'},</h2>
+        <p>Thank you for registering on JabWeMeet. Please use the following One-Time Password (OTP) to complete your registration:</p>
+        <div class="card" style="text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #ec4899;">
+          ${otp}
+        </div>
+        <p style="font-size: 12px; color: #94a3b8;">This OTP is valid for 10 minutes.</p>
+      `,
+    });
+    await transporter.sendMail({ from: FROM_HEADER, to: userEmail, subject: 'Your JabWeMeet Registration OTP', html });
+  } catch (err) {}
+}
+
+/** Registration Success */
+async function sendRegistrationSuccessEmail({ userEmail, userName, role }) {
+  if (!userEmail) return;
+  try {
+    let extraContent = '';
+    if (role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST') {
+      extraContent = '<p>Your application has been received and is currently under review by our admin team. You will be notified once approved.</p>';
+    }
+    const html = wrapTemplate({
+      title: 'Registration Successful - JabWeMeet',
+      badge: { text: '🎉 Welcome', type: 'badge-success' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Welcome to JabWeMeet, ${userName || 'Member'}! 🎉</h2>
+        <p>Your registration was successful.</p>
+        ${extraContent}
+      `,
+      buttonText: 'Login Now',
+      buttonUrl: `${FRONTEND_URL}/login`,
+    });
+    await transporter.sendMail({ from: FROM_HEADER, to: userEmail, subject: '🎉 Welcome to JabWeMeet! Registration Successful', html });
+  } catch (err) {}
+}
+
 module.exports = {
+  sendRegistrationOTP,
+  sendRegistrationSuccessEmail,
   sendPasswordResetEmail,
   transporter,
   // Diagnostic
