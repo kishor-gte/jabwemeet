@@ -289,37 +289,21 @@ router.post('/register', upload.fields([
       },
     });
 
-    // Create JWT token
-    const token = jwt.sign(
-      {
-        userId: newUser.id,
-        email: newUser.email,
-        role: newUser.role,
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // Create JWT token for immediate login (removed per requirement)
+    // We now send OTP instead.
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    global.registrationOtpStore = global.registrationOtpStore || new Map();
+    global.registrationOtpStore.set(cleanEmail, { otp, userId: newUser.id, role: newUser.role, expiresAt: Date.now() + 10 * 60 * 1000 });
 
-    // Set secure HTTP-only cookie
-    res.cookie('token', token, getCookieOptions());
+    const { sendRegistrationOTP } = require('../utils/mailer');
+    await sendRegistrationOTP({ userEmail: cleanEmail, userName: newUser.name, otp });
 
-    const redirectUrl = getRoleRedirect(newUser.role);
-
-    if (newUser.role === 'MATCHMAKER' || newUser.role === 'BREAKUP_BUDDY' || newUser.role === 'HOST') {
-      return res.status(201).json({
-        success: true,
-        message: 'Registration successful! Your application has been sent for admin verification.',
-        pendingApproval: true,
-        role: newUser.role,
-      });
-    }
-
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
-      message: 'Your account has been created successfully. Welcome to JabWeMeet! 🎉',
-      token,
-      user: newUser,
-      redirectUrl,
+      requiresOtp: true,
+      message: 'OTP sent to your email. Please verify to complete registration.',
+      email: cleanEmail,
+      role: newUser.role,
     });
   } catch (error) {
     console.error('Error during registration:', error);
@@ -335,6 +319,68 @@ router.post('/register', upload.fields([
       success: false,
       message: "We couldn't connect to JabWeMeet right now. Please try again.",
     });
+  }
+});
+
+router.get('/debug-otp', (req, res) => {
+  global.registrationOtpStore = global.registrationOtpStore || new Map();
+  res.json({
+    keys: Array.from(global.registrationOtpStore.keys()),
+    entries: Array.from(global.registrationOtpStore.entries())
+  });
+});
+
+// 2.5. POST /api/auth/verify-registration-otp
+router.post('/verify-registration-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    
+    global.registrationOtpStore = global.registrationOtpStore || new Map();
+    const stored = global.registrationOtpStore.get(cleanEmail);
+    
+    console.log("OTP Verification Attempt:", {
+      incomingEmail: cleanEmail,
+      incomingOtp: otp,
+      storedData: stored
+    });
+
+    if (!stored || stored.otp !== otp) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+    }
+    
+    if (Date.now() > stored.expiresAt) {
+      global.registrationOtpStore.delete(cleanEmail);
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please register again.' });
+    }
+
+    // OTP is valid
+    global.registrationOtpStore.delete(cleanEmail);
+
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    
+    // We can set some verified flag here if we want, but for now it's fine.
+    
+    const { sendRegistrationSuccessEmail } = require('../utils/mailer');
+    await sendRegistrationSuccessEmail({ userEmail: cleanEmail, userName: user.name, role: user.role });
+
+    const pendingApproval = (user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Registration successful! 🎉',
+      pendingApproval,
+      redirectUrl: '/login'
+    });
+  } catch (error) {
+    console.error('Error in verify-registration-otp:', error);
+    return res.status(500).json({ success: false, message: 'Server error during verification.' });
   }
 });
 

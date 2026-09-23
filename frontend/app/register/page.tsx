@@ -50,7 +50,10 @@ function RegisterContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
-  const [redirectTarget, setRedirectTarget] = useState("/dashboard");
+  const [redirectTarget, setRedirectTarget] = useState("/login");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -118,22 +121,59 @@ function RegisterContent() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        if (data.pendingApproval) {
+        if (data.requiresOtp) {
+          setOtpSent(true);
+          setRegisteredEmail(data.email);
+        } else if (data.pendingApproval) {
           setPendingApproval(true);
           setSuccess(true);
         } else {
-          const target = data.redirectUrl || (role === "HOST" ? "/host/dashboard" : "/dashboard");
+          const target = "/login";
           setRedirectTarget(target);
           setSuccess(true);
           setTimeout(() => {
             router.push(target);
-          }, 800);
+          }, 2000);
         }
       } else {
         setError(data.message || "Registration failed. Please check your inputs.");
       }
     } catch (err) {
       setError("We couldn't connect to JabWeMeet right now. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!otp) return;
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-registration-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: registeredEmail, otp: otp.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.pendingApproval) {
+          setPendingApproval(true);
+        }
+        setSuccess(true);
+        setOtpSent(false);
+        const target = "/login";
+        setRedirectTarget(target);
+        setTimeout(() => {
+          router.push(target);
+        }, 2000);
+      } else {
+        setError(data.message || "OTP verification failed.");
+      }
+    } catch (err) {
+      setError("Failed to verify OTP.");
     } finally {
       setLoading(false);
     }
@@ -224,7 +264,30 @@ function RegisterContent() {
           </div>
         )}
 
-        {success ? (
+        {otpSent ? (
+          <form onSubmit={handleOtpSubmit} className="space-y-4 text-xs text-center py-6">
+            <h2 className="text-xl font-bold mb-2">Verify Your Email 🔐</h2>
+            <p className="text-slate-300 mb-4">We've sent a 6-digit OTP to <strong className="text-white">{registeredEmail}</strong>.</p>
+            <div>
+              <input
+                type="text"
+                required
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter 6-digit OTP"
+                maxLength={6}
+                className="w-full text-center tracking-widest text-lg px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || otp.length < 6}
+              className="w-full mt-4 py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50"
+            >
+              {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+          </form>
+        ) : success ? (
           <div className="text-center py-6 space-y-4">
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-2">
               ✓
@@ -274,13 +337,13 @@ function RegisterContent() {
               </div>
             ) : (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold">Welcome to JabWeMeet! 🎉</h2>
-                <p className="text-xs text-slate-300">Your account has been created successfully.</p>
+                <h2 className="text-xl font-bold text-[#e06d53]">Registration Successful! 🎉</h2>
+                <p className="text-xs text-slate-300">Your account has been verified and created successfully. Welcome to JabWeMeet!</p>
                 <button
                   onClick={() => router.push(redirectTarget)}
                   className="w-full py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-semibold text-xs transition shadow-lg"
                 >
-                  {role === "HOST" ? "CONTINUE TO EVENT MANAGER DASHBOARD" : "CONTINUE TO DASHBOARD"}
+                  CONTINUE TO LOGIN
                 </button>
               </div>
             )}
