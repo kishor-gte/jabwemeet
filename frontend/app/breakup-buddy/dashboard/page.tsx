@@ -77,6 +77,9 @@ export default function BreakupBuddyDashboardPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [acceptedUsers, setAcceptedUsers] = useState<any[]>([]);
   const [acceptedSearch, setAcceptedSearch] = useState("");
+  const [acceptedFormatFilter, setAcceptedFormatFilter] = useState<"all" | "call" | "chat" | "video">("all");
+  const [acceptedSort, setAcceptedSort] = useState<"newest" | "oldest" | "name">("newest");
+  const [isRefreshingAccepted, setIsRefreshingAccepted] = useState<boolean>(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [callLogs, setCallLogs] = useState<any[]>([]);
@@ -86,6 +89,9 @@ export default function BreakupBuddyDashboardPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [requestFilter, setRequestFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
+  const [requestsSearch, setRequestsSearch] = useState<string>("");
+  const [requestsSort, setRequestsSort] = useState<"newest" | "oldest">("newest");
+  const [isRefreshingRequests, setIsRefreshingRequests] = useState<boolean>(false);
   const [isRefreshingLogs, setIsRefreshingLogs] = useState<boolean>(false);
   const [isRefreshingHistory, setIsRefreshingHistory] = useState<boolean>(false);
   const [isRefreshingReviews, setIsRefreshingReviews] = useState<boolean>(false);
@@ -214,6 +220,43 @@ export default function BreakupBuddyDashboardPage() {
       console.error("Failed to refresh reviews:", e);
     } finally {
       setTimeout(() => setIsRefreshingReviews(false), 300);
+    }
+  };
+
+  const handleRefreshRequests = async () => {
+    setIsRefreshingRequests(true);
+    try {
+      const res = await fetch("/api/buddy/requests", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setRequests(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to refresh requests:", e);
+    } finally {
+      setTimeout(() => setIsRefreshingRequests(false), 300);
+    }
+  };
+
+  const handleRefreshAccepted = async () => {
+    setIsRefreshingAccepted(true);
+    try {
+      const res = await fetch("/api/buddy/accepted-users", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setAcceptedUsers(data.data);
+      } else {
+        // Fallback: filter accepted from requests
+        const reqRes = await fetch("/api/buddy/requests", { credentials: "include" });
+        const reqData = await reqRes.json();
+        if (reqData.success && Array.isArray(reqData.data)) {
+          setAcceptedUsers(reqData.data.filter((r: any) => r.status === "Accepted"));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to refresh accepted users:", e);
+    } finally {
+      setTimeout(() => setIsRefreshingAccepted(false), 300);
     }
   };
 
@@ -582,7 +625,7 @@ export default function BreakupBuddyDashboardPage() {
             <span>{actionMessage.text}</span>
             <button
               onClick={() => setActionMessage(null)}
-              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4 cursor-pointer"
             >
               ✕
             </button>
@@ -690,10 +733,48 @@ export default function BreakupBuddyDashboardPage() {
   };
 
   const renderRequests = () => {
-    const filteredRequests =
-      requestFilter === "all"
-        ? requests
-        : requests.filter((r) => r.status === requestFilter);
+    const totalRequestsCount = requests.length;
+    const pendingCount = requests.filter((r) => r.status === "Pending").length;
+    const acceptedCount = requests.filter((r) => r.status === "Accepted").length;
+    const rejectedCount = requests.filter((r) => r.status === "Rejected").length;
+
+    const acceptanceRate =
+      totalRequestsCount > 0
+        ? Math.round((acceptedCount / totalRequestsCount) * 100)
+        : 100;
+
+    // Search & Filter
+    const filteredRequests = requests.filter((req) => {
+      // 1. Status Filter
+      if (requestFilter !== "all" && req.status !== requestFilter) {
+        return false;
+      }
+
+      // 2. Search Query
+      const q = requestsSearch.toLowerCase().trim();
+      if (!q) return true;
+
+      const userName = (req.user?.name || "").toLowerCase();
+      const userEmail = (req.user?.email || "").toLowerCase();
+      const userCity = (req.user?.city || "").toLowerCase();
+      const topic = (req.topic || "").toLowerCase();
+      const sessionType = (req.sessionType || "").toLowerCase();
+
+      return (
+        userName.includes(q) ||
+        userEmail.includes(q) ||
+        userCity.includes(q) ||
+        topic.includes(q) ||
+        sessionType.includes(q)
+      );
+    });
+
+    // Sort
+    filteredRequests.sort((a: any, b: any) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return requestsSort === "newest" ? timeB - timeA : timeA - timeB;
+    });
 
     const paginatedRequests = filteredRequests.slice(
       (requestsPage - 1) * REQUESTS_PER_PAGE,
@@ -702,135 +783,466 @@ export default function BreakupBuddyDashboardPage() {
 
     return (
       <div className="space-y-6">
+        {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <h2 className="text-2xl font-bold font-serif text-slate-800">Booking Requests</h2>
-            <p className="text-slate-500 text-sm mt-0.5">Manage and respond to user session requests</p>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold font-serif text-slate-800">Booking Requests</h2>
+              {pendingCount > 0 && (
+                <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  {pendingCount} Needs Review
+                </span>
+              )}
+            </div>
+            <p className="text-slate-500 text-sm mt-0.5">
+              Review, accept, and manage incoming support and consultation requests from clients.
+            </p>
           </div>
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-            {(["all", "Pending", "Accepted", "Rejected"] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => { setRequestFilter(filter); setRequestsPage(1); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
-                  requestFilter === filter
-                    ? "bg-white text-teal-700 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {filter === "all" ? "All" : filter}
-              </button>
-            ))}
-          </div>
+
+          <button
+            onClick={handleRefreshRequests}
+            disabled={isRefreshingRequests}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center gap-2 self-start sm:self-center cursor-pointer disabled:opacity-60"
+          >
+            <span className={`inline-block ${isRefreshingRequests ? "animate-spin" : ""}`}>🔄</span>
+            <span>{isRefreshingRequests ? "Refreshing..." : "Refresh Requests"}</span>
+          </button>
         </div>
 
+        {/* Action Alert Banner */}
         {actionMessage && (
           <div
-            className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm ${
+            className={`p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm animate-in fade-in ${
               actionMessage.type === "success"
                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                 : "bg-red-50 text-red-800 border border-red-200"
             }`}
           >
-            <span>{actionMessage.text}</span>
+            <div className="flex items-center gap-2">
+              <span>{actionMessage.type === "success" ? "✓" : "⚠️"}</span>
+              <span>{actionMessage.text}</span>
+            </div>
             <button
               onClick={() => setActionMessage(null)}
-              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4 cursor-pointer"
             >
               ✕
             </button>
           </div>
         )}
 
+        {/* 4 KPI Summary Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Total Received */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Received</span>
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100">
+                📩
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-3xl font-bold text-slate-800">{totalRequestsCount}</p>
+              <p className="text-xs text-slate-400 mt-1">All-time booking inquiries</p>
+            </div>
+          </div>
+
+          {/* Card 2: Pending Action */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-amber-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Action</span>
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm border border-amber-100">
+                ⏳
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {pendingCount > 0 ? "Awaiting your prompt response" : "All requests are responded"}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Accepted Clients */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-emerald-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Accepted Clients</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm border border-emerald-100">
+                👥
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-3xl font-bold text-teal-600">{acceptedCount}</p>
+              <p className="text-xs text-slate-400 mt-1">Confirmed active clients</p>
+            </div>
+          </div>
+
+          {/* Card 4: Acceptance Rate */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Acceptance Rate</span>
+              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-xs border border-teal-100">
+                📈
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-3xl font-bold text-slate-800">{acceptanceRate}%</p>
+                <span className="text-xs font-medium text-emerald-600">response index</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
+                  style={{ width: `${acceptanceRate}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search, Filter & Sort Controls Toolbar */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+              <input
+                type="text"
+                placeholder="Search requests by client name, email, city, or topic..."
+                value={requestsSearch}
+                onChange={(e) => {
+                  setRequestsSearch(e.target.value);
+                  setRequestsPage(1);
+                }}
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+              />
+              {requestsSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequestsSearch("");
+                    setRequestsPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 shrink-0">
+              {[
+                { id: "all", label: "All", count: totalRequestsCount },
+                { id: "Pending", label: "Pending", count: pendingCount, highlight: pendingCount > 0 },
+                { id: "Accepted", label: "Accepted", count: acceptedCount },
+                { id: "Rejected", label: "Declined", count: rejectedCount },
+              ].map((f) => {
+                const isActive = requestFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => {
+                      setRequestFilter(f.id as any);
+                      setRequestsPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                      isActive
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    <span>{f.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : f.highlight
+                          ? "bg-amber-200 text-amber-900"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {f.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sort Select */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-slate-500">Sort:</span>
+              <select
+                value={requestsSort}
+                onChange={(e) => setRequestsSort(e.target.value as any)}
+                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-500"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Requests List or Empty State */}
         {filteredRequests.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-2">
-            <p className="text-2xl">📩</p>
-            <p className="font-semibold text-slate-700">No {requestFilter !== "all" ? requestFilter.toLowerCase() : ""} requests found</p>
-            <p className="text-xs text-slate-400">Incoming requests will show up here automatically.</p>
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-16 h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-slate-200 shadow-2xs">
+              📩
+            </div>
+            <h3 className="font-bold text-slate-800 text-lg">
+              {requestsSearch || requestFilter !== "all"
+                ? "No matching booking requests found"
+                : "No booking requests received yet"}
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              {requestsSearch || requestFilter !== "all"
+                ? "Try adjusting your search query or switching the status filter above."
+                : "When clients discover your Breakup Buddy profile in the directory and book a session, their requests will appear here for your review."}
+            </p>
+            {(requestsSearch || requestFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRequestsSearch("");
+                  setRequestFilter("all");
+                  setRequestsPage(1);
+                }}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition border border-slate-200 cursor-pointer"
+              >
+                Clear Search & Filters
+              </button>
+            )}
           </div>
         ) : (
-          <div>
-            <div className="space-y-4">
-              {paginatedRequests.map((req: any) => (
-                <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm">
-                        {req.user?.name ? req.user.name[0].toUpperCase() : "U"}
+          <div className="space-y-4">
+            {paginatedRequests.map((req: any) => {
+              const u = req.user || {};
+              const clientName = u.name || "Anonymous Client";
+              const initial = clientName.charAt(0).toUpperCase();
+
+              // Calculate approximate age if DOB exists
+              const age = u.dateOfBirth
+                ? Math.floor(
+                    (new Date().getTime() - new Date(u.dateOfBirth).getTime()) /
+                      (365.25 * 24 * 60 * 60 * 1000)
+                  )
+                : null;
+
+              const reqDate = new Date(req.createdAt);
+              const formattedDate = reqDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
+              const formattedTime = reqDate.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+
+              return (
+                <div
+                  key={req.id}
+                  className={`bg-white border rounded-2xl p-6 shadow-sm transition-all flex flex-col justify-between gap-5 ${
+                    req.status === "Pending"
+                      ? "border-amber-200/90 shadow-amber-500/5 hover:border-amber-300"
+                      : "border-slate-200/90 hover:border-slate-300 hover:shadow-md"
+                  }`}
+                >
+                  <div className="space-y-4">
+                    {/* Top Row: User Avatar, Name, Location & Status Badge */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex items-start gap-3.5">
+                        {/* Avatar */}
+                        <div className="relative shrink-0">
+                          {u.profileImage ? (
+                            <img
+                              src={u.profileImage}
+                              alt={clientName}
+                              className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm border border-teal-400/30">
+                              {initial}
+                            </div>
+                          )}
+                          {req.status === "Pending" && (
+                            <span
+                              className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full border-2 border-white animate-pulse"
+                              title="Pending Action"
+                            />
+                          )}
+                        </div>
+
+                        {/* Name & Metadata */}
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-base text-slate-800">{clientName}</h3>
+                            {age && (
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-semibold">
+                                {age} yrs
+                              </span>
+                            )}
+                            {u.gender && (
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-semibold">
+                                {u.gender}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
+                            {u.city && u.city !== "N/A" && (
+                              <span className="flex items-center gap-1 text-slate-600 font-medium">
+                                <span>📍</span> {u.city}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1 text-slate-400">
+                              <span>🕒</span> Requested on {formattedDate} • {formattedTime}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-lg text-slate-800">{req.user?.name || "User"}</h3>
-                        <p className="text-sm text-slate-600 font-medium">
-                          {req.sessionType || "1-on-1 Call"} Session • Topic: "{req.topic || "General Discussion"}"
-                        </p>
-                        <p className="text-xs text-teal-600 font-semibold mt-1">
-                          Requested on {new Date(req.createdAt).toLocaleDateString()}
-                        </p>
+
+                      {/* Status Badges */}
+                      <div className="shrink-0 self-start">
+                        {req.status === "Pending" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            Action Required
+                          </span>
+                        )}
+                        {req.status === "Accepted" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                            <span>✓</span> Session Confirmed
+                          </span>
+                        )}
+                        {req.status === "Rejected" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                            <span>✕</span> Declined
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      {req.status === "Pending" && (
-                        <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-full">
-                          PENDING
+
+                    {/* Middle Section: Session Format & Topic / Notes */}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-600">Session Format:</span>
+                          <span className="px-2.5 py-0.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 font-bold text-xs flex items-center gap-1">
+                            {req.sessionType?.toLowerCase().includes("call")
+                              ? "🎧"
+                              : req.sessionType?.toLowerCase().includes("video")
+                              ? "📹"
+                              : "💬"}{" "}
+                            {req.sessionType || "1-on-1 Consultation"}
+                          </span>
+                        </div>
+                        {req.packagePrice && (
+                          <span className="text-xs font-bold text-emerald-700">
+                            Est. Payout: ₹{req.packagePrice}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Discussion Topic & Notes */}
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                          Client Discussion Topic / Situation:
                         </span>
-                      )}
-                      {req.status === "Accepted" && (
-                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full">
-                          ✓ ACCEPTED
-                        </span>
-                      )}
-                      {req.status === "Rejected" && (
-                        <span className="px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-full">
-                          ✕ DECLINED
-                        </span>
+                        <div className="bg-white rounded-lg p-3 border border-slate-200/70 text-xs text-slate-700 leading-relaxed italic relative">
+                          <span className="text-teal-500 font-serif text-lg leading-none absolute -top-1 left-1.5 opacity-60">
+                            “
+                          </span>
+                          <p className="pl-3.5">
+                            {req.topic ||
+                              "Looking for a safe, confidential space to talk through recent emotional challenges and receive supportive guidance."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Contact Info if Available */}
+                      {(u.email || u.phone) && (
+                        <div className="pt-1 flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                          {u.email && (
+                            <span className="inline-flex items-center gap-1 font-medium text-slate-600">
+                              <span>✉️</span> {u.email}
+                            </span>
+                          )}
+                          {u.phone && (
+                            <a
+                              href={`tel:${u.phone}`}
+                              className="inline-flex items-center gap-1 font-medium text-teal-700 hover:text-teal-800 transition"
+                            >
+                              <span>📞</span> {u.phone}
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                  {/* Card Footer Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
                     {req.status === "Pending" ? (
                       <>
-                        <button
-                          disabled={actionLoadingId === req.id}
-                          onClick={() => handleRejectRequest(req.id)}
-                          className="px-5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-sm font-bold transition disabled:opacity-50 cursor-pointer"
-                        >
-                          {actionLoadingId === req.id ? "Processing..." : "Reject"}
-                        </button>
-                        <button
-                          disabled={actionLoadingId === req.id}
-                          onClick={() => handleAcceptRequest(req.id)}
-                          className="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-                        >
-                          {actionLoadingId === req.id ? (
-                            "Accepting..."
-                          ) : (
-                            <>
-                              <span>✓</span> Accept Request
-                            </>
-                          )}
-                        </button>
+                        <p className="text-xs text-slate-500 font-medium hidden sm:block">
+                          Accepting creates a scheduled session and notifies the client via email.
+                        </p>
+                        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                          <button
+                            disabled={actionLoadingId === req.id}
+                            onClick={() => handleRejectRequest(req.id)}
+                            className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 text-xs font-bold transition disabled:opacity-50 cursor-pointer text-center"
+                          >
+                            {actionLoadingId === req.id ? "Processing..." : "✕ Decline"}
+                          </button>
+                          <button
+                            disabled={actionLoadingId === req.id}
+                            onClick={() => handleAcceptRequest(req.id)}
+                            className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-bold transition shadow-sm hover:shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            {actionLoadingId === req.id ? (
+                              <span>Accepting...</span>
+                            ) : (
+                              <>
+                                <span>✓</span> Accept & Connect
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </>
                     ) : req.status === "Accepted" ? (
                       <div className="flex items-center justify-between w-full">
-                        <span className="text-xs text-emerald-700 font-semibold">
-                          ✓ Session created & added to upcoming sessions.
+                        <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
+                          <span>✓</span> Session created & added to upcoming sessions.
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                          ✓ Confirmed
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400 italic">This request was declined.</span>
+                      <div className="flex items-center justify-between w-full text-xs text-slate-400">
+                        <span>This request was declined.</span>
+                        <span className="italic">Archived</span>
+                      </div>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-            {renderPagination(
-              requestsPage,
-              filteredRequests.length,
-              REQUESTS_PER_PAGE,
-              setRequestsPage,
-              "requests"
-            )}
+              );
+            })}
+
+            {/* Pagination Controls */}
+            {filteredRequests.length > 0 &&
+              renderPagination(
+                requestsPage,
+                filteredRequests.length,
+                REQUESTS_PER_PAGE,
+                setRequestsPage,
+                "requests"
+              )}
           </div>
         )}
       </div>
@@ -838,49 +1250,87 @@ export default function BreakupBuddyDashboardPage() {
   };
 
   const renderAcceptedUsers = () => {
+    // KPI metrics calculated from full accepted list
+    const totalAcceptedCount = acceptedUsers.length;
+    const callCount = acceptedUsers.filter((r) => (r.sessionType || "").toLowerCase().includes("call")).length;
+    const chatCount = acceptedUsers.filter((r) => (r.sessionType || "").toLowerCase().includes("chat")).length;
+    const videoCount = acceptedUsers.filter((r) => (r.sessionType || "").toLowerCase().includes("video")).length;
+
+    // Filter by search query and format filter
     const filtered = acceptedUsers.filter((req) => {
-      const q = acceptedSearch.toLowerCase();
-      const name = (req.user?.name || "").toLowerCase();
-      const email = (req.user?.email || "").toLowerCase();
-      const city = (req.user?.city || "").toLowerCase();
+      const q = acceptedSearch.toLowerCase().trim();
+      const u = req.user || {};
+      const name = (u.name || "").toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      const phone = (u.phone || "").toLowerCase();
+      const city = (u.city || "").toLowerCase();
       const topic = (req.topic || "").toLowerCase();
       const sessionType = (req.sessionType || "").toLowerCase();
-      return (
+
+      const matchesSearch =
+        !q ||
         name.includes(q) ||
         email.includes(q) ||
+        phone.includes(q) ||
         city.includes(q) ||
         topic.includes(q) ||
-        sessionType.includes(q)
-      );
+        sessionType.includes(q);
+
+      const matchesFormat =
+        acceptedFormatFilter === "all" ||
+        (acceptedFormatFilter === "call" && sessionType.includes("call")) ||
+        (acceptedFormatFilter === "chat" && sessionType.includes("chat")) ||
+        (acceptedFormatFilter === "video" && sessionType.includes("video"));
+
+      return matchesSearch && matchesFormat;
     });
 
-    const paginatedAccepted = filtered.slice(
+    // Sorting
+    const sorted = [...filtered].sort((a, b) => {
+      if (acceptedSort === "newest") {
+        return new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime();
+      }
+      if (acceptedSort === "oldest") {
+        return new Date(a.updatedAt || a.createdAt || 0).getTime() - new Date(b.updatedAt || b.createdAt || 0).getTime();
+      }
+      if (acceptedSort === "name") {
+        const nameA = (a.user?.name || "").toLowerCase();
+        const nameB = (b.user?.name || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      }
+      return 0;
+    });
+
+    const paginatedAccepted = sorted.slice(
       (acceptedPage - 1) * ACCEPTED_PER_PAGE,
       acceptedPage * ACCEPTED_PER_PAGE
     );
 
     return (
       <div className="space-y-6">
+        {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold font-serif text-slate-800">Accepted Users</h2>
               <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
-                {acceptedUsers.length} {acceptedUsers.length === 1 ? "Client" : "Clients"}
+                {totalAcceptedCount} {totalAcceptedCount === 1 ? "Client" : "Clients"}
               </span>
             </div>
             <p className="text-slate-500 text-sm mt-0.5">
-              All users whose session and consultation requests you have accepted.
+              All clients whose consultation requests you have accepted. Initiate voice calls or open direct chats anytime.
             </p>
           </div>
-          <div className="w-full sm:w-72">
-            <input
-              type="text"
-              placeholder="Search by name, city, email or topic..."
-              value={acceptedSearch}
-              onChange={(e) => { setAcceptedSearch(e.target.value); setAcceptedPage(1); }}
-              className="w-full px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-teal-500 shadow-sm transition"
-            />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleRefreshAccepted}
+              disabled={isRefreshingAccepted}
+              className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-2xs flex items-center gap-2 cursor-pointer disabled:opacity-60"
+            >
+              <span className={isRefreshingAccepted ? "animate-spin inline-block" : ""}>🔄</span>
+              <span>{isRefreshingAccepted ? "Syncing..." : "Refresh"}</span>
+            </button>
           </div>
         </div>
 
@@ -895,138 +1345,367 @@ export default function BreakupBuddyDashboardPage() {
             <span>{actionMessage.text}</span>
             <button
               onClick={() => setActionMessage(null)}
-              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4"
+              className="text-xs opacity-60 hover:opacity-100 font-bold ml-4 cursor-pointer"
             >
               ✕
             </button>
           </div>
         )}
 
+        {/* 4 KPI Summary Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Total Accepted */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-teal-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Accepted Clients</span>
+              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-sm border border-teal-100">
+                👥
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-3xl font-bold text-teal-700">{totalAcceptedCount}</p>
+              <p className="text-xs text-slate-400 mt-1">Confirmed active relationships</p>
+            </div>
+          </div>
+
+          {/* Card 2: Voice Calls */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Voice Consultations</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm border border-emerald-100">
+                🎧
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-3xl font-bold text-slate-800">{callCount}</p>
+              <p className="text-xs text-slate-400 mt-1">1-on-1 phone/audio sessions</p>
+            </div>
+          </div>
+
+          {/* Card 3: Chat Support */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chat Discussions</span>
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100">
+                💬
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-3xl font-bold text-slate-800">{chatCount}</p>
+              <p className="text-xs text-slate-400 mt-1">Live messaging threads</p>
+            </div>
+          </div>
+
+          {/* Card 4: Connection Status */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Client Readiness</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs border border-emerald-100">
+                🟢
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-3xl font-bold text-slate-800">100%</p>
+                <span className="text-xs font-medium text-emerald-600">Connected</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Ready for call or chat</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search, Filter & Sort Toolbar */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+              <input
+                type="text"
+                placeholder="Search by client name, email, phone, city, or topic..."
+                value={acceptedSearch}
+                onChange={(e) => {
+                  setAcceptedSearch(e.target.value);
+                  setAcceptedPage(1);
+                }}
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+              />
+              {acceptedSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAcceptedSearch("");
+                    setAcceptedPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Filter by Format Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 shrink-0">
+              {[
+                { id: "all", label: "All Formats", count: totalAcceptedCount },
+                { id: "call", label: "🎧 Calls", count: callCount },
+                { id: "chat", label: "💬 Chat", count: chatCount },
+                ...(videoCount > 0 ? [{ id: "video", label: "📹 Video", count: videoCount }] : []),
+              ].map((f) => {
+                const isActive = acceptedFormatFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => {
+                      setAcceptedFormatFilter(f.id as any);
+                      setAcceptedPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                      isActive
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    <span>{f.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {f.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-slate-500">Sort:</span>
+              <select
+                value={acceptedSort}
+                onChange={(e) => setAcceptedSort(e.target.value as any)}
+                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-500"
+              >
+                <option value="newest">Recently Accepted</option>
+                <option value="oldest">Oldest First</option>
+                <option value="name">Client Name (A–Z)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Accepted Users Cards Grid or Empty State */}
         {filtered.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500 shadow-sm space-y-3">
-            <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-sm space-y-3">
+            <div className="w-16 h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-slate-200 shadow-2xs">
               👥
             </div>
             <h3 className="font-bold text-slate-800 text-lg">
-              {acceptedSearch ? "No matching accepted users" : "No accepted users yet"}
+              {acceptedSearch || acceptedFormatFilter !== "all"
+                ? "No matching accepted clients found"
+                : "No accepted clients yet"}
             </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              {acceptedSearch
-                ? "Try searching with a different name, city or topic."
-                : "When you accept booking requests from the 'Requests' tab, those clients and their consultation history will show up here."}
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              {acceptedSearch || acceptedFormatFilter !== "all"
+                ? "Try searching with a different client name, city, or reset the format filter."
+                : "When you accept booking requests from the Requests tab, those clients will appear here with one-click calling and messaging."}
             </p>
-            {!acceptedSearch && (
+            {acceptedSearch || acceptedFormatFilter !== "all" ? (
               <button
+                type="button"
+                onClick={() => {
+                  setAcceptedSearch("");
+                  setAcceptedFormatFilter("all");
+                  setAcceptedPage(1);
+                }}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition border border-slate-200 cursor-pointer"
+              >
+                Clear Search & Filters
+              </button>
+            ) : (
+              <button
+                type="button"
                 onClick={() => setActiveTab("Requests")}
-                className="mt-2 px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                className="mt-2 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 Go to Requests Tab →
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {paginatedAccepted.map((req: any) => {
               const u = req.user || {};
+              const clientName = u.name || "Client";
+              const initial = clientName.charAt(0).toUpperCase();
+
               const age = u.dateOfBirth
-                ? Math.floor((new Date().getTime() - new Date(u.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+                ? Math.floor(
+                    (new Date().getTime() - new Date(u.dateOfBirth).getTime()) /
+                      (365.25 * 24 * 60 * 60 * 1000)
+                  )
                 : null;
+
+              const reqDateStr = req.createdAt
+                ? new Date(req.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Recent";
+
+              const acceptedDateStr = req.updatedAt
+                ? new Date(req.updatedAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : reqDateStr;
 
               return (
                 <div
                   key={req.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between space-y-4"
+                  className="bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-4">
-                    {/* User Profile Header */}
+                    {/* Header Row: Avatar, Name, Badges & Status */}
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg overflow-hidden border border-teal-200 shadow-sm">
+                      <div className="flex items-center gap-3.5">
+                        {/* Avatar */}
+                        <div className="relative shrink-0">
                           {u.profileImage ? (
-                            <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
+                            <img
+                              src={u.profileImage}
+                              alt={clientName}
+                              className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-sm"
+                            />
                           ) : (
-                            u.name ? u.name[0].toUpperCase() : "👤"
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm border border-teal-400/30">
+                              {initial}
+                            </div>
                           )}
+                          <span
+                            className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white"
+                            title="Active Client"
+                          />
                         </div>
+
+                        {/* Name and Demographics */}
                         <div>
                           <h3 className="font-bold text-base text-slate-800 flex items-center gap-1.5">
-                            {u.name || "User"}
+                            {clientName}
                           </h3>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                            {u.city && <span>📍 {u.city}</span>}
+                          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-0.5 flex-wrap">
+                            {u.city && u.city !== "N/A" && (
+                              <span className="flex items-center gap-1 text-slate-600">
+                                <span>📍</span> {u.city}
+                              </span>
+                            )}
                             {age && <span>• {age} yrs</span>}
                             {u.gender && <span>• {u.gender}</span>}
                           </div>
                         </div>
                       </div>
-                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold rounded-full">
-                        ✓ ACCEPTED
+
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-full shadow-2xs">
+                        <span>✓</span> ACCEPTED
                       </span>
                     </div>
 
-                    {/* Booking Details */}
-                    <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs space-y-2">
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span className="font-semibold text-slate-700">Format:</span>
-                        <span className="font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
-                          {req.sessionType || "1-on-1 Session"}
-                        </span>
+                    {/* Booking Details Box */}
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/70 text-xs space-y-3">
+                      <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200/60 pb-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-600">Session Format:</span>
+                          <span className="font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                            {req.sessionType?.toLowerCase().includes("call")
+                              ? "🎧"
+                              : req.sessionType?.toLowerCase().includes("video")
+                              ? "📹"
+                              : "💬"}{" "}
+                            {req.sessionType || "1-on-1 Consultation"}
+                          </span>
+                        </div>
+                        {req.packagePrice && (
+                          <span className="font-bold text-emerald-700">₹{req.packagePrice}</span>
+                        )}
                       </div>
+
+                      {/* Discussion Topic */}
                       <div>
-                        <span className="font-semibold text-slate-700 block mb-0.5">Discussion Topic / Reason:</span>
-                        <p className="text-slate-600 italic bg-white p-2 rounded border border-slate-100">
-                          "{req.topic || "General emotional support & active listening"}"
-                        </p>
+                        <span className="font-bold text-slate-500 text-[11px] uppercase tracking-wider block mb-1">
+                          Discussion Topic / Care Reason:
+                        </span>
+                        <div className="bg-white p-3 rounded-lg border border-slate-200/70 text-xs text-slate-700 italic relative leading-relaxed">
+                          <span className="text-teal-500 font-serif text-lg leading-none absolute -top-1 left-1.5 opacity-60">
+                            “
+                          </span>
+                          <p className="pl-3.5">
+                            {req.topic ||
+                              "General emotional support, active listening, and post-breakup guidance."}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">
-                        <span>Requested: {new Date(req.createdAt).toLocaleDateString()}</span>
-                        <span>Accepted: {new Date(req.updatedAt || req.createdAt).toLocaleDateString()}</span>
+
+                      {/* Timestamps */}
+                      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 gap-2">
+                        <span className="flex items-center gap-1">
+                          <span>📅</span> Requested: <strong>{reqDateStr}</strong>
+                        </span>
+                        <span className="flex items-center gap-1 text-teal-700">
+                          <span>✓</span> Connected: <strong>{acceptedDateStr}</strong>
+                        </span>
                       </div>
                     </div>
 
-                    {/* Contact Details */}
+                    {/* Contact Details Chips */}
                     {(u.email || u.phone) && (
                       <div className="flex flex-wrap gap-2 text-xs">
                         {u.email && (
                           <a
                             href={`mailto:${u.email}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-medium transition"
                           >
-                            ✉️ {u.email}
+                            <span>✉️</span> {u.email}
                           </a>
                         )}
                         {u.phone && (
                           <a
                             href={`tel:${u.phone}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-teal-700 font-medium transition"
                           >
-                            📞 {u.phone}
+                            <span>📞</span> {u.phone}
                           </a>
                         )}
                       </div>
                     )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {/* Actions Footer */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5">
                     <button
                       onClick={() =>
                         setBuddyActiveCall({
                           requestId: req.id,
                           targetUserId: u.id,
-                          targetName: u.name || "User",
+                          targetName: clientName,
                           callerName: displayName || user?.name || "Breakup Buddy",
                         })
                       }
-                      className="flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm text-center cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition shadow-sm hover:shadow-md text-center cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      📞 Call User
+                      <span>📞</span> Call Client
                     </button>
                     <button
-                      onClick={() => setActiveTab("Messages")}
-                      className="flex-1 py-2 px-3 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold transition border border-teal-200 text-center cursor-pointer"
+                      onClick={() => {
+                        setSelectedChatRequestId(req.id);
+                        setActiveTab("Messages");
+                      }}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold transition border border-teal-200 text-center cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      💬 Open Chat
+                      <span>💬</span> Open Chat
                     </button>
                   </div>
                 </div>
@@ -1034,13 +1713,15 @@ export default function BreakupBuddyDashboardPage() {
             })}
           </div>
         )}
-        {filtered.length > 0 &&
+
+        {/* Pagination */}
+        {sorted.length > 0 &&
           renderPagination(
             acceptedPage,
-            filtered.length,
+            sorted.length,
             ACCEPTED_PER_PAGE,
             setAcceptedPage,
-            "clients"
+            "accepted clients"
           )}
       </div>
     );
@@ -2874,8 +3555,8 @@ export default function BreakupBuddyDashboardPage() {
             {[
               { id: 'Dashboard', icon: '🏠' },
               { id: 'Requests', icon: '📩', badge: requests.filter((r) => r.status === 'Pending').length },
-              { id: 'Accepted Users', icon: '👥', badge: acceptedUsers.length },
-              { id: 'Call Log', icon: '📞', badge: callLogs.filter((c) => c.status === 'MISSED').length },
+              { id: 'Accepted Users', icon: '👥' },
+              { id: 'Call Log', icon: '📞' },
               { id: 'Messages', icon: '💬' },
               { id: 'Availability', icon: '🕐' },
               { id: 'Reviews', icon: '⭐' },
