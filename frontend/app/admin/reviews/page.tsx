@@ -270,13 +270,13 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto px-2 sm:px-4">
-      {/* TOAST ALERT */}
+      {/* TOAST ALERT - Centered */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border text-sm font-semibold transition animate-bounce ${
+          className={`fixed top-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] border text-sm font-semibold transition animate-in slide-in-from-top-4 zoom-in-95 duration-200 ${
             toast.type === "success"
-              ? "bg-emerald-950 border-emerald-500/50 text-emerald-200"
-              : "bg-rose-950 border-rose-500/50 text-rose-200"
+              ? "bg-emerald-950/95 backdrop-blur-md border-emerald-500/50 text-emerald-200 ring-2 ring-emerald-500/10"
+              : "bg-rose-950/95 backdrop-blur-md border-rose-500/50 text-rose-200 ring-2 ring-rose-500/10"
           }`}
         >
           {toast.type === "success" ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-rose-400" />}

@@ -11,8 +11,10 @@ import {
   Phone,
   Building,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminEventManagersPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,16 @@ export default function AdminEventManagersPage() {
   }, []);
 
   async function handleToggleApproval(id: string, currentApproved: boolean) {
-    if (!confirm(`Are you sure you want to ${currentApproved ? "suspend" : "approve"} this Event Host?`)) return;
+    const actionName = currentApproved ? "suspend" : "approve";
+    const confirmed = await confirm({
+      title: `${currentApproved ? "Suspend" : "Approve"} Event Host`,
+      message: `Are you sure you want to ${actionName} this Event Host?`,
+      type: currentApproved ? "warning" : "confirm",
+      confirmText: currentApproved ? "Suspend Host" : "Approve Host",
+      isDestructive: currentApproved,
+    });
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`/api/admin/event-managers/${id}`, {
         method: "PATCH",
@@ -46,12 +57,21 @@ export default function AdminEventManagersPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Event Host successfully ${currentApproved ? "suspended" : "approved"}`, "success");
         fetchManagers();
       } else {
-        alert(data.message || "Failed to update status");
+        alert({
+          title: "Update Failed",
+          message: data.message || "Failed to update host status.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Failed to update status");
+      alert({
+        title: "Server Error",
+        message: "Failed to update host status due to a network error.",
+        type: "danger",
+      });
     }
   }
 

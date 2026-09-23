@@ -3,6 +3,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const prisma = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { sendMail } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -181,6 +182,87 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
         hostId,
       },
     });
+
+    // Asynchronously notify all users about the new event without blocking response
+    (async () => {
+      try {
+        const users = await prisma.user.findMany({
+          where: {
+            email: { not: '' },
+          },
+          select: { id: true, email: true, name: true, status: true },
+        });
+
+        // Filter out suspended or banned accounts if status is set
+        const activeUsers = users.filter(u => u.status !== 'BANNED' && u.status !== 'SUSPENDED');
+
+        console.log(`📢 [JabWeMeet Broadcast] Found ${activeUsers.length} user(s) to notify for new event "${newEvent.title}".`);
+
+        const formattedDate = new Date(newEvent.date).toLocaleDateString('en-IN', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        const priceDisplay = newEvent.price > 0 ? `₹${newEvent.price}` : 'Free Entry';
+
+        for (const recipient of activeUsers) {
+          if (!recipient.email || !recipient.email.includes('@')) continue;
+
+          const emailSubject = `🎉 New Event: ${newEvent.title}!`;
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #e06d53 0%, #f7a072 100%); padding: 28px 20px; text-align: center; color: white;">
+                <h1 style="margin: 0; font-size: 22px; font-weight: 700;">✨ New Event on JabWeMeet!</h1>
+                <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.95;">A brand new gathering has just been announced</p>
+              </div>
+              
+              <div style="padding: 24px;">
+                <p style="font-size: 15px; color: #333;">Hi <strong>${recipient.name || 'Friend'}</strong>,</p>
+                <p style="font-size: 14px; color: #555; line-height: 1.6;">
+                  We are excited to share that a new event <strong>"${newEvent.title}"</strong> has just been published in <strong>${newEvent.city}</strong>!
+                </p>
+                
+                <div style="background-color: #fdf6f0; border-left: 4px solid #e06d53; padding: 16px; border-radius: 6px; margin: 20px 0;">
+                  <h3 style="margin: 0 0 10px 0; color: #e06d53; font-size: 17px;">${newEvent.title}</h3>
+                  <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🏷️ Category:</strong> ${newEvent.category}</p>
+                  <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📅 Date & Time:</strong> ${formattedDate}</p>
+                  <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 Location:</strong> ${newEvent.location}, ${newEvent.city}</p>
+                  <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Price:</strong> ${priceDisplay}</p>
+                </div>
+
+                <p style="font-size: 14px; color: #666; line-height: 1.5;">
+                  ${newEvent.description}
+                </p>
+
+                <div style="text-align: center; margin: 30px 0 15px 0;">
+                  <a href="http://localhost:3000/events" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
+                    Explore & Book Tickets 👉
+                  </a>
+                </div>
+              </div>
+
+              <div style="background-color: #f9f9f9; padding: 16px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee;">
+                Sent with ❤️ from the <strong>JabWeMeet</strong> Team.<br/>
+                You received this email because you have an account on JabWeMeet.
+              </div>
+            </div>
+          `;
+
+          try {
+            await sendMail(recipient.email, emailSubject, '', emailHtml);
+            console.log(`✅ [JabWeMeet Broadcast] Email sent to: ${recipient.email}`);
+          } catch (err) {
+            console.error(`⚠️ [JabWeMeet Broadcast] Failed to send email to ${recipient.email}:`, err.message || err);
+          }
+        }
+      } catch (broadcastErr) {
+        console.error('❌ [JabWeMeet Broadcast Error]:', broadcastErr);
+      }
+    })();
 
     return res.status(201).json({ success: true, event: newEvent });
   } catch (error) {
@@ -392,6 +474,9 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
+        host: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
         bookings: {
           where: { status: { not: 'CANCELLED' } },
         },
@@ -476,8 +561,8 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
     });
 
     // Create EventRegistration in admin table for check-in & verification
+    const ticketCode = `TKT-${event.id.slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
     try {
-      const ticketCode = `TKT-${event.id.slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
       await prisma.$executeRawUnsafe(`
         INSERT INTO "EventRegistration" ("id", "eventId", "userId", "ticketCode", "paymentStatus", "status", "createdAt")
         VALUES ($1, $2, $3, $4, 'PAID', 'CONFIRMED', CURRENT_TIMESTAMP)
@@ -487,33 +572,140 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
       console.warn('Registration record notice:', regErr.message);
     }
 
-    // Send confirmation email
+    // --- SEND EMAILS TO BOTH ATTENDEE AND EVENT HOST ---
     try {
-      const { sendMail } = require('../services/emailService');
-      const emailSubject = `🎟️ Ticket Confirmed: ${event.title}`;
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #4CAF50;">🎉 You're all set!</h2>
-          <p>Hi ${booking.user.name},</p>
-          <p>Your ticket(s) for <strong>${event.title}</strong> have been successfully confirmed. 🎊</p>
-          
-          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">📅 Event Details</h3>
-            <p><strong>🕒 Date:</strong> ${new Date(event.date).toLocaleString()}</p>
-            <p><strong>📍 Location:</strong> ${event.location}, ${event.city}</p>
-            <p><strong>🎟️ Tickets:</strong> ${spots}</p>
-            <p><strong>💰 Amount Paid:</strong> ₹${paidAmount}</p>
+      let attendee = booking.user;
+      if (!attendee || !attendee.email) {
+        attendee = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, name: true, email: true, phone: true, city: true },
+        });
+      }
+
+      const hostName = event.host?.name || 'Event Organizer';
+      const hostEmail = event.host?.email;
+      const fromHeader = `${hostName} via JabWeMeet`;
+
+      const formattedDate = new Date(event.date).toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      // 1. Email to Attendee (User)
+      if (attendee?.email) {
+        const attendeeSubject = `🎉 Congrats! Your booking for "${event.title}" was successful!`;
+        const attendeeHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); padding: 30px 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 700;">🎉 Congrats! Booking Successful!</h1>
+              <p style="margin: 8px 0 0 0; font-size: 15px; opacity: 0.95;">You have successfully booked an event with us</p>
+            </div>
+            
+            <div style="padding: 24px;">
+              <p style="font-size: 16px; color: #333;">Hi <strong>${attendee.name || 'Friend'}</strong>,</p>
+              <p style="font-size: 15px; color: #444; line-height: 1.6;">
+                Congrats! Your booking was successful! You have booked <strong>${spots} ${spots === 1 ? 'ticket' : 'tickets'}</strong> for <strong>"${event.title}"</strong> hosted by <strong>${hostName}</strong>.
+              </p>
+              
+              <div style="background-color: #f6fbf6; border-left: 4px solid #4CAF50; padding: 18px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin: 0 0 12px 0; color: #2E7D32; font-size: 18px;">📋 Event & Ticket Details</h3>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎉 Event:</strong> ${event.title}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>👤 Host:</strong> ${hostName}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📅 Date & Time:</strong> ${formattedDate}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 Venue:</strong> ${event.location}, ${event.city}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Tickets Booked:</strong> ${spots}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>💰 Amount Paid:</strong> ₹${paidAmount}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎫 Ticket Code:</strong> <span style="font-family: monospace; background: #e8f5e9; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #1b5e20;">${ticketCode}</span></p>
+              </div>
+
+              <div style="background-color: #fcf8e3; border: 1px solid #faebcc; padding: 12px 16px; border-radius: 6px; margin: 15px 0; font-size: 13px; color: #8a6d3b;">
+                💬 <em>"Thank you for booking with us! We can't wait to welcome you to the event."</em> — <strong>${hostName}</strong>
+              </div>
+
+              <p style="font-size: 14px; color: #666; line-height: 1.5;">
+                Please keep this email and your Ticket Code handy for entry at the venue.
+              </p>
+
+              <div style="text-align: center; margin: 30px 0 15px 0;">
+                <a href="http://localhost:3000/dashboard?tab=events" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+                  View My Bookings & Events 👉
+                </a>
+              </div>
+            </div>
+
+            <div style="background-color: #f9f9f9; padding: 16px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee;">
+              Sent on behalf of <strong>${hostName}</strong> via <strong>JabWeMeet</strong> 💖
+            </div>
           </div>
-          
-          <p>We can't wait to see you there! Get ready for an amazing experience. ✨</p>
-          
-          <br/>
-          <p>Cheers, <br/>The JabWeMeet Team 💖</p>
-        </div>
-      `;
-      sendMail(booking.user.email, emailSubject, '', emailHtml).catch(err => console.error('Failed to send confirmation email', err));
-    } catch (emailErr) {
-      console.error('Email module error:', emailErr);
+        `;
+
+        try {
+          await sendMail(attendee.email, attendeeSubject, '', attendeeHtml, fromHeader, hostEmail);
+          console.log(`✅ [Booking Email] Successfully sent confirmation to attendee: ${attendee.email}`);
+        } catch (err) {
+          console.error(`⚠️ [Booking Email] Failed sending to attendee ${attendee.email}:`, err.message || err);
+        }
+      }
+
+      // 2. Email to Host
+      if (event.host?.email) {
+        const hostSubject = `🔔 New Booking Alert: ${attendee.name} booked "${event.title}"`;
+        const hostHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #e06d53 0%, #f7a072 100%); padding: 28px 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 22px; font-weight: 700;">🎉 New Attendee Registered!</h1>
+              <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.95;">A user just booked tickets for your event</p>
+            </div>
+            
+            <div style="padding: 24px;">
+              <p style="font-size: 15px; color: #333;">Hi <strong>${hostName}</strong>,</p>
+              <p style="font-size: 14px; color: #555; line-height: 1.6;">
+                Great news! <strong>${attendee.name}</strong> has just booked ticket(s) for your upcoming event <strong>"${event.title}"</strong>.
+              </p>
+              
+              <div style="background-color: #fdf6f0; border-left: 4px solid #e06d53; padding: 16px; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #e06d53; font-size: 17px;">👤 Attendee Information</h3>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>👤 Name:</strong> ${attendee.name}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📧 Email:</strong> ${attendee.email}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📱 Phone:</strong> ${attendee.phone || 'N/A'}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 City:</strong> ${attendee.city || 'N/A'}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Spots Booked:</strong> ${spots}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>💰 Amount Paid:</strong> ₹${paidAmount}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎫 Ticket Code:</strong> <span style="font-family: monospace; background: #ffeae4; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${ticketCode}</span></p>
+              </div>
+
+              <div style="background-color: #fbfbfb; padding: 14px; border-radius: 6px; margin: 15px 0; font-size: 13px; color: #666;">
+                <p style="margin: 4px 0;"><strong>Event:</strong> ${event.title}</p>
+                <p style="margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
+                <p style="margin: 4px 0;"><strong>Venue:</strong> ${event.location}, ${event.city}</p>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0 15px 0;">
+                <a href="http://localhost:3000/host/dashboard" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
+                  View Host Dashboard 👉
+                </a>
+              </div>
+            </div>
+
+            <div style="background-color: #f9f9f9; padding: 16px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee;">
+              JabWeMeet Host Notification System 💖
+            </div>
+          </div>
+        `;
+
+        try {
+          await sendMail(event.host.email, hostSubject, '', hostHtml);
+          console.log(`✅ [Host Alert Email] Successfully sent booking alert to host: ${event.host.email}`);
+        } catch (err) {
+          console.error(`⚠️ [Host Alert Email] Failed sending to host ${event.host.email}:`, err.message || err);
+        }
+      }
+    } catch (err) {
+      console.error('❌ [Event Booking Email Error]:', err);
     }
 
     return res.status(201).json({
@@ -541,6 +733,9 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
+        host: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
         bookings: {
           where: { status: { not: 'CANCELLED' } },
         },
@@ -605,8 +800,8 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
     });
 
     // Create EventRegistration in admin table
+    const ticketCode = `TKT-${event.id.slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
     try {
-      const ticketCode = `TKT-${event.id.slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
       await prisma.$executeRawUnsafe(`
         INSERT INTO "EventRegistration" ("id", "eventId", "userId", "ticketCode", "paymentStatus", "status", "createdAt")
         VALUES ($1, $2, $3, $4, 'FREE', 'CONFIRMED', CURRENT_TIMESTAMP)
@@ -614,33 +809,140 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
       `, `reg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, id, userId, ticketCode);
     } catch (regErr) {}
 
-    // Send confirmation email
+    // --- SEND EMAILS TO BOTH ATTENDEE AND EVENT HOST ---
     try {
-      const { sendMail } = require('../services/emailService');
-      const emailSubject = `🎟️ Ticket Confirmed: ${event.title}`;
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #4CAF50;">🎉 You're all set!</h2>
-          <p>Hi ${booking.user.name},</p>
-          <p>Your ticket(s) for <strong>${event.title}</strong> have been successfully confirmed. 🎊</p>
-          
-          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">📅 Event Details</h3>
-            <p><strong>🕒 Date:</strong> ${new Date(event.date).toLocaleString()}</p>
-            <p><strong>📍 Location:</strong> ${event.location}, ${event.city}</p>
-            <p><strong>🎟️ Tickets:</strong> ${spots}</p>
-            <p><strong>💰 Amount Paid:</strong> Free</p>
+      let attendee = booking.user;
+      if (!attendee || !attendee.email) {
+        attendee = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, name: true, email: true, phone: true, city: true },
+        });
+      }
+
+      const hostName = event.host?.name || 'Event Organizer';
+      const hostEmail = event.host?.email;
+      const fromHeader = `${hostName} via JabWeMeet`;
+
+      const formattedDate = new Date(event.date).toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      // 1. Email to Attendee (User)
+      if (attendee?.email) {
+        const attendeeSubject = `🎉 Congrats! Your booking for "${event.title}" was successful!`;
+        const attendeeHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); padding: 30px 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 24px; font-weight: 700;">🎉 Congrats! Booking Successful!</h1>
+              <p style="margin: 8px 0 0 0; font-size: 15px; opacity: 0.95;">You have successfully booked an event with us</p>
+            </div>
+            
+            <div style="padding: 24px;">
+              <p style="font-size: 16px; color: #333;">Hi <strong>${attendee.name || 'Friend'}</strong>,</p>
+              <p style="font-size: 15px; color: #444; line-height: 1.6;">
+                Congrats! Your booking was successful! You have booked <strong>${spots} ${spots === 1 ? 'ticket' : 'tickets'}</strong> for <strong>"${event.title}"</strong> hosted by <strong>${hostName}</strong>.
+              </p>
+              
+              <div style="background-color: #f6fbf6; border-left: 4px solid #4CAF50; padding: 18px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin: 0 0 12px 0; color: #2E7D32; font-size: 18px;">📋 Event & Ticket Details</h3>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎉 Event:</strong> ${event.title}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>👤 Host:</strong> ${hostName}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📅 Date & Time:</strong> ${formattedDate}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 Venue:</strong> ${event.location}, ${event.city}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Tickets Booked:</strong> ${spots}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>💰 Amount Paid:</strong> Free Entry (₹0)</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎫 Ticket Code:</strong> <span style="font-family: monospace; background: #e8f5e9; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #1b5e20;">${ticketCode}</span></p>
+              </div>
+
+              <div style="background-color: #fcf8e3; border: 1px solid #faebcc; padding: 12px 16px; border-radius: 6px; margin: 15px 0; font-size: 13px; color: #8a6d3b;">
+                💬 <em>"Thank you for booking with us! We can't wait to welcome you to the event."</em> — <strong>${hostName}</strong>
+              </div>
+
+              <p style="font-size: 14px; color: #666; line-height: 1.5;">
+                Please keep this email and your Ticket Code handy for entry at the venue.
+              </p>
+
+              <div style="text-align: center; margin: 30px 0 15px 0;">
+                <a href="http://localhost:3000/dashboard?tab=events" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+                  View My Bookings & Events 👉
+                </a>
+              </div>
+            </div>
+
+            <div style="background-color: #f9f9f9; padding: 16px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee;">
+              Sent on behalf of <strong>${hostName}</strong> via <strong>JabWeMeet</strong> 💖
+            </div>
           </div>
-          
-          <p>We can't wait to see you there! Get ready for an amazing experience. ✨</p>
-          
-          <br/>
-          <p>Cheers, <br/>The JabWeMeet Team 💖</p>
-        </div>
-      `;
-      sendMail(booking.user.email, emailSubject, '', emailHtml).catch(err => console.error('Failed to send confirmation email', err));
-    } catch (emailErr) {
-      console.error('Email module error:', emailErr);
+        `;
+
+        try {
+          await sendMail(attendee.email, attendeeSubject, '', attendeeHtml, fromHeader, hostEmail);
+          console.log(`✅ [Booking Email] Successfully sent free ticket confirmation to attendee: ${attendee.email}`);
+        } catch (err) {
+          console.error(`⚠️ [Booking Email] Failed sending to attendee ${attendee.email}:`, err.message || err);
+        }
+      }
+
+      // 2. Email to Host
+      if (event.host?.email) {
+        const hostSubject = `🔔 New Booking Alert: ${attendee.name} booked "${event.title}"`;
+        const hostHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #e06d53 0%, #f7a072 100%); padding: 28px 20px; text-align: center; color: white;">
+              <h1 style="margin: 0; font-size: 22px; font-weight: 700;">🎉 New Attendee Registered!</h1>
+              <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.95;">A user just booked free spots for your event</p>
+            </div>
+            
+            <div style="padding: 24px;">
+              <p style="font-size: 15px; color: #333;">Hi <strong>${hostName}</strong>,</p>
+              <p style="font-size: 14px; color: #555; line-height: 1.6;">
+                Great news! <strong>${attendee.name}</strong> has just booked ticket(s) for your upcoming event <strong>"${event.title}"</strong>.
+              </p>
+              
+              <div style="background-color: #fdf6f0; border-left: 4px solid #e06d53; padding: 16px; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #e06d53; font-size: 17px;">👤 Attendee Information</h3>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>👤 Name:</strong> ${attendee.name}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📧 Email:</strong> ${attendee.email}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📱 Phone:</strong> ${attendee.phone || 'N/A'}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 City:</strong> ${attendee.city || 'N/A'}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Spots Booked:</strong> ${spots}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>💰 Amount Paid:</strong> Free Entry (₹0)</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎫 Ticket Code:</strong> <span style="font-family: monospace; background: #ffeae4; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${ticketCode}</span></p>
+              </div>
+
+              <div style="background-color: #fbfbfb; padding: 14px; border-radius: 6px; margin: 15px 0; font-size: 13px; color: #666;">
+                <p style="margin: 4px 0;"><strong>Event:</strong> ${event.title}</p>
+                <p style="margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
+                <p style="margin: 4px 0;"><strong>Venue:</strong> ${event.location}, ${event.city}</p>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0 15px 0;">
+                <a href="http://localhost:3000/host/dashboard" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
+                  View Host Dashboard 👉
+                </a>
+              </div>
+            </div>
+
+            <div style="background-color: #f9f9f9; padding: 16px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee;">
+              JabWeMeet Host Notification System 💖
+            </div>
+          </div>
+        `;
+
+        try {
+          await sendMail(event.host.email, hostSubject, '', hostHtml);
+          console.log(`✅ [Host Alert Email] Successfully sent booking alert to host: ${event.host.email}`);
+        } catch (err) {
+          console.error(`⚠️ [Host Alert Email] Failed sending to host ${event.host.email}:`, err.message || err);
+        }
+      }
+    } catch (err) {
+      console.error('❌ [Free Booking Email Error]:', err);
     }
 
     return res.status(201).json({

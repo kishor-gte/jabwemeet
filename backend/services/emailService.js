@@ -5,7 +5,10 @@ try {
   transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.MAIL_PORT) || 587,
-    secure: process.env.MAIL_PORT == 465, // true for 465, false for other ports
+    secure: process.env.MAIL_PORT == 465,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
     auth: {
       user: process.env.MAIL_USERNAME,
       pass: process.env.MAIL_PASSWORD,
@@ -21,20 +24,36 @@ try {
   };
 }
 
-const sendMail = async (to, subject, text, html) => {
+const sendMail = async (to, subject, text, html, fromName, replyTo) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"JabWeMeet" <${process.env.MAIL_USERNAME}>`,
-      to,
-      subject,
-      text,
-      html,
-    });
-    console.log("Message sent: %s", info.messageId);
+    const recipient = (to || '').trim();
+    if (!recipient || !recipient.includes('@')) {
+      console.warn(`⚠️ [JabWeMeet EmailService] Invalid recipient address skipped: "${to}"`);
+      return null;
+    }
+
+    const fromAddress = process.env.MAIL_USERNAME || 'noreply@jabweemeet.com';
+    const cleanFromName = (fromName || 'JabWeMeet').replace(/["\r\n]/g, '');
+    const sender = `"${cleanFromName}" <${fromAddress}>`;
+    
+    const mailOptions = {
+      from: sender,
+      to: recipient,
+      subject: subject || 'Notification from JabWeMeet',
+      text: text || '',
+      html: html || '',
+    };
+
+    if (replyTo && replyTo.includes('@')) {
+      mailOptions.replyTo = replyTo.trim();
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`📬 [Email Sent] to: ${recipient} | Subject: "${subject}" | ID: ${info.messageId}`);
     return info;
   } catch (error) {
-    console.error("Error sending email:", error);
-    throw error;
+    console.error(`❌ [Email Error] to: ${to} | Reason:`, error.message || error);
+    return null;
   }
 };
 

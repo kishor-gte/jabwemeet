@@ -20,8 +20,10 @@ import {
   Heart,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminDatesSchedulingPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const router = useRouter();
   const [dates, setDates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,16 @@ export default function AdminDatesSchedulingPage() {
   }, []);
 
   async function handleUpdateStatus(id: string, newStatus: string) {
-    if (!confirm(`Update this date status to "${newStatus}"?`)) return;
+    const isCancelled = newStatus === "CANCELLED";
+    const confirmed = await confirm({
+      title: "Update Date Status",
+      message: `Are you sure you want to update this date status to "${newStatus}"?`,
+      type: isCancelled ? "warning" : "confirm",
+      confirmText: isCancelled ? "Cancel Date" : "Update Status",
+      isDestructive: isCancelled,
+    });
+    if (!confirmed) return;
+
     try {
       setUpdatingId(id);
       const res = await fetch(`/api/admin/dates/${id}`, {
@@ -60,12 +71,21 @@ export default function AdminDatesSchedulingPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Date status updated to ${newStatus}`, "success");
         fetchDates();
       } else {
-        alert(data.message || "Failed to update date");
+        alert({
+          title: "Update Failed",
+          message: data.message || "Failed to update date status.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error updating date");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while updating the date.",
+        type: "danger",
+      });
     } finally {
       setUpdatingId(null);
     }

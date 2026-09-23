@@ -21,8 +21,10 @@ import {
   Mail,
   MapPin,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminUsersPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
@@ -98,13 +100,22 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("User status updated successfully", "success");
         setConfirmDialog(null);
         fetchUsers(pagination.page);
       } else {
-        alert(data.message || "Failed to update user");
+        alert({
+          title: "Status Update Failed",
+          message: data.message || "Failed to update user status.",
+          type: "danger",
+        });
       }
     } catch (err) {
-      alert("Error updating user status");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while updating user status.",
+        type: "danger",
+      });
     } finally {
       setActionLoading(false);
     }

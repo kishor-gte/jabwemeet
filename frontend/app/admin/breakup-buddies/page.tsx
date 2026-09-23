@@ -12,8 +12,10 @@ import {
   Calendar,
   Sparkles,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminBreakupBuddiesPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [buddies, setBuddies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,15 @@ export default function AdminBreakupBuddiesPage() {
   }, []);
 
   async function handleToggleApproval(id: string, currentApproved: boolean) {
-    if (!confirm(`Are you sure you want to ${currentApproved ? "suspend" : "approve"} this Breakup Buddy?`)) return;
+    const actionName = currentApproved ? "suspend" : "approve";
+    const confirmed = await confirm({
+      title: `${currentApproved ? "Suspend" : "Approve"} Breakup Buddy`,
+      message: `Are you sure you want to ${actionName} this Breakup Buddy?`,
+      type: currentApproved ? "warning" : "confirm",
+      confirmText: currentApproved ? "Suspend Buddy" : "Approve Buddy",
+      isDestructive: currentApproved,
+    });
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/admin/breakup-buddies/${id}`, {
         method: "PATCH",
@@ -47,10 +57,21 @@ export default function AdminBreakupBuddiesPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Breakup Buddy successfully ${currentApproved ? "suspended" : "approved"}`, "success");
         fetchBuddies();
+      } else {
+        alert({
+          title: "Update Failed",
+          message: data.message || "Failed to update Breakup Buddy status.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Failed to update status");
+      alert({
+        title: "Server Error",
+        message: "Failed to update Breakup Buddy status due to a network error.",
+        type: "danger",
+      });
     }
   }
 

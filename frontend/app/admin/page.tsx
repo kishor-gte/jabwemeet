@@ -24,8 +24,10 @@ import {
   X,
   RefreshCw,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminOverviewPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [stats, setStats] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
@@ -117,14 +119,23 @@ export default function AdminOverviewPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("Event published successfully to catalog!", "success");
         setActionSuccess("Event published successfully to catalog!");
         setActiveModal(null);
         fetchOverview();
       } else {
-        alert(data.message || "Failed to create event");
+        alert({
+          title: "Failed to Create Event",
+          message: data.message || "Please check the event details and try again.",
+          type: "danger",
+        });
       }
     } catch (err) {
-      alert("Error creating event");
+      alert({
+        title: "Server Error",
+        message: "An unexpected error occurred while creating the event.",
+        type: "danger",
+      });
     } finally {
       setModalLoading(false);
     }
@@ -143,14 +154,23 @@ export default function AdminOverviewPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("Service package created successfully!", "success");
         setActionSuccess("Service package created successfully!");
         setActiveModal(null);
         fetchOverview();
       } else {
-        alert(data.message || "Failed to create package");
+        alert({
+          title: "Package Creation Failed",
+          message: data.message || "Failed to create service package.",
+          type: "danger",
+        });
       }
     } catch (err) {
-      alert("Error creating package");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while creating the service package.",
+        type: "danger",
+      });
     } finally {
       setModalLoading(false);
     }
@@ -169,14 +189,23 @@ export default function AdminOverviewPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("Discount coupon code generated!", "success");
         setActionSuccess("Discount coupon code generated!");
         setActiveModal(null);
         fetchOverview();
       } else {
-        alert(data.message || "Failed to create coupon");
+        alert({
+          title: "Coupon Creation Failed",
+          message: data.message || "Failed to create coupon code.",
+          type: "danger",
+        });
       }
     } catch (err) {
-      alert("Error creating coupon");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while creating the coupon.",
+        type: "danger",
+      });
     } finally {
       setModalLoading(false);
     }
@@ -185,7 +214,13 @@ export default function AdminOverviewPage() {
   // Handle Announcement
   async function handleSendAnnouncement(e: React.FormEvent) {
     e.preventDefault();
-    if (!confirm(`Are you sure you want to broadcast this announcement to ${announcementForm.targetAudience}?`)) return;
+    const confirmed = await confirm({
+      title: "Broadcast Announcement",
+      message: `Are you sure you want to broadcast this announcement to ${announcementForm.targetAudience.replace("_", " ")}?`,
+      type: "confirm",
+      confirmText: "Broadcast Now",
+    });
+    if (!confirmed) return;
 
     setModalLoading(true);
     try {
@@ -197,14 +232,23 @@ export default function AdminOverviewPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(data.message || "Announcement broadcasted successfully!", "success");
         setActionSuccess(data.message);
         setActiveModal(null);
         fetchOverview();
       } else {
-        alert(data.message || "Failed to broadcast");
+        alert({
+          title: "Broadcast Failed",
+          message: data.message || "Could not broadcast announcement.",
+          type: "danger",
+        });
       }
     } catch (err) {
-      alert("Error sending announcement");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while sending the announcement broadcast.",
+        type: "danger",
+      });
     } finally {
       setModalLoading(false);
     }

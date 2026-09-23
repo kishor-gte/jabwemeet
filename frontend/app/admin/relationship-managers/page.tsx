@@ -16,8 +16,10 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminRelationshipManagersPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [managers, setManagers] = useState<any[]>([]);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,15 @@ export default function AdminRelationshipManagersPage() {
   }, []);
 
   async function handleToggleApproval(id: string, currentApproved: boolean) {
-    if (!confirm(`Are you sure you want to ${currentApproved ? "revoke approval for" : "approve"} this Relationship Manager?`)) return;
+    const actionName = currentApproved ? "revoke approval for" : "approve";
+    const confirmed = await confirm({
+      title: `${currentApproved ? "Revoke" : "Approve"} Relationship Manager`,
+      message: `Are you sure you want to ${actionName} this Relationship Manager?`,
+      type: currentApproved ? "warning" : "confirm",
+      confirmText: currentApproved ? "Revoke Approval" : "Approve Manager",
+      isDestructive: currentApproved,
+    });
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/admin/relationship-managers/${id}`, {
         method: "PATCH",
@@ -54,10 +64,21 @@ export default function AdminRelationshipManagersPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Relationship Manager ${currentApproved ? "approval revoked" : "approved successfully"}`, "success");
         fetchRMs();
+      } else {
+        alert({
+          title: "Update Failed",
+          message: data.message || "Failed to update Relationship Manager status.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Failed to update RM status");
+      alert({
+        title: "Server Error",
+        message: "Failed to update RM status due to a network error.",
+        type: "danger",
+      });
     }
   }
 

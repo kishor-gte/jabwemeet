@@ -296,6 +296,13 @@ function DashboardContent() {
       if (typeof window !== "undefined" && (window as any).Razorpay) {
         return resolve(true);
       }
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        if ((window as any).Razorpay) return resolve(true);
+        existingScript.addEventListener("load", () => resolve(true));
+        existingScript.addEventListener("error", () => resolve(false));
+        return;
+      }
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.onload = () => resolve(true);
@@ -330,7 +337,11 @@ function DashboardContent() {
 
   // Handle Event Ticket Booking (Complimentary or Razorpay Paid)
   const handleRegisterEvent = async (evt: EventItem, spots: number = 1) => {
-    if (!user) return;
+    if (!user) {
+      alert("Please log in to book tickets for this event.");
+      router.push("/login");
+      return;
+    }
     const ticketCount = Math.max(1, spots);
 
     // Free event path
@@ -374,12 +385,6 @@ function DashboardContent() {
     }
 
     // Paid event path via Razorpay
-    const loaded = await loadRazorpay();
-    if (!loaded) {
-      alert("Razorpay checkout failed to load. Please verify your internet connection.");
-      return;
-    }
-
     try {
       const orderRes = await fetch(`/api/events/${evt.id}/create-order`, {
         method: "POST",
@@ -408,6 +413,54 @@ function DashboardContent() {
         setReservationToast(`🎉 Confirmed ${ticketCount} seat(s) for "${evt.title}"!`);
         setTimeout(() => setReservationToast(null), 4500);
         reloadBookings();
+        return;
+      }
+
+      // Handle development / mock order fallback
+      if (orderData.order?.id?.startsWith("order_mock_")) {
+        const verifyRes = await fetch(`/api/events/${evt.id}/verify-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_order_id: orderData.order.id,
+            razorpay_payment_id: "pay_mock_" + Date.now(),
+            razorpay_signature: "mock_signature",
+            spots: ticketCount,
+          }),
+          credentials: "include",
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.success) {
+          const updated = Array.from(new Set([...registeredEventIds, evt.id]));
+          setRegisteredEventIds(updated);
+          setUserBookedSpotsMap((prev) => ({
+            ...prev,
+            [evt.id]: (prev[evt.id] || 0) + ticketCount,
+          }));
+          setEvents((prev) =>
+            prev.map((e) =>
+              e.id === evt.id
+                ? { ...e, confirmedBookings: (e.confirmedBookings ?? 0) + ticketCount }
+                : e
+            )
+          );
+          try {
+            localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
+          } catch (e) {}
+          setReservationToast(
+            `🎉 Payment verified! ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} secured for "${evt.title}".`
+          );
+          setTimeout(() => setReservationToast(null), 4500);
+          reloadBookings();
+        } else {
+          alert(verifyData.message || "Payment verification failed.");
+        }
+        return;
+      }
+
+      const loaded = await loadRazorpay();
+      if (!loaded) {
+        alert("Razorpay checkout failed to load. Please verify your internet connection.");
         return;
       }
 
@@ -478,6 +531,9 @@ function DashboardContent() {
       };
 
       const paymentObj = new (window as any).Razorpay(options);
+      paymentObj.on("payment.failed", function (resp: any) {
+        alert(resp.error?.description || "Payment failed or cancelled");
+      });
       paymentObj.open();
     } catch (err) {
       console.error("Booking error:", err);
@@ -588,10 +644,10 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white flex flex-col">
-      {/* Dynamic Toast Notification */}
+      {/* Dynamic Toast Notification - Centered */}
       {reservationToast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-200">
-          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-emerald-500 text-white font-medium text-xs shadow-2xl shadow-emerald-500/40 border border-emerald-400/30">
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 zoom-in-95 duration-200">
+          <div className="flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-emerald-600/95 backdrop-blur-md text-white font-medium text-xs sm:text-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-emerald-400/40">
             <ShieldCheck className="w-4 h-4 shrink-0" />
             <span>{reservationToast}</span>
           </div>

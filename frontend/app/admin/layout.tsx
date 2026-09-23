@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   MessageCircle,
 } from "lucide-react";
+import { AdminDialogProvider } from "@/components/admin/AdminDialogProvider";
 
 interface AdminUser {
   id: string;
@@ -259,7 +260,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#080d1a] text-slate-100 flex flex-col font-sans antialiased selection:bg-red-500 selection:text-white">
+    <AdminDialogProvider>
+      <div className="min-h-screen bg-[#080d1a] text-slate-100 flex flex-col font-sans antialiased selection:bg-red-500 selection:text-white">
       {/* TOP NAVBAR */}
       <header className="sticky top-0 z-40 bg-[#0d1627]/90 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 h-16 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-3">
@@ -581,6 +583,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AdminDialogProvider>
   );
 }

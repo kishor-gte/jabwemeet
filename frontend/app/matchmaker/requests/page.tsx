@@ -208,11 +208,11 @@ export default function RequestsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-16">
-      {/* Dynamic Toast Feedback */}
+      {/* Dynamic Toast Feedback - Centered */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 zoom-in-95 duration-200">
           <div
-            className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl ${
+            className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-white font-medium text-xs sm:text-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md border border-white/10 ${
               toastMessage.type === "success"
                 ? "bg-emerald-600 shadow-emerald-500/30"
                 : toastMessage.type === "error"

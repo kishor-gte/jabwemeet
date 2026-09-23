@@ -18,8 +18,10 @@ import {
   DollarSign,
   AlertTriangle,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminEventsPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -128,20 +130,37 @@ export default function AdminEventsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(editingEvent ? "Event updated successfully" : "Event created successfully", "success");
         setModalOpen(false);
         fetchEvents();
       } else {
-        alert(data.message || "Failed to save event");
+        alert({
+          title: "Save Failed",
+          message: data.message || "Failed to save event details.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error saving event");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while saving the event.",
+        type: "danger",
+      });
     } finally {
       setModalLoading(false);
     }
   }
 
   async function handleArchiveEvent(id: string) {
-    if (!confirm("Are you sure you want to archive this event?")) return;
+    const confirmed = await confirm({
+      title: "Archive Event",
+      message: "Are you sure you want to archive this event? Attendees will no longer see it in active listings.",
+      type: "warning",
+      confirmText: "Archive Event",
+      isDestructive: true,
+    });
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`/api/admin/events/${id}`, {
         method: "DELETE",
@@ -149,10 +168,21 @@ export default function AdminEventsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("Event archived successfully", "info");
         fetchEvents();
+      } else {
+        alert({
+          title: "Archive Failed",
+          message: data.message || "Failed to archive event.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Failed to archive event");
+      alert({
+        title: "Server Error",
+        message: "Failed to archive event due to a network error.",
+        type: "danger",
+      });
     }
   }
 
