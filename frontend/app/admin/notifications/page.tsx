@@ -11,8 +11,10 @@ import {
   Clock,
   Plus,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminNotificationsPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
@@ -45,7 +47,13 @@ export default function AdminNotificationsPage() {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
 
-    if (!confirm(`Confirm broadcasting this notification${sendEmail ? ' and sending emails' : ''} to: ${targetAudience}?`)) return;
+    const confirmed = await confirm({
+      title: "Broadcast Notification",
+      message: `Confirm broadcasting this notification${sendEmail ? " and sending direct emails" : ""} to: ${targetAudience}?`,
+      type: "confirm",
+      confirmText: "Broadcast Message",
+    });
+    if (!confirmed) return;
 
     setSending(true);
     setSuccessMsg(null);
@@ -58,15 +66,24 @@ export default function AdminNotificationsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("Announcement broadcasted successfully", "success");
         setSuccessMsg(data.message);
         setTitle("");
         setMessage("");
         fetchAnnouncements();
       } else {
-        alert(data.message || "Failed to broadcast");
+        alert({
+          title: "Broadcast Failed",
+          message: data.message || "Failed to broadcast announcement.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error broadcasting announcement");
+      alert({
+        title: "Server Error",
+        message: "Error broadcasting announcement due to a network error.",
+        type: "danger",
+      });
     } finally {
       setSending(false);
     }

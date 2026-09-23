@@ -9,8 +9,10 @@ import {
   Shield,
   HelpCircle,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminContentPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [content, setContent] = useState<any>({
     heroHeadline: "",
     heroSubheadline: "",
@@ -54,13 +56,22 @@ export default function AdminContentPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast("Platform CMS content updated successfully", "success");
         setSuccessMsg(true);
         setTimeout(() => setSuccessMsg(false), 3000);
       } else {
-        alert(data.message || "Failed to update content");
+        alert({
+          title: "Save Failed",
+          message: data.message || "Failed to update content.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error saving content");
+      alert({
+        title: "Server Error",
+        message: "Error saving content due to a network error.",
+        type: "danger",
+      });
     } finally {
       setSaving(false);
     }

@@ -12,8 +12,10 @@ import {
   Clock,
   UserCheck,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminVerificationPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,16 @@ export default function AdminVerificationPage() {
   }, []);
 
   async function handleVerify(id: string, approved: boolean) {
-    if (!confirm(`Are you sure you want to ${approved ? "approve and verify" : "reject"} this application?`)) return;
+    const actionName = approved ? "approve and verify" : "reject";
+    const confirmed = await confirm({
+      title: `${approved ? "Approve" : "Reject"} Verification`,
+      message: `Are you sure you want to ${actionName} this member application?`,
+      type: approved ? "confirm" : "warning",
+      confirmText: approved ? "Approve & Verify" : "Reject Application",
+      isDestructive: !approved,
+    });
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`/api/admin/verification/${id}`, {
         method: "POST",
@@ -47,12 +58,21 @@ export default function AdminVerificationPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Application ${approved ? "approved and verified" : "rejected"} successfully`, "success");
         fetchVerifications();
       } else {
-        alert(data.message || "Action failed");
+        alert({
+          title: "Action Failed",
+          message: data.message || "Failed to process verification application.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error updating verification");
+      alert({
+        title: "Server Error",
+        message: "Error updating verification due to a network error.",
+        type: "danger",
+      });
     }
   }
 

@@ -16,8 +16,10 @@ import {
   Sparkles,
   Filter,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminSubscriptionsPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,7 +46,16 @@ export default function AdminSubscriptionsPage() {
   }, []);
 
   async function handleUpdateStatus(id: string, newStatus: string) {
-    if (!confirm(`Are you sure you want to change this subscription status to ${newStatus}?`)) return;
+    const isCancelled = newStatus === "CANCELLED";
+    const confirmed = await confirm({
+      title: "Update Subscription",
+      message: `Are you sure you want to change this subscription status to ${newStatus}?`,
+      type: isCancelled ? "warning" : "confirm",
+      confirmText: isCancelled ? "Cancel Subscription" : "Update Status",
+      isDestructive: isCancelled,
+    });
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`/api/admin/services/subscriptions/${id}`, {
         method: "PATCH",
@@ -54,12 +65,21 @@ export default function AdminSubscriptionsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Subscription marked as ${newStatus}`, "success");
         fetchSubscriptions();
       } else {
-        alert(data.message || "Failed to update subscription");
+        alert({
+          title: "Update Failed",
+          message: data.message || "Failed to update subscription.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Failed to update subscription");
+      alert({
+        title: "Server Error",
+        message: "Failed to update subscription due to a network error.",
+        type: "danger",
+      });
     }
   }
 

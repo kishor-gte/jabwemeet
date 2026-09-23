@@ -17,6 +17,7 @@ import {
   Minus,
   Plus,
   CreditCard,
+  Loader2,
 } from "lucide-react";
 
 export interface EventItem {
@@ -59,6 +60,7 @@ export default function UpcomingEventsSection({
   const [bookingModalEvent, setBookingModalEvent] = useState<EventItem | null>(null);
   const [selectedSpots, setSelectedSpots] = useState<number>(1);
   const [onlyLocal, setOnlyLocal] = useState<boolean>(false);
+  const [isProcessingBooking, setIsProcessingBooking] = useState<boolean>(false);
 
   // Derive unique categories dynamically
   const categories = ["ALL", ...Array.from(new Set(events.map((e) => e.category).filter(Boolean)))];
@@ -694,24 +696,35 @@ export default function UpcomingEventsSection({
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={isProcessingBooking}
                   onClick={() => setBookingModalEvent(null)}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer disabled:opacity-50"
                 >
                   Close
                 </button>
 
                 <button
                   type="button"
-                  disabled={remaining === 0}
-                  onClick={() => {
+                  disabled={remaining === 0 || isProcessingBooking}
+                  onClick={async () => {
                     const evtToBook = bookingModalEvent;
                     const spotsToBook = selectedSpots;
-                    setBookingModalEvent(null);
-                    onRegisterEvent(evtToBook, spotsToBook);
+                    setIsProcessingBooking(true);
+                    try {
+                      await onRegisterEvent(evtToBook, spotsToBook);
+                    } finally {
+                      setIsProcessingBooking(false);
+                      setBookingModalEvent(null);
+                    }
                   }}
                   className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b34932] text-white text-xs font-extrabold shadow-lg shadow-[#e06d53]/30 transition transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
                 >
-                  {unitPrice > 0 ? (
+                  {isProcessingBooking ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Opening Razorpay...</span>
+                    </>
+                  ) : unitPrice > 0 ? (
                     <>
                       <CreditCard className="w-4 h-4" />
                       <span>Proceed to Pay ₹{totalPrice.toLocaleString("en-IN")}</span>

@@ -377,6 +377,14 @@ server.listen(PORT, () => {
   console.log(`JabWeMeet Backend Server (with Socket.io) running at http://localhost:${PORT}`);
 });
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
 process.on('SIGINT', () => {
   console.log('Shutting down server gracefully...');
   server.close(() => {

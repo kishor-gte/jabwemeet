@@ -24,8 +24,10 @@ import {
   UserX,
   ExternalLink,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminUserProfilePage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const params = useParams();
   const router = useRouter();
   const userId = params?.id as string;
@@ -72,13 +74,21 @@ export default function AdminUserProfilePage() {
       });
       const json = await res.json();
       if (json.success) {
-        alert("User record updated successfully.");
+        toast("User record updated successfully", "success");
         fetchUserDetail();
       } else {
-        alert(json.message || "Failed to save updates.");
+        alert({
+          title: "Update Failed",
+          message: json.message || "Failed to save profile updates.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error updating user record.");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while updating the user record.",
+        type: "danger",
+      });
     } finally {
       setSaving(false);
     }

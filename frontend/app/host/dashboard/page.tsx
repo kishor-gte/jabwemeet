@@ -30,6 +30,13 @@ import {
   Trash,
   Loader2,
   AlertCircle,
+  PartyPopper,
+  Heart,
+  Crown,
+  ShieldAlert,
+  HelpCircle,
+  Trash2,
+  Info,
 } from "lucide-react";
 
 type Booking = {
@@ -137,7 +144,96 @@ export default function HostDashboardPage() {
   const [selectedEventForModal, setSelectedEventForModal] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Cute & Professional Dynamic Popup Modal State
+  const [popupConfig, setPopupConfig] = useState<{
+    isOpen: boolean;
+    type: "success" | "error" | "warning" | "info" | "confirm";
+    title: string;
+    message: string;
+    sticker?: string;
+    badgeText?: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+    sticker: "✨",
+  });
+
+  // Dynamic Floating Toast State
+  const [toastConfig, setToastConfig] = useState<{
+    isOpen: boolean;
+    message: string;
+    type: "success" | "error" | "warning" | "info";
+    sticker: string;
+  }>({
+    isOpen: false,
+    message: "",
+    type: "success",
+    sticker: "✨",
+  });
+
+  const showPopup = (config: {
+    type?: "success" | "error" | "warning" | "info" | "confirm";
+    title: string;
+    message: string;
+    sticker?: string;
+    badgeText?: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }) => {
+    setPopupConfig({
+      isOpen: true,
+      type: config.type || "info",
+      title: config.title,
+      message: config.message,
+      sticker:
+        config.sticker ||
+        (config.type === "success"
+          ? "🎉"
+          : config.type === "error"
+          ? "🚨"
+          : config.type === "warning"
+          ? "⚠️"
+          : config.type === "confirm"
+          ? "🤔"
+          : "✨"),
+      badgeText: config.badgeText,
+      confirmText: config.confirmText,
+      cancelText: config.cancelText,
+      onConfirm: config.onConfirm,
+      onCancel: config.onCancel,
+    });
+  };
+
+  const closePopup = () => {
+    setPopupConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const showToast = (
+    msg: string,
+    type: "success" | "error" | "warning" | "info" = "success",
+    sticker?: string
+  ) => {
+    const defaultSticker =
+      type === "success" ? "🎉" : type === "error" ? "🚨" : type === "warning" ? "⚠️" : "✨";
+    setToastConfig({
+      isOpen: true,
+      message: msg,
+      type,
+      sticker: sticker || defaultSticker,
+    });
+    setTimeout(() => {
+      setToastConfig((prev) => ({ ...prev, isOpen: false }));
+    }, 4200);
+  };
+
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -201,11 +297,6 @@ export default function HostDashboardPage() {
     ageRange: "",
     itinerary: "",
   });
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -298,14 +389,26 @@ export default function HostDashboardPage() {
           newStatus === "CHECKED_IN"
             ? "Attendee checked in successfully! 🎉"
             : newStatus === "CANCELLED"
-            ? "Reservation marked as cancelled."
-            : "Reservation status restored to confirmed."
+            ? "Reservation marked as cancelled. 📋"
+            : "Reservation status restored to confirmed. 💖",
+          newStatus === "CANCELLED" ? "warning" : "success",
+          newStatus === "CHECKED_IN" ? "🎟️" : newStatus === "CANCELLED" ? "📋" : "💖"
         );
       } else {
-        alert(data.message || "Failed to update attendee status");
+        showPopup({
+          type: "error",
+          title: "Update Failed 😿",
+          message: data.message || "Failed to update attendee status. Please try again.",
+          sticker: "😿",
+        });
       }
     } catch (err) {
-      alert("Error updating status");
+      showPopup({
+        type: "error",
+        title: "Network Error ⚠️",
+        message: "An unexpected error occurred while updating the attendee status.",
+        sticker: "📡",
+      });
     } finally {
       setUpdatingBookingId(null);
     }
@@ -340,7 +443,12 @@ export default function HostDashboardPage() {
       const data = await orderRes.json();
 
       if (!data.success) {
-        alert(data.message || "Failed to create order");
+        showPopup({
+          type: "error",
+          title: "Order Failed ⚠️",
+          message: data.message || "Unable to initiate package purchase order.",
+          sticker: "💳",
+        });
         setSubscribingPkgId(null);
         return;
       }
@@ -361,10 +469,21 @@ export default function HostDashboardPage() {
         });
         const verifyData = await verifyRes.json();
         if (verifyData.success) {
-          showToast(`Successfully upgraded to ${planName} plan! 🎉`);
+          showPopup({
+            type: "success",
+            title: "Plan Upgraded! 👑🎉",
+            message: `Woohoo! You have successfully upgraded to the ${planName} plan. Your new hosting powers are active now!`,
+            sticker: "👑",
+            confirmText: "Awesome! 🚀",
+          });
           loadHostData();
         } else {
-          alert(verifyData.message || "Payment verification failed");
+          showPopup({
+            type: "error",
+            title: "Verification Failed 😿",
+            message: verifyData.message || "Payment verification failed.",
+            sticker: "💔",
+          });
         }
         setSubscribingPkgId(null);
         return;
@@ -372,7 +491,12 @@ export default function HostDashboardPage() {
 
       const res = await loadRazorpay();
       if (!res) {
-        alert("Razorpay SDK failed to load. Are you online?");
+        showPopup({
+          type: "error",
+          title: "Connection Error 🌐",
+          message: "Razorpay SDK failed to load. Please verify your internet connection and try again.",
+          sticker: "📡",
+        });
         setSubscribingPkgId(null);
         return;
       }
@@ -399,10 +523,21 @@ export default function HostDashboardPage() {
           });
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            showToast(`Successfully upgraded to ${planName} plan! 🎉`);
+            showPopup({
+              type: "success",
+              title: "Payment Successful! 👑🎉",
+              message: `Congratulations! You are now subscribed to the ${planName} plan.`,
+              sticker: "👑",
+              confirmText: "Explore Features ✨",
+            });
             loadHostData();
           } else {
-            alert(verifyData.message || "Payment verification failed");
+            showPopup({
+              type: "error",
+              title: "Verification Failed 😿",
+              message: verifyData.message || "Payment verification could not be completed.",
+              sticker: "💔",
+            });
           }
           setSubscribingPkgId(null);
         },
@@ -418,20 +553,38 @@ export default function HostDashboardPage() {
 
       const paymentObject = new (window as any).Razorpay(options);
       paymentObject.on("payment.failed", function (resp: any) {
-        alert(resp.error?.description || "Payment failed or cancelled");
+        showPopup({
+          type: "error",
+          title: "Payment Unsuccessful 💳",
+          message: resp.error?.description || "Payment was cancelled or could not be processed by your bank.",
+          sticker: "😿",
+        });
         setSubscribingPkgId(null);
       });
       paymentObject.open();
     } catch (err) {
       console.error(err);
-      alert("Something went wrong processing your subscription");
+      showPopup({
+        type: "error",
+        title: "Subscription Error ⚠️",
+        message: "Something went wrong while processing your plan subscription.",
+        sticker: "⚠️",
+      });
       setSubscribingPkgId(null);
     }
   };
+
   const handleOpenCreateModal = () => {
     if (subStatus && !subStatus.canCreateEvent) {
-      setActiveSection("subscriptions");
-      showToast("⚠️ Event limit reached! Please upgrade your plan to create more events.");
+      showPopup({
+        type: "warning",
+        title: "Event Limit Reached 👑✨",
+        message: "You've reached the event creation quota for your current plan. Upgrade to host unlimited community gatherings!",
+        sticker: "👑",
+        confirmText: "View Upgrade Plans 🚀",
+        cancelText: "Maybe Later",
+        onConfirm: () => setActiveSection("subscriptions"),
+      });
       return;
     }
     setEditingEventId(null);
@@ -592,7 +745,7 @@ export default function HostDashboardPage() {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateEventForm()) {
-      showToast("⚠️ Please fix the highlighted errors before publishing.");
+      showToast("⚠️ Please fix highlighted errors before publishing.", "warning", "⚠️");
       return;
     }
 
@@ -611,7 +764,15 @@ export default function HostDashboardPage() {
       if (data.success) {
         setShowCreateModal(false);
         setFormErrors({});
-        showToast(`Event "${formData.title}" ${editingEventId ? "updated" : "published"} successfully! 🚀`);
+        showPopup({
+          type: "success",
+          title: editingEventId ? "Event Updated! ✨" : "Event Published! 🚀🎉",
+          message: editingEventId
+            ? `Your event "${formData.title}" was updated successfully.`
+            : `Hooray! "${formData.title}" is now published! An invitation email broadcast has been dispatched to all active users. 💌`,
+          sticker: editingEventId ? "✏️" : "🎉",
+          confirmText: "Awesome! 💖",
+        });
         loadHostData();
         setEditingEventId(null);
         setFormData({
@@ -628,39 +789,75 @@ export default function HostDashboardPage() {
           itinerary: "",
         });
       } else if (res.status === 403) {
-        // Subscription limit reached – redirect to upgrade page
         setShowCreateModal(false);
-        setActiveSection("subscriptions");
-        showToast("⚠️ Event limit reached! Please upgrade your plan to create more events.");
+        showPopup({
+          type: "warning",
+          title: "Event Limit Reached 👑",
+          message: "You've reached your maximum allowed active events on this plan. Upgrade your subscription to continue publishing new gatherings.",
+          sticker: "👑",
+          confirmText: "Upgrade Plan 🚀",
+          cancelText: "Later",
+          onConfirm: () => setActiveSection("subscriptions"),
+        });
       } else {
         const msg = data.message || `Failed to ${editingEventId ? "update" : "create"} event`;
-        showToast(msg);
+        showPopup({
+          type: "error",
+          title: "Submission Error 😿",
+          message: msg,
+          sticker: "⚠️",
+        });
         setFormErrors((prev) => ({ ...prev, general: msg }));
       }
     } catch (error) {
-      showToast(`Error ${editingEventId ? "updating" : "creating"} event. Please try again.`);
+      showPopup({
+        type: "error",
+        title: "Network Error ⚠️",
+        message: `Failed to connect to the server while ${editingEventId ? "updating" : "publishing"} your event.`,
+        sticker: "📡",
+      });
     } finally {
       setFormSubmitting(false);
     }
   };
 
-  const handleDeleteEvent = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
-    try {
-      const res = await fetch(`/api/events/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast("Event deleted successfully!");
-        loadHostData();
-      } else {
-        showToast(data.message || "Failed to delete event");
-      }
-    } catch (error) {
-      showToast("Error deleting event. Please try again.");
-    }
+  const handleDeleteEvent = (id: string, title?: string) => {
+    showPopup({
+      type: "confirm",
+      title: "Delete This Event? 💔",
+      message: `Are you sure you want to delete "${title || 'this event'}"? All attendee reservations will be cancelled. This action cannot be undone.`,
+      sticker: "🗑️",
+      badgeText: "Permanent Action",
+      confirmText: "Yes, Delete Event 🗑️",
+      cancelText: "Keep Event 💖",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/events/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast("Event removed successfully! 🗑️", "info", "✨");
+            loadHostData();
+          } else {
+            showPopup({
+              type: "error",
+              title: "Delete Failed 😿",
+              message: data.message || "Could not delete this event.",
+              sticker: "⚠️",
+            });
+          }
+        } catch (error) {
+          showPopup({
+            type: "error",
+            title: "Network Error ⚠️",
+            message: "Failed to connect to the server while deleting the event.",
+            sticker: "📡",
+          });
+        }
+      },
+    });
   };
 
   const openEditModal = (evt: Event) => {
@@ -913,17 +1110,6 @@ export default function HostDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0b111e] text-slate-100 flex flex-col font-sans">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#131d2e] border border-[#e06d53]/50 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#e06d53] animate-ping" />
-          <span className="text-sm font-medium">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Mobile Top Header */}
       <div className="lg:hidden bg-[#0d1526] border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
@@ -1382,7 +1568,7 @@ export default function HostDashboardPage() {
                             <Edit className="w-3.5 h-3.5" /> Edit
                           </button>
                           <button
-                            onClick={() => handleDeleteEvent(evt.id)}
+                            onClick={() => handleDeleteEvent(evt.id, evt.title)}
                             className="flex-1 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
                           >
                             <Trash className="w-3.5 h-3.5" /> Delete
@@ -2262,6 +2448,176 @@ export default function HostDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cute & Professional Dynamic Popup Modal */}
+      {popupConfig.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-[#131d2e]/95 backdrop-blur-xl border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-5 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Ambient background glow */}
+            <div
+              className={`absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
+                popupConfig.type === "success"
+                  ? "bg-emerald-500/20"
+                  : popupConfig.type === "error"
+                  ? "bg-rose-500/25"
+                  : popupConfig.type === "warning"
+                  ? "bg-amber-500/25"
+                  : popupConfig.type === "confirm"
+                  ? "bg-[#e06d53]/25"
+                  : "bg-sky-500/20"
+              }`}
+            />
+
+            {/* Top Close Button */}
+            <button
+              onClick={closePopup}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition cursor-pointer"
+              title="Close modal"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Dynamic Animated Sticker */}
+            <div className="relative pt-2">
+              <div
+                className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center text-4xl shadow-2xl border border-white/10 select-none transform hover:scale-105 transition ${
+                  popupConfig.type === "success"
+                    ? "bg-emerald-500/15 ring-4 ring-emerald-500/20"
+                    : popupConfig.type === "error"
+                    ? "bg-rose-500/15 ring-4 ring-rose-500/20"
+                    : popupConfig.type === "warning"
+                    ? "bg-amber-500/15 ring-4 ring-amber-500/20"
+                    : popupConfig.type === "confirm"
+                    ? "bg-[#e06d53]/15 ring-4 ring-[#e06d53]/20"
+                    : "bg-sky-500/15 ring-4 ring-sky-500/20"
+                }`}
+              >
+                <span className="animate-bounce inline-block">{popupConfig.sticker || "✨"}</span>
+              </div>
+            </div>
+
+            {/* Status Pill Badge */}
+            <div>
+              <span
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase ${
+                  popupConfig.type === "success"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    : popupConfig.type === "error"
+                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                    : popupConfig.type === "warning"
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    : popupConfig.type === "confirm"
+                    ? "bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30"
+                    : "bg-sky-500/20 text-sky-300 border border-sky-500/30"
+                }`}
+              >
+                {popupConfig.badgeText ||
+                  (popupConfig.type === "success"
+                    ? "✨ Success"
+                    : popupConfig.type === "error"
+                    ? "🚨 Attention"
+                    : popupConfig.type === "warning"
+                    ? "👑 Plan Notice"
+                    : popupConfig.type === "confirm"
+                    ? "🤔 Please Confirm"
+                    : "ℹ️ Notification")}
+              </span>
+            </div>
+
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {popupConfig.title}
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed font-normal px-2">
+                {popupConfig.message}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2">
+              {popupConfig.type === "confirm" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (popupConfig.onCancel) popupConfig.onCancel();
+                      closePopup();
+                    }}
+                    className="w-full py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white font-bold text-sm transition cursor-pointer"
+                  >
+                    {popupConfig.cancelText || "Cancel"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (popupConfig.onConfirm) popupConfig.onConfirm();
+                      closePopup();
+                    }}
+                    className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-extrabold text-sm shadow-lg shadow-rose-600/30 transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  >
+                    {popupConfig.confirmText || "Confirm"}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  {popupConfig.cancelText && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (popupConfig.onCancel) popupConfig.onCancel();
+                        closePopup();
+                      }}
+                      className="w-full py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white font-bold text-sm transition cursor-pointer"
+                    >
+                      {popupConfig.cancelText}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (popupConfig.onConfirm) popupConfig.onConfirm();
+                      closePopup();
+                    }}
+                    className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#f07d63] hover:to-[#d96950] text-white font-extrabold text-sm shadow-lg shadow-[#e06d53]/30 transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  >
+                    {popupConfig.confirmText || "Got It! ✨"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cute Floating Toast Notification - Centered */}
+      {toastConfig.isOpen && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[130] w-full max-w-md px-4 animate-in slide-in-from-top-4 zoom-in-95 duration-200 pointer-events-auto">
+          <div
+            className={`flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-[#0e1626]/98 backdrop-blur-2xl border shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-left ${
+              toastConfig.type === "success"
+                ? "border-emerald-500/40 text-emerald-200 ring-2 ring-emerald-500/10"
+                : toastConfig.type === "warning"
+                ? "border-amber-500/40 text-amber-200 ring-2 ring-amber-500/10"
+                : toastConfig.type === "error"
+                ? "border-rose-500/40 text-rose-200 ring-2 ring-rose-500/10"
+                : "border-sky-500/40 text-sky-200 ring-2 ring-sky-500/10"
+            }`}
+          >
+            <span className="text-2xl shrink-0 select-none animate-bounce">{toastConfig.sticker}</span>
+            <div className="flex-1 text-xs sm:text-sm font-semibold text-white leading-snug">
+              {toastConfig.message}
+            </div>
+            <button
+              onClick={() => setToastConfig((prev) => ({ ...prev, isOpen: false }))}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer shrink-0"
+              title="Dismiss"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}

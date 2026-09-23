@@ -14,8 +14,10 @@ import {
   Shield,
   Heart,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminMatchmakingPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [data, setData] = useState<any>({ requests: [], suggestions: [], appointments: [] });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"requests" | "suggestions" | "dates">("requests");
@@ -49,10 +51,21 @@ export default function AdminMatchmakingPage() {
       });
       const json = await res.json();
       if (json.success) {
+        toast(`Request status updated to ${newStatus.replace("_", " ")}`, "success");
         fetchMatchmaking();
+      } else {
+        alert({
+          title: "Update Failed",
+          message: json.message || "Failed to update matchmaking request status.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error updating status");
+      alert({
+        title: "Server Error",
+        message: "Error updating request status due to a network error.",
+        type: "danger",
+      });
     }
   }
 

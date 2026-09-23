@@ -16,8 +16,10 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function EventRegistrationsPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const params = useParams();
   const router = useRouter();
   const eventId = params?.id as string;
@@ -321,16 +323,28 @@ export default function EventRegistrationsPage() {
                               credentials: "include",
                             });
                             const data = await res.json();
-                            alert(data.message || "Ticket pass sent successfully! 🎟️✨");
+                            if (data.success) {
+                              toast(data.message || "Ticket pass sent successfully to attendee email.", "success");
+                            } else {
+                              alert({
+                                title: "Resend Failed",
+                                message: data.message || "Could not resend the ticket pass.",
+                                type: "danger",
+                              });
+                            }
                           } catch (e) {
-                            alert("Failed to resend ticket pass.");
+                            alert({
+                              title: "Network Error",
+                              message: "Failed to resend ticket pass.",
+                              type: "danger",
+                            });
                           }
                         }}
-                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 font-semibold text-xs transition inline-flex items-center gap-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 font-semibold text-xs transition inline-flex items-center gap-1.5 cursor-pointer"
                         title="Resend ticket code & pass via email"
                       >
-                        <Ticket className="w-3 h-3" />
-                        <span>Resend Pass 🎟️</span>
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>Resend Pass</span>
                       </button>
 
                       <button

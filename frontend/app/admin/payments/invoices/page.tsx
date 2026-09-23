@@ -11,8 +11,10 @@ import {
   Download,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminInvoicesPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const router = useRouter();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,15 +114,27 @@ export default function AdminInvoicesPage() {
                               credentials: "include",
                             });
                             const data = await res.json();
-                            alert(data.message || "Invoice emailed successfully! 🧾✨");
+                            if (data.success) {
+                              toast(data.message || "Invoice emailed successfully to user.", "success");
+                            } else {
+                              alert({
+                                title: "Email Failed",
+                                message: data.message || "Failed to send invoice email.",
+                                type: "danger",
+                              });
+                            }
                           } catch (e) {
-                            alert("Failed to send invoice email.");
+                            alert({
+                              title: "Server Error",
+                              message: "Failed to send invoice email due to a network error.",
+                              type: "danger",
+                            });
                           }
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 text-xs font-semibold transition inline-flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 text-xs font-semibold transition inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>Email Receipt 📩</span>
+                        <span>Email Receipt</span>
                       </button>
                     </td>
                   </tr>

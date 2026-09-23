@@ -14,8 +14,10 @@ import {
   X,
   Trash2,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminPackagesPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,9 +26,15 @@ export default function AdminPackagesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDeletePackage(id: string, name: string) {
-    if (!window.confirm(`Are you sure you want to delete the package "${name}"? This will permanently remove it from available packages.`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Delete Service Package",
+      message: `Are you sure you want to delete the package "${name}"? This will permanently remove it from available packages.`,
+      type: "danger",
+      confirmText: "Delete Package",
+      isDestructive: true,
+    });
+    if (!confirmed) return;
+
     setDeletingId(id);
     try {
       const res = await fetch(`/api/admin/services/packages/${id}`, {
@@ -35,15 +43,24 @@ export default function AdminPackagesPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(`Package "${name}" deleted successfully`, "info");
         setPackages((prev) => prev.filter((p) => p.id !== id));
         if (modalOpen && editingPkg?.id === id) {
           setModalOpen(false);
         }
       } else {
-        alert(data.message || "Failed to delete package");
+        alert({
+          title: "Deletion Failed",
+          message: data.message || "Failed to delete package.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error deleting package");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while deleting the package.",
+        type: "danger",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -136,13 +153,22 @@ export default function AdminPackagesPage() {
       });
       const data = await res.json();
       if (data.success) {
+        toast(editingPkg ? "Package updated successfully" : "Package created successfully", "success");
         setModalOpen(false);
         fetchPackages();
       } else {
-        alert(data.message || "Failed to save package");
+        alert({
+          title: "Save Failed",
+          message: data.message || "Failed to save package details.",
+          type: "danger",
+        });
       }
     } catch (e) {
-      alert("Error saving package");
+      alert({
+        title: "Server Error",
+        message: "An error occurred while saving the package.",
+        type: "danger",
+      });
     } finally {
       setSaving(false);
     }

@@ -16,8 +16,10 @@ import {
   Lock,
   Sparkles,
 } from "lucide-react";
+import { useAdminDialog } from "@/components/admin/AdminDialogProvider";
 
 export default function AdminSettingsPage() {
+  const { alert, confirm, toast } = useAdminDialog();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
@@ -531,41 +533,57 @@ export default function AdminSettingsPage() {
                 <p className="text-slate-300 text-xs">
                   Send a live test email directly to your inbox to verify SMTP connection, emojis, and brand styling.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                  <input
-                    type="email"
-                    placeholder="Enter recipient email (e.g. nehakore467@gmail.com)"
-                    id="testEmailInput"
-                    defaultValue="nehakore467@gmail.com"
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-[#0f172a] border border-white/15 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const input = (document.getElementById("testEmailInput") as HTMLInputElement)?.value;
-                      if (!input) return alert("Please enter an email address");
-                      try {
-                        const res = await fetch("/api/admin/test-email", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({ toEmail: input }),
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          alert(data.message || "Test email sent successfully! Please check your inbox and Spam folder.");
-                        } else {
-                          alert(data.message || "Failed to send test email");
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <input
+                      type="email"
+                      placeholder="Enter recipient email (e.g. nehakore467@gmail.com)"
+                      id="testEmailInput"
+                      defaultValue="nehakore467@gmail.com"
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-[#0f172a] border border-white/15 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const input = (document.getElementById("testEmailInput") as HTMLInputElement)?.value;
+                        if (!input) {
+                          alert({
+                            title: "Missing Email Address",
+                            message: "Please enter a recipient email address to send the test email.",
+                            type: "warning",
+                          });
+                          return;
                         }
-                      } catch (err: any) {
-                        alert("Error sending test email: " + err.message);
-                      }
-                    }}
-                    className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-purple-500/25 flex items-center justify-center gap-1.5"
-                  >
-                    <span>🚀</span> Send Test Email
-                  </button>
-                </div>
+                        try {
+                          const res = await fetch("/api/admin/test-email", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ toEmail: input }),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            toast(data.message || "Test email dispatched successfully! Please check your inbox.", "success");
+                          } else {
+                            alert({
+                              title: "Test Email Failed",
+                              message: data.message || "Failed to send test email.",
+                              type: "danger",
+                            });
+                          }
+                        } catch (err: any) {
+                          alert({
+                            title: "Error Sending Test Email",
+                            message: err.message || "An unexpected error occurred while communicating with the mail server.",
+                            type: "danger",
+                          });
+                        }
+                      }}
+                      className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-purple-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Send Test Email</span>
+                    </button>
+                  </div>
               </div>
             </div>
           </div>

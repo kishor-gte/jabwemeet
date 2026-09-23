@@ -1,0 +1,5 @@
+◇ injected env (14) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+[AdminInit] Checking & running idempotent admin schema migrations...
+JabWeMeet Backend Server (with Socket.io) running at http://localhost:5001
+[AdminInit] Admin database schema and defaults initialized successfully.
