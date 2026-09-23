@@ -47,6 +47,60 @@ interface AnnouncementItem {
   sentAt: string;
 }
 
+interface BookingRecordItem {
+  eventId?: string;
+  spots?: number;
+  event?: {
+    id: string;
+  };
+}
+
+interface RazorpayPaymentResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error?: {
+    description?: string;
+    code?: string;
+    reason?: string;
+    step?: string;
+    source?: string;
+  };
+}
+
+interface RazorpayInstance {
+  open: () => void;
+  on: (event: string, callback: (resp: RazorpayFailureResponse) => void) => void;
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description?: string;
+  order_id: string;
+  handler: (response: RazorpayPaymentResponse) => void | Promise<void>;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  theme?: {
+    color?: string;
+  };
+  modal?: {
+    ondismiss?: () => void;
+  };
+}
+
+type WindowWithRazorpay = Window & typeof globalThis & {
+  Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+};
+
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,8 +114,14 @@ function DashboardContent() {
   const [error, setError] = useState("");
 
   // Navigation & Interactive states
-  const initialTab = searchParams.get("tab") || "dashboard";
-  const [activeSection, setActiveSection] = useState(initialTab);
+  const urlTab = searchParams.get("tab");
+  const [internalSection, setInternalSection] = useState<string | null>(null);
+  const activeSection = internalSection || urlTab || "dashboard";
+
+  const setActiveSection = (sec: string) => {
+    setInternalSection(sec);
+    window.history.replaceState(null, "", `/dashboard?tab=${sec}`);
+  };
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [registeredEventIds, setRegisteredEventIds] = useState<string[]>([]);
@@ -90,13 +150,6 @@ function DashboardContent() {
   const [profileTargetSection, setProfileTargetSection] = useState<string | null>(null);
 
   useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab) {
-      setActiveSection(tab);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
     async function loadDashboard() {
       setLoading(true);
       setError("");
@@ -116,7 +169,7 @@ function DashboardContent() {
             try {
               const overrides = JSON.parse(savedUserOverrides);
               setUser({ ...data.user, ...overrides });
-            } catch (e) {
+            } catch {
               setUser(data.user);
             }
           } else {
@@ -129,10 +182,10 @@ function DashboardContent() {
             if (bookingRes.ok) {
               const bookingData = await bookingRes.json();
               if (bookingData.success && Array.isArray(bookingData.bookings)) {
-                const dbIds = bookingData.bookings.map((b: any) => b.eventId || b.event?.id);
+                const dbIds = bookingData.bookings.map((b: BookingRecordItem) => b.eventId || b.event?.id);
                 setRegisteredEventIds(dbIds);
                 const sMap: Record<string, number> = {};
-                bookingData.bookings.forEach((b: any) => {
+                bookingData.bookings.forEach((b: BookingRecordItem) => {
                   const evId = b.eventId || b.event?.id;
                   if (evId) sMap[evId] = b.spots || 1;
                 });
@@ -147,13 +200,13 @@ function DashboardContent() {
               }
               const savedSpots = localStorage.getItem(`jwm_spots_${data.user.id}`);
               if (savedSpots) {
-                try { setUserBookedSpotsMap(JSON.parse(savedSpots)); } catch (e) {}
+                try { setUserBookedSpotsMap(JSON.parse(savedSpots)); } catch {}
               }
             }
-          } catch (e) {
+          } catch {
             const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
             if (savedRsvps) {
-              try { setRegisteredEventIds(JSON.parse(savedRsvps)); } catch (err) {}
+              try { setRegisteredEventIds(JSON.parse(savedRsvps)); } catch {}
             }
           }
 
@@ -168,7 +221,7 @@ function DashboardContent() {
                 setConnections(connData.connections);
               }
             }
-          } catch (e) {}
+          } catch {}
 
           // Load real-time matchmaking status from backend
           try {
@@ -187,7 +240,7 @@ function DashboardContent() {
                 }
               }
             }
-          } catch (e) {}
+          } catch {}
         } else {
           router.replace("/login");
           return;
@@ -206,7 +259,7 @@ function DashboardContent() {
           } else {
             setEvents([]);
           }
-        } catch (e) {
+        } catch {
           setEvents([]);
         }
 
@@ -219,7 +272,7 @@ function DashboardContent() {
               setAnnouncements(notifData.announcements);
             }
           }
-        } catch (e) {}
+        } catch {}
       } catch (err) {
         console.error("Failed to load dashboard:", err);
         setError("Unable to load dashboard data right now. Please check your connection.");
@@ -261,7 +314,7 @@ function DashboardContent() {
             setMessageAnnouncements([]);
           }
         }
-      } catch (e) {}
+      } catch {}
     };
 
     fetchUnread();
@@ -276,7 +329,7 @@ function DashboardContent() {
         method: "POST",
         credentials: "include",
       });
-    } catch (e) {}
+    } catch {}
     router.replace("/");
   }
 
@@ -287,18 +340,19 @@ function DashboardContent() {
     setUser(updated);
     try {
       localStorage.setItem(`jwm_user_overrides_${user.id}`, JSON.stringify(updatedFields));
-    } catch (e) {}
+    } catch {}
   };
 
   // Helper to dynamically load Razorpay SDK
   const loadRazorpay = () => {
     return new Promise<boolean>((resolve) => {
-      if (typeof window !== "undefined" && (window as any).Razorpay) {
+      const win = window as WindowWithRazorpay;
+      if (typeof window !== "undefined" && win.Razorpay) {
         return resolve(true);
       }
       const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
       if (existingScript) {
-        if ((window as any).Razorpay) return resolve(true);
+        if (win.Razorpay) return resolve(true);
         existingScript.addEventListener("load", () => resolve(true));
         existingScript.addEventListener("error", () => resolve(false));
         return;
@@ -318,10 +372,10 @@ function DashboardContent() {
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.bookings)) {
-          const ids = data.bookings.map((b: any) => b.eventId || b.event?.id);
+          const ids = data.bookings.map((b: BookingRecordItem) => b.eventId || b.event?.id);
           setRegisteredEventIds(ids);
           const sMap: Record<string, number> = {};
-          data.bookings.forEach((b: any) => {
+          data.bookings.forEach((b: BookingRecordItem) => {
             const evId = b.eventId || b.event?.id;
             if (evId) sMap[evId] = b.spots || 1;
           });
@@ -332,7 +386,7 @@ function DashboardContent() {
           }
         }
       }
-    } catch (e) {}
+    } catch {}
   };
 
   // Handle Event Ticket Booking (Complimentary or Razorpay Paid)
@@ -370,7 +424,7 @@ function DashboardContent() {
           );
           try {
             localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
-          } catch (e) {}
+          } catch {}
           setToast({ text: `🎉 Confirmed ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} for "${evt.title}"!`, type: 'success' });
           setTimeout(() => setToast(null), 4500);
           reloadBookings();
@@ -456,7 +510,7 @@ function DashboardContent() {
           );
           try {
             localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
-          } catch (e) {}
+          } catch {}
           setToast({
             text: `🎉 Payment verified! ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} secured for "${evt.title}".`,
             type: 'success',
@@ -470,14 +524,14 @@ function DashboardContent() {
         return;
       }
 
-      const options = {
+      const options: RazorpayOptions = {
         key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
         amount: orderData.order.amount,
         currency: orderData.order.currency || "INR",
         name: "JabWeMeet",
         description: `${ticketCount} Ticket(s) — ${evt.title}`,
         order_id: orderData.order.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayPaymentResponse) {
           try {
             const verifyRes = await fetch(`/api/events/${evt.id}/verify-payment`, {
               method: "POST",
@@ -507,7 +561,7 @@ function DashboardContent() {
               );
               try {
                 localStorage.setItem(`jwm_rsvps_${user.id}`, JSON.stringify(updated));
-              } catch (e) {}
+              } catch {}
               setToast({ text: `🎉 Payment verified! ${ticketCount} ${ticketCount === 1 ? 'seat' : 'seats'} secured for "${evt.title}".`, type: 'success' });
               setTimeout(() => setToast(null), 4500);
               reloadBookings();
@@ -536,11 +590,14 @@ function DashboardContent() {
         },
       };
 
-      const paymentObj = new (window as any).Razorpay(options);
-      paymentObj.on("payment.failed", function (resp: any) {
-        alert(resp.error?.description || "Payment failed or cancelled");
-      });
-      paymentObj.open();
+      const win = window as WindowWithRazorpay;
+      if (win.Razorpay) {
+        const paymentObj = new win.Razorpay(options);
+        paymentObj.on("payment.failed", function (resp: RazorpayFailureResponse) {
+          alert(resp.error?.description || "Payment failed or cancelled");
+        });
+        paymentObj.open();
+      }
     } catch (err) {
       console.error("Booking error:", err);
       setToast({ text: "Failed to initiate payment. Please try again.", type: 'error' });
@@ -576,7 +633,7 @@ function DashboardContent() {
     setServiceRequests(updated);
     try {
       localStorage.setItem(`jwm_services_${user.id}`, JSON.stringify(updated));
-    } catch (e) {}
+    } catch {}
 
     const serviceName =
       service === "relationshipManager" ? "Relationship Manager" : "Breakup Buddy";
