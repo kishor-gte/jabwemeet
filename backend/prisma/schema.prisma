@@ -372,6 +372,11 @@ model CafeProfile {
   closingTime    String?
   fssaiNumber    String?
   gstNumber      String?
+    bankName       String?
+    bankAccount    String?
+    bankIfsc       String?
+    currency       String   @default("INR")
+    timezone       String   @default("Asia/Kolkata")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   menuItems      MenuItem[]

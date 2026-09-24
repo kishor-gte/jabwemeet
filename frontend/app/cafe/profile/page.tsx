@@ -1,7 +1,9 @@
 ﻿"use client";
+import { useToast } from "@/components/ToastProvider";
 import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
+  const { showToast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,9 +24,9 @@ export default function ProfilePage() {
         body: JSON.stringify(profile)
       });
       const data = await res.json();
-      if (data.success) alert("Profile saved successfully!");
+      if (data.success) showToast("Profile saved successfully!", "success");
     } catch (e) {
-      alert("Error saving profile");
+      showToast("Error saving profile", "error");
     }
     setSaving(false);
   };

@@ -1,8 +1,10 @@
 ﻿"use client";
+import { useToast } from "@/components/ToastProvider";
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 
 export default function OffersPage() {
+  const { showToast } = useToast();
   const [offers, setOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,13 +36,14 @@ export default function OffersPage() {
       if (data.success) { 
         setIsModalOpen(false); 
         fetchOffers(); 
+        showToast("Offer saved successfully!", "success");
         setFormData({ name: '', code: '', type: 'Percentage', value: '', minOrder: 0 });
       } else {
-        alert("Failed to save offer: " + (data.error || data.message || "Unknown error"));
+        showToast("Failed to save offer: " + (data.error || data.message || "Unknown error"), "error");
       }
     } catch (e: any) { 
       console.error(e); 
-      alert("Error saving offer: " + e.message);
+      showToast("Error saving offer: " + e.message, "error");
     }
   };
 

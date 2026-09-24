@@ -55,15 +55,16 @@ router.get('/profile', async (req, res) => {
         });
       }
     }
-    res.json({ success: true, data: profile });
+    res.json({ success: true, data: { ...profile, email: user ? user.email : "" } });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/profile', async (req, res) => {
   try {
+    const { email, id, userId, createdAt, updatedAt, ...allowedData } = req.body;
     const profile = await prisma.cafeProfile.update({
       where: { userId: req.user.userId },
-      data: req.body
+      data: allowedData
     });
     res.json({ success: true, data: profile });
   } catch(e) { res.status(500).json({ error: e.message }); }

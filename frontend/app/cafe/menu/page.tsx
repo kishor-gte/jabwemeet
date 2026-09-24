@@ -1,8 +1,10 @@
 ﻿"use client";
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
+import { useToast } from "@/components/ToastProvider";
 
 export default function MenuPage() {
+  const { showToast } = useToast();
   const categories = ["All", "Coffee", "Tea", "Pizza", "Burgers", "Desserts", "Snacks", "Beverages"];
   const [activeCategory, setActiveCategory] = useState("All");
   
@@ -54,13 +56,14 @@ export default function MenuPage() {
       if (data.success) {
         setIsModalOpen(false);
         fetchMenu();
+        showToast("Item saved successfully!", "success");
         setFormData({ name: '', category: 'Coffee', description: '', price: 0, isVeg: true, prepTime: '10 mins', isAvailable: true, image: '' });
       } else {
-        alert("Failed to save item: " + (data.error || data.message || "Unknown error"));
+        showToast("Failed to save item: " + (data.error || data.message || "Unknown error"), "error");
       }
     } catch (e: any) { 
       console.error(e); 
-      alert("Error saving item: " + e.message);
+      showToast("Error saving item: " + e.message, "error");
     }
     setIsSubmitting(false);
   };
