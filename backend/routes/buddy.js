@@ -1,7 +1,7 @@
 const express = require('express');
 const prisma = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { sendSessionScheduledEmail } = require('../utils/mailer');
+const { sendSessionScheduledEmail, sendRequestClaimedByOtherEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -39,8 +39,15 @@ router.get('/dashboard', async (req, res) => {
 
 router.get('/requests', async (req, res) => {
   try {
-    const requests = await prisma.buddyRequest.findMany({
-      where: { buddyId: req.user.userId },
+    const currentBuddyId = req.user.userId;
+    // Fetch requests: either Pending broadcast requests OR requests assigned to this buddy
+    const rawRequests = await prisma.buddyRequest.findMany({
+      where: {
+        OR: [
+          { status: 'Pending' },
+          { buddyId: currentBuddyId }
+        ]
+      },
       include: {
         user: {
           select: {
@@ -54,11 +61,27 @@ router.get('/requests', async (req, res) => {
             dateOfBirth: true,
           },
         },
+        buddy: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ success: true, data: requests });
+
+    const formattedRequests = rawRequests.map((r) => ({
+      ...r,
+      isBroadcast: r.status === 'Pending',
+      isClaimedByMe: r.buddyId === currentBuddyId && r.status === 'Accepted',
+      isClaimedByOther: r.buddyId !== currentBuddyId && r.status === 'Accepted',
+    }));
+
+    res.json({ success: true, data: formattedRequests });
   } catch (error) {
+    console.error("Error in /api/buddy/requests:", error);
     res.status(500).json({ success: false });
   }
 });
@@ -258,14 +281,28 @@ router.patch('/requests/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    if (request.buddyId !== buddyId) {
+    // If another buddy already claimed it
+    if (request.status === 'Accepted' && request.buddyId !== buddyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'This connection request was already accepted by another Breakup Buddy.'
+      });
+    }
+
+    // If trying to reject a request not assigned to this buddy
+    if (status === 'Rejected' && request.buddyId !== buddyId && request.status !== 'Pending') {
       return res.status(403).json({ success: false, message: 'Unauthorized to update this request' });
     }
 
     const updatedRequest = await prisma.buddyRequest.update({
       where: { id },
-      data: { status },
-      include: { user: { select: { name: true, profileImage: true } } },
+      data: {
+        buddyId: buddyId,
+        status: status,
+        chatLimitSeconds: request.chatLimitSeconds || 1800,
+        voiceCallLimitSeconds: request.voiceCallLimitSeconds || 1800,
+      },
+      include: { user: { select: { id: true, name: true, profileImage: true } } },
     });
 
     let session = null;
@@ -274,9 +311,9 @@ router.patch('/requests/:id', async (req, res) => {
         data: {
           userId: request.userId,
           buddyId: buddyId,
-          scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(Date.now() + 24 * 60 * 60 * 1000),
-          durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 45,
-          sessionType: request.sessionType || '1-on-1 Call',
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+          durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 30,
+          sessionType: request.sessionType || '1-on-1 Support',
           status: 'Scheduled',
           amountEarned: 499.0,
         },
@@ -289,7 +326,7 @@ router.patch('/requests/:id', async (req, res) => {
           sendSessionScheduledEmail({
             userEmail: request.user.email,
             userName: request.user.name,
-            buddyName: buddyUser?.displayName || buddyUser?.name || 'Breakup Buddy',
+            buddyName: buddyUser?.displayName || 'Breakup Buddy',
             scheduledAt: session.scheduledAt,
             durationMinutes: session.durationMinutes,
             sessionType: session.sessionType,
@@ -298,11 +335,40 @@ router.patch('/requests/:id', async (req, res) => {
       } catch (mailErr) {
         console.warn('Buddy session mail note:', mailErr.message);
       }
+
+      // Send "Request Claimed / Too Late" notification to all other Breakup Buddies
+      try {
+        const otherBuddies = await prisma.user.findMany({
+          where: { role: 'BREAKUP_BUDDY', id: { not: buddyId } },
+          select: { id: true, email: true, name: true, displayName: true }
+        });
+
+        otherBuddies.forEach((otherBuddy) => {
+          if (otherBuddy.email) {
+            sendRequestClaimedByOtherEmail({
+              buddyEmail: otherBuddy.email,
+              buddyName: otherBuddy.displayName || otherBuddy.name || 'Breakup Buddy',
+              userName: request.user?.name || 'A Member',
+            }).catch(e => {});
+          }
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user-${request.userId}`).emit('buddy-request-accepted', { requestId: id, buddyId });
+          otherBuddies.forEach((ob) => {
+            io.to(`buddy-${ob.id}`).emit('buddy-request-claimed', { requestId: id, claimedBy: buddyId });
+          });
+          io.emit('broadcast-request-claimed', { requestId: id, claimedBy: buddyId });
+        }
+      } catch (peerErr) {
+        console.warn('Peer notification note:', peerErr.message);
+      }
     }
 
     return res.json({
       success: true,
-      message: status === 'Accepted' ? 'Request accepted and session scheduled!' : 'Request rejected.',
+      message: status === 'Accepted' ? 'Connection request accepted! 30 Mins Free session started.' : 'Request rejected.',
       data: updatedRequest,
       session,
     });
@@ -328,23 +394,32 @@ router.post('/requests/:id/accept', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Request not found' });
     }
 
-    if (request.buddyId !== buddyId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized to update this request' });
+    // If another buddy already claimed it
+    if (request.status === 'Accepted' && request.buddyId !== buddyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'This connection request was already accepted by another Breakup Buddy.'
+      });
     }
 
     const updatedRequest = await prisma.buddyRequest.update({
       where: { id },
-      data: { status: 'Accepted' },
-      include: { user: { select: { name: true, profileImage: true, email: true } } },
+      data: {
+        buddyId: buddyId,
+        status: 'Accepted',
+        chatLimitSeconds: request.chatLimitSeconds || 1800,
+        voiceCallLimitSeconds: request.voiceCallLimitSeconds || 1800,
+      },
+      include: { user: { select: { id: true, name: true, profileImage: true, email: true } } },
     });
 
     const session = await prisma.buddySession.create({
       data: {
         userId: request.userId,
         buddyId: buddyId,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(Date.now() + 24 * 60 * 60 * 1000),
-        durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 45,
-        sessionType: request.sessionType || '1-on-1 Call',
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+        durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : 30,
+        sessionType: request.sessionType || '1-on-1 Support',
         status: 'Scheduled',
         amountEarned: 499.0,
       },
@@ -357,7 +432,7 @@ router.post('/requests/:id/accept', async (req, res) => {
         sendSessionScheduledEmail({
           userEmail: request.user.email,
           userName: request.user.name,
-          buddyName: buddyUser?.displayName || buddyUser?.name || 'Breakup Buddy',
+          buddyName: buddyUser?.displayName || 'Breakup Buddy',
           scheduledAt: session.scheduledAt,
           durationMinutes: session.durationMinutes,
           sessionType: session.sessionType,
@@ -367,9 +442,38 @@ router.post('/requests/:id/accept', async (req, res) => {
       console.warn('Buddy accept mail note:', mailErr.message);
     }
 
+    // Send "Request Claimed / Too Late" notification to all other Breakup Buddies
+    try {
+      const otherBuddies = await prisma.user.findMany({
+        where: { role: 'BREAKUP_BUDDY', id: { not: buddyId } },
+        select: { id: true, email: true, name: true, displayName: true }
+      });
+
+      otherBuddies.forEach((otherBuddy) => {
+        if (otherBuddy.email) {
+          sendRequestClaimedByOtherEmail({
+            buddyEmail: otherBuddy.email,
+            buddyName: otherBuddy.displayName || otherBuddy.name || 'Breakup Buddy',
+            userName: request.user?.name || 'A Member',
+          }).catch(e => {});
+        }
+      });
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`user-${request.userId}`).emit('buddy-request-accepted', { requestId: id, buddyId });
+        otherBuddies.forEach((ob) => {
+          io.to(`buddy-${ob.id}`).emit('buddy-request-claimed', { requestId: id, claimedBy: buddyId });
+        });
+        io.emit('broadcast-request-claimed', { requestId: id, claimedBy: buddyId });
+      }
+    } catch (peerErr) {
+      console.warn('Peer notification note:', peerErr.message);
+    }
+
     return res.json({
       success: true,
-      message: 'Request accepted and session scheduled successfully',
+      message: 'Connection request accepted and claimed successfully! 30-min free session activated.',
       data: updatedRequest,
       session,
     });

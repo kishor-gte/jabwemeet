@@ -106,9 +106,9 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
     ...requests.map(req => ({
       id: req.id,
       type: "buddy" as const,
-      name: req.buddy.displayName || req.buddy.name,
-      subtitle: "Breakup Buddy",
-      initial: (req.buddy.displayName ? req.buddy.displayName[0] : req.buddy.name[0]),
+      name: "Breakup Buddy",
+      subtitle: "Confidential Support",
+      initial: "B",
       raw: req,
     })),
     ...connections.filter(c => c.status === "DateFixed" || c.status === "BothApproved").map(conn => {

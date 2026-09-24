@@ -11,6 +11,11 @@ export default function HomePage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showSafetyModal, setShowSafetyModal] = useState(false);
+  const [showRecommendPlaceModal, setShowRecommendPlaceModal] = useState(false);
+  const [placeCityInput, setPlaceCityInput] = useState("");
+  const [placeCitySuggestions, setPlaceCitySuggestions] = useState<any[]>([]);
+  const [placeCitySearching, setPlaceCitySearching] = useState(false);
+  const [placeCityError, setPlaceCityError] = useState("");
 
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -133,6 +138,43 @@ export default function HomePage() {
     fetchTestimonials();
     fetchCmsContent();
   }, []);
+
+  // Real-time Indian city search for Recommend a Place
+  useEffect(() => {
+    if (!placeCityInput.trim()) {
+      setPlaceCitySuggestions([]);
+      return;
+    }
+    setPlaceCitySearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/places/cities?q=${encodeURIComponent(placeCityInput.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setPlaceCitySuggestions(data.cities || []);
+          }
+        }
+      } catch (e) {
+        console.error("Error searching cities:", e);
+      } finally {
+        setPlaceCitySearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [placeCityInput]);
+
+  const handleSearchPlaceRedirect = (cityName?: string) => {
+    const target = (cityName || placeCityInput).trim();
+    if (!target) {
+      setPlaceCityError("Please enter an Indian city / place name to search.");
+      return;
+    }
+    setPlaceCityError("");
+    setShowRecommendPlaceModal(false);
+    setPlaceCityInput("");
+    router.push(`/cafes?city=${encodeURIComponent(target)}`);
+  };
 
   // Real-time email validation + debounced check-email
   useEffect(() => {
@@ -376,12 +418,21 @@ export default function HomePage() {
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+          <div className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
             <a href="#events" className="hover:text-white transition">Events</a>
             <a href="#experiences" className="hover:text-white transition">Experiences</a>
             <a href="#how-it-works" className="hover:text-white transition">How It Works</a>
             <a href="#safety" className="hover:text-white transition">Safety</a>
             <a href="#about" className="hover:text-white transition">About</a>
+            <button
+              onClick={() => {
+                setPlaceCityError("");
+                setShowRecommendPlaceModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#e06d53]/15 hover:bg-[#e06d53]/25 text-[#fca5a5] hover:text-white border border-[#e06d53]/30 transition shadow-sm"
+            >
+              <span>📍</span> Recommend a Place
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1791,6 +1842,141 @@ export default function HomePage() {
               <p><strong>3. On-Ground Event Hosts:</strong> Every experience is supervised by friendly on-ground coordinators.</p>
               <p><strong>4. Consent-First Culture:</strong> Sharing phone numbers or personal contacts is always completely voluntary.</p>
               <p><strong>5. Zero Tolerance:</strong> Any harassment or inappropriate conduct leads to an immediate permanent ban.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RECOMMEND A PLACE MODAL */}
+      {showRecommendPlaceModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#131d2e] border border-white/15 rounded-3xl w-full max-w-lg p-7 relative shadow-2xl space-y-5">
+            <button
+              onClick={() => setShowRecommendPlaceModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white text-lg w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition"
+            >
+              ✕
+            </button>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e06d53]/10 border border-[#e06d53]/30 text-[11px] font-semibold text-[#fca5a5] mb-2">
+                ☕ Explore & Recommend Top Cafes in India 🇮🇳
+              </div>
+              <h2 className="text-2xl font-bold font-serif text-white">Recommend a Place</h2>
+              <p className="text-xs text-slate-300 mt-1">
+                Search Indian cities to explore curated cafes, coffee spots, and cozy meetup venues.
+              </p>
+            </div>
+
+            {/* City Place API Autocomplete Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearchPlaceRedirect();
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Enter Indian City / Place: <span className="text-[#e06d53]">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#e06d53]">
+                    📍
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    value={placeCityInput}
+                    onChange={(e) => {
+                      setPlaceCityInput(e.target.value);
+                      if (placeCityError) setPlaceCityError("");
+                    }}
+                    placeholder="Type Indian city (e.g. Bengaluru, Mumbai, Pune, Jaipur...)"
+                    autoFocus
+                    className={`w-full pl-10 pr-4 py-3 bg-[#0b111e] border ${
+                      placeCityError ? "border-rose-500" : "border-white/15"
+                    } rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53] transition`}
+                  />
+                </div>
+                {placeCityError && (
+                  <p className="text-xs text-rose-400 font-semibold flex items-center gap-1 mt-1.5 animate-fade-in">
+                    ⚠️ {placeCityError}
+                  </p>
+                )}
+              </div>
+
+              {/* Dynamic Suggestions (India only) */}
+              {placeCityInput.trim() && (
+                <div className="max-h-44 overflow-y-auto space-y-1 bg-[#0b111e] border border-white/10 rounded-xl p-2">
+                  {placeCitySearching ? (
+                    <div className="text-xs text-slate-400 py-2 px-3 text-center">
+                      Searching Indian cities...
+                    </div>
+                  ) : placeCitySuggestions.length > 0 ? (
+                    placeCitySuggestions.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => handleSearchPlaceRedirect(c.name)}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 flex items-center justify-between transition group"
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-white group-hover:text-[#fca5a5]">
+                            {c.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400">{c.state}, India</div>
+                        </div>
+                        <span className="text-xs text-[#e06d53]">Select →</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="text-xs text-slate-400 py-2 px-3 text-center">
+                      Ready to search for cafes in <strong>"{placeCityInput}"</strong>, India
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Search Button */}
+              <button
+                type="submit"
+                className="w-full py-3 bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-sm rounded-xl shadow-lg shadow-[#e06d53]/30 transition flex items-center justify-center gap-2"
+              >
+                <span>🔍</span> Search Cafes & Meetup Spots
+              </button>
+            </form>
+
+            {/* Popular Indian Cities Quick Select */}
+            <div className="pt-3 border-t border-white/10 space-y-2">
+              <div className="text-[11px] font-semibold text-slate-400">
+                Popular Cities in India:
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Bengaluru",
+                  "Mumbai",
+                  "Delhi NCR",
+                  "Pune",
+                  "Hyderabad",
+                  "Goa",
+                  "Jaipur",
+                  "Kolkata",
+                  "Chennai",
+                  "Chandigarh",
+                  "Ahmedabad",
+                  "Kochi"
+                ].map((city) => (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => handleSearchPlaceRedirect(city)}
+                    className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 hover:bg-[#e06d53]/20 text-slate-300 hover:text-white border border-white/10 hover:border-[#e06d53]/40 transition"
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

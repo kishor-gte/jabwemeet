@@ -8,133 +8,109 @@ import {
   ArrowLeft,
   ShieldCheck,
   CheckCircle2,
-  Send,
   MessageCircle,
   Heart,
-  Lock,
-  Smile,
   Sparkles,
-  Search,
-  Filter,
-  MapPin,
-  Calendar,
-  Clock,
-  Globe,
-  ChevronRight,
-  X,
-  UserCheck,
   Phone,
-  HelpCircle,
-  Menu,
-  LogOut,
+  Clock,
+  PhoneCall,
+  Loader2,
+  HeartHandshake
 } from "lucide-react";
-import DashboardSidebar from "../dashboard/components/DashboardSidebar";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 import { io } from "socket.io-client";
-
-interface BreakupBuddy {
-  id: string;
-  name: string;
-  displayName: string | null;
-  email: string;
-  phone: string;
-  city: string | null;
-  gender: string | null;
-  profilePhoto: string | null;
-  shortBio: string | null;
-  languages: string[];
-  areasOfExpertise: string[];
-  sessionTypes: string[];
-  availableDays: string[];
-  availableTimeStart: string | null;
-  availableTimeEnd: string | null;
-  weeklySchedule?: any;
-  isAvailableForRequests?: boolean;
-  isVerified: boolean;
-  isApproved: boolean;
-  createdAt: string;
-}
 
 export default function BreakupBuddyPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [buddies, setBuddies] = useState<BreakupBuddy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCity, setSelectedCity] = useState("all");
-  
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+
   // Calling State
   const [activeCallReqId, setActiveCallReqId] = useState<string | null>(null);
   const [activeCallBuddyId, setActiveCallBuddyId] = useState<string | null>(null);
   const [userIncomingCall, setUserIncomingCall] = useState<{ requestId: string; callerName: string } | null>(null);
-  const [selectedExpertise, setSelectedExpertise] = useState("all");
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Badge counts for sidebar (matching dashboard)
-  const [badgeCounts, setBadgeCounts] = useState({
-    eventsCount: 0,
-    myEventsCount: 0,
-    connectionsCount: 0,
-    notificationsCount: 0,
-  });
+  // Connect State
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  // Booking Modal State
-  const [selectedBuddy, setSelectedBuddy] = useState<BreakupBuddy | null>(null);
-  const [sessionFormat, setSessionFormat] = useState("Chat");
-  const [feelingDescription, setFeelingDescription] = useState("");
-  const [bookingSending, setBookingSending] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [myRequests, setMyRequests] = useState<any[]>([]);
+  // Packages State
+  const [packages, setPackages] = useState<any[]>([
+    {
+      id: "pkg-30m",
+      name: "30-Minute Support Session",
+      price: 299,
+      duration: "30 Minutes",
+      features: ["1-on-1 Voice Call or Chat", "Compassionate Listening", "Non-judgmental Space", "Instant Connection"]
+    },
+    {
+      id: "pkg-60m",
+      name: "60-Minute Deep Healing Pack",
+      price: 499,
+      duration: "60 Minutes",
+      isPopular: true,
+      features: ["Full 1-Hour Voice & Chat Support", "Vent & Heal Freely", "Personalized Recovery Tips", "Valid for 7 Days"]
+    },
+    {
+      id: "pkg-week",
+      name: "Weekly Unlimited Care Pass",
+      price: 1999,
+      duration: "7 Days",
+      features: ["Unlimited Voice Calls & Daily Chat", "Priority Buddy Matching", "Crisis Emotional Support", "24/7 Availability"]
+    }
+  ]);
 
-  // Feedback State
-  const [feedbackBuddyId, setFeedbackBuddyId] = useState<string | null>(null);
-  const [rating, setRating] = useState(5);
-  const [feedbackComment, setFeedbackComment] = useState("");
-  const [feedbackSending, setFeedbackSending] = useState(false);
-  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const fetchMyRequests = () => {
-    fetch("/api/services/my-buddy-requests", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const fetchMyRequests = async () => {
+    try {
+      const res = await fetch("/api/services/my-buddy-requests", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
         if (data?.success && Array.isArray(data.data)) {
           setMyRequests(data.data);
         }
+      }
+    } catch (err) {
+      console.error("Error fetching requests:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPackages = () => {
+    fetch("/api/services/packages/breakup-buddy")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && Array.isArray(data.packages) && data.packages.length > 0) {
+          setPackages(data.packages);
+        }
       })
-      .catch(() => {});
+      .catch((e) => console.error("Error fetching dynamic packages:", e));
   };
 
   useEffect(() => {
-    // 1. Fetch current session if logged in
+    fetchPackages();
     fetch("/api/auth/me", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.success && data?.user) {
           setCurrentUser(data.user);
           fetchMyRequests();
-
-          // Load local user counts for sidebar
-          try {
-            const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
-            const myEventsCount = savedRsvps ? JSON.parse(savedRsvps).length : 0;
-            const savedConns = localStorage.getItem(`jwm_conns_${data.user.id}`);
-            const connectionsCount = savedConns ? JSON.parse(savedConns).length : 0;
-            const savedServices = localStorage.getItem(`jwm_services_${data.user.id}`);
-            const services = savedServices ? JSON.parse(savedServices) : {};
-            const serviceReqCount = (services.relationshipManager ? 1 : 0) + (services.breakupBuddy ? 1 : 0);
-
-            setBadgeCounts({
-              eventsCount: 0,
-              myEventsCount,
-              connectionsCount,
-              notificationsCount: myEventsCount + serviceReqCount,
-            });
-          } catch (e) {}
+        } else {
+          setLoading(false);
         }
       })
-      .catch(() => {});
+      .catch(() => setLoading(false));
   }, []);
 
+  // Real-time socket listener for incoming voice calls
   useEffect(() => {
     if (!currentUser) return;
     const s = io("http://localhost:5001", { withCredentials: true });
@@ -149,924 +125,454 @@ export default function BreakupBuddyPage() {
     };
   }, [currentUser]);
 
+  const activeConnection = myRequests[0];
+  const isAccepted = activeConnection && activeConnection.status === "Accepted";
+  const isPending = activeConnection && activeConnection.status === "Pending";
+
+  // Polling for live acceptance when request is pending
   useEffect(() => {
-    // 2. Fetch approved Breakup Buddies from backend API
-    fetch("/api/services/breakup-buddies")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.success && Array.isArray(data.data)) {
-          setBuddies(data.data);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch breakup buddies:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+    if (!isPending) return;
+    const interval = setInterval(() => {
+      fetchMyRequests();
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [isPending]);
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch (e) {}
-    router.replace("/login");
-  };
-
-  // Filter buddies by search, city, and expertise
-  const filteredBuddies = buddies.filter((b) => {
-    const fullName = b.name.toLowerCase();
-    const dispName = (b.displayName || "").toLowerCase();
-    const city = (b.city || "").toLowerCase();
-    const query = searchTerm.toLowerCase();
-
-    const matchesSearch =
-      fullName.includes(query) ||
-      dispName.includes(query) ||
-      city.includes(query) ||
-      b.languages.some((l) => l.toLowerCase().includes(query)) ||
-      b.areasOfExpertise.some((e) => e.toLowerCase().includes(query));
-
-    const matchesCity =
-      selectedCity === "all" ||
-      (b.city && b.city.toLowerCase() === selectedCity.toLowerCase());
-
-    const matchesExpertise =
-      selectedExpertise === "all" ||
-      b.areasOfExpertise.some(
-        (e) => e.toLowerCase() === selectedExpertise.toLowerCase()
-      );
-
-    return matchesSearch && matchesCity && matchesExpertise;
-  });
-
-  // Extract unique cities (excluding 'N/A' or empty)
-  const availableCities = Array.from(
-    new Set(
-      buddies
-        .map((b) => b.city)
-        .filter((c): c is string => Boolean(c && c !== "N/A"))
-    )
-  );
-
-  const handleBookSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBookingSending(true);
-
-    if (currentUser?.id && selectedBuddy) {
-      try {
-        const res = await fetch('/api/services/buddy-request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            buddyId: selectedBuddy.id,
-            sessionFormat,
-            notes: feelingDescription,
-          }),
-        });
-
-        const data = await res.json();
-        
-        if (data.success) {
-          // Update services flag
-          const services = JSON.parse(
-            localStorage.getItem(`jwm_services_${currentUser.id}`) || "{}"
-          );
-          services.breakupBuddy = true;
-          localStorage.setItem(
-            `jwm_services_${currentUser.id}`,
-            JSON.stringify(services)
-          );
-
-          setBookingSuccess(true);
-          fetchMyRequests();
-          setTimeout(() => {
-            setBookingSuccess(false);
-            setSelectedBuddy(null);
-            setFeelingDescription("");
-          }, 3500);
-        } else {
-          alert("Error: " + data.message);
-        }
-      } catch (e) {
-        alert("Failed to submit request.");
-      }
+  // Direct Connect Handler (Broadcasts to all Breakup Buddies with 30 mins free chat & call)
+  const handleConnectWithBuddy = async () => {
+    if (!currentUser) {
+      router.push("/login");
+      return;
     }
 
-    setBookingSending(false);
-  };
+    if (isPending) {
+      showToast("⏳ Please wait, a Breakup Buddy is already reviewing your request.");
+      return;
+    }
 
-  const handleFeedbackSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFeedbackSending(true);
+    if (isAccepted) {
+      showToast("✓ You are already connected with a Breakup Buddy!");
+      return;
+    }
+
+    setIsConnecting(true);
     try {
-      const res = await fetch("/api/services/buddy-review", {
+      const res = await fetch("/api/services/buddy-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          buddyId: feedbackBuddyId,
-          rating,
-          comment: feedbackComment,
+          sessionFormat: "Both (Chat & Call)",
+          notes: "Need emotional support and safe listening",
         }),
       });
+
       const data = await res.json();
       if (data.success) {
-        setFeedbackSuccess(true);
-        setTimeout(() => {
-          setFeedbackSuccess(false);
-          setFeedbackBuddyId(null);
-          setFeedbackComment("");
-          setRating(5);
-        }, 3000);
+        await fetchMyRequests();
+        showToast("📢 Request sent! Please wait, a Breakup Buddy will accept your request shortly.");
       } else {
-        alert("Failed to submit feedback: " + (data.message || data.error || "Unknown error"));
+        alert(data.message || "Could not submit request.");
       }
-    } catch (err) {
-      alert("Failed to submit feedback.");
+    } catch (e) {
+      alert("Failed to submit connection request. Please try again.");
+    } finally {
+      setIsConnecting(false);
     }
-    setFeedbackSending(false);
   };
 
-  const getPhotoUrl = (photo: string | null) => {
-    if (!photo) return null;
-    if (photo.startsWith("http://") || photo.startsWith("https://") || photo.startsWith("/")) {
-      return photo;
-    }
-    return `/uploads/${photo}`;
+  // Razorpay payment loader
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && (window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
   };
 
-  const sidebarUser = currentUser
-    ? {
-        id: currentUser.id,
-        name: currentUser.name || "Member",
-        email: currentUser.email || "",
-        phone: currentUser.phone || "",
-        city: currentUser.city && currentUser.city !== "N/A" ? currentUser.city : "Pan-India",
-        gender: currentUser.gender || null,
-        relationshipIntent: currentUser.relationshipIntent || null,
-        role: currentUser.role || "USER",
-        createdAt: currentUser.createdAt || new Date().toISOString(),
+  const handleBuyPackage = async (pkg: any) => {
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      alert("Failed to load Razorpay payment gateway.");
+      setIsProcessingPayment(false);
+      return;
+    }
+
+    try {
+      const targetReqId = activeConnection ? activeConnection.id : "new";
+
+      const orderRes = await fetch("/api/subscription/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          amount: pkg.price,
+          currency: "INR",
+          type: "BREAKUP_BUDDY_PACKAGE",
+          metadata: {
+            packageId: pkg.id,
+            packageName: pkg.name,
+            requestId: targetReqId,
+          }
+        }),
+      });
+
+      const orderData = await orderRes.json();
+      if (!orderData.success) {
+        alert(orderData.message || "Could not initiate payment.");
+        setIsProcessingPayment(false);
+        return;
       }
-    : {
-        id: "guest",
-        name: "Member",
-        email: "",
-        phone: "",
-        city: "Pan-India",
-        gender: null,
-        relationshipIntent: null,
-        role: "USER",
-        createdAt: new Date().toISOString(),
+
+      const options = {
+        key: orderData.keyId || "rzp_test_RIlD5bEKRjyn3h",
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: "JabWeMeet",
+        description: pkg.name,
+        order_id: orderData.order.id,
+        prefill: {
+          name: currentUser.name,
+          email: currentUser.email,
+          contact: currentUser.phone || "",
+        },
+        theme: {
+          color: "#e06d53",
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch("/api/subscription/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                type: "BREAKUP_BUDDY_PACKAGE",
+                metadata: {
+                  packageId: pkg.id,
+                  packageName: pkg.name,
+                  requestId: targetReqId,
+                }
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              fetchMyRequests();
+              showToast(`🎉 ${pkg.name} activated successfully!`);
+            } else {
+              alert("Payment verification failed.");
+            }
+          } catch (e) {
+            alert("Error verifying payment.");
+          }
+        },
       };
 
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert("Payment initiation error.");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-indigo-500 selection:text-white flex flex-col">
-      {/* Mobile Topbar */}
-      <header className="lg:hidden sticky top-0 z-40 bg-[#0d1526]/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setMobileSidebarOpen(true)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition"
-            aria-label="Open menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-sky-600 flex items-center justify-center font-black text-white text-base">
-              J
-            </div>
-            <span className="font-extrabold text-base tracking-tight text-white">
-              Jab<span className="text-indigo-400">We</span>Meet
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {currentUser ? (
-            <>
-              <span className="text-xs font-semibold text-slate-300 hidden sm:inline truncate max-w-[120px]">
-                {currentUser.name}
-              </span>
-              <button
-                onClick={handleLogout}
-                title="Log out"
-                className="p-2 text-slate-400 hover:text-[#fca5a5] rounded-lg transition"
-                aria-label="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/login"
-              className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs font-semibold"
-            >
-              Login
-            </Link>
-          )}
-        </div>
-      </header>
-
-      {/* Desktop Sidebar + Mobile Drawer */}
-      <DashboardSidebar
-        user={sidebarUser}
-        activeSection="breakup-buddy"
-        eventsCount={badgeCounts.eventsCount}
-        myEventsCount={badgeCounts.myEventsCount}
-        connectionsCount={badgeCounts.connectionsCount}
-        notificationsCount={badgeCounts.notificationsCount}
-        onSelectSection={(sec) => {
-          if (sec === "dashboard") {
-            const dashUrl = currentUser?.role === 'ADMIN' ? '/admin' :
-                            currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
-                            currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
-                            currentUser?.role === 'HOST' ? '/host/dashboard' :
-                            '/dashboard';
-            router.push(dashUrl);
-          } else {
-            router.push(`/dashboard?tab=${sec}`);
-          }
-        }}
-        onLogout={handleLogout}
-        mobileOpen={mobileSidebarOpen}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
-
-      {/* Main Content Area (Offset for Desktop Sidebar) */}
-      <div className="lg:pl-72 flex-1 flex flex-col min-w-0">
-        {/* Desktop Top Header Bar with breadcrumbs and back button */}
-        <div className="bg-[#0d1526]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <Link
-              href={
-                currentUser?.role === 'ADMIN' ? '/admin' :
-                currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
-                currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
-                currentUser?.role === 'HOST' ? '/host/dashboard' :
-                '/dashboard'
-              }
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Back to Dashboard</span>
-            </Link>
-            <span className="text-slate-600 hidden sm:inline">/</span>
-            <span className="text-xs text-slate-400 hidden sm:inline">Premium Services</span>
-            <span className="text-slate-600 hidden sm:inline">/</span>
-            <span className="text-xs font-semibold text-white hidden sm:inline">Breakup Buddies</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
-              <Headphones className="w-3 h-3 text-indigo-400" />
-              Safe Space Network
-            </span>
-          </div>
-        </div>
-
-        {/* Hero Header */}
-        <header className="relative border-b border-white/10 bg-gradient-to-b from-[#131d2e] via-[#0d1526] to-[#0b111e] py-10 px-6 sm:px-8">
-          <div className="max-w-5xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
-              <Headphones className="w-3.5 h-3.5 text-indigo-400" />
-              <span>JabWeMeet Certified Safe Space Network</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight font-serif">
-              Verified Breakup Buddies
-            </h1>
-
-            <p className="text-sm text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Breakups can feel heavy and isolating. Our verified Breakup Buddies provide empathetic, non-judgmental listening, no-contact accountability, and healthy moving-on guidance in a 100% confidential environment.
-            </p>
-
-            {/* Quick Pillars */}
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                100% Admin Approved
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5">
-                <Lock className="w-4 h-4 text-sky-400" />
-                Strictly Confidential
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5">
-                <Heart className="w-4 h-4 text-rose-400" />
-                Empathy Without Judgment
-              </span>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8 flex-1">
-          {/* Search & Filter Bar */}
-          <div className="p-4 rounded-2xl bg-[#131d2e] border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-            {/* Search Box */}
-            <div className="relative w-full sm:w-96">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by buddy name, language, or topic..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0b111e] border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500 transition"
-              />
-            </div>
-
-            {/* Filter Chips */}
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto text-xs">
-              <span className="text-slate-400 font-medium shrink-0 flex items-center gap-1">
-                <Filter className="w-3.5 h-3.5" /> City:
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedCity("all")}
-                className={`px-3 py-1.5 rounded-lg font-medium shrink-0 transition ${
-                  selectedCity === "all"
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "bg-white/5 text-slate-400 hover:text-white"
-                }`}
-              >
-                All / Pan-India ({buddies.length})
-              </button>
-              {availableCities.map((city) => (
-                <button
-                  key={city}
-                  type="button"
-                  onClick={() => setSelectedCity(city)}
-                  className={`px-3 py-1.5 rounded-lg font-medium shrink-0 transition ${
-                    selectedCity.toLowerCase() === city.toLowerCase()
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                      : "bg-white/5 text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {city}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Loading Spinner */}
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center space-y-4">
-              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-slate-400">Loading approved Breakup Buddies...</p>
-            </div>
-          ) : filteredBuddies.length === 0 ? (
-            /* Empty State */
-            <div className="p-12 text-center rounded-3xl bg-[#131d2e] border border-white/10 max-w-xl mx-auto space-y-4 shadow-xl">
-              <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto">
-                <Headphones className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-white">No Breakup Buddies Found</h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                {searchTerm || selectedCity !== "all" || selectedExpertise !== "all"
-                  ? "No approved Breakup Buddies match your current filter criteria. Try resetting filters."
-                  : "There are currently no approved Breakup Buddies registered in the system."}
-              </p>
-
-              {(searchTerm || selectedCity !== "all" || selectedExpertise !== "all") && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setSelectedCity("all");
-                    setSelectedExpertise("all");
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          ) : (
-            /* Buddy Cards Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBuddies.map((buddy) => {
-                const photoUrl = getPhotoUrl(buddy.profilePhoto);
-                const displayName = buddy.displayName || buddy.name;
-                const displayCity =
-                  buddy.city && buddy.city !== "N/A" ? buddy.city : "Remote / Pan-India";
-                const isAvailable = buddy.isAvailableForRequests !== false;
-
-                const defaultBio =
-                  "Compassionate and trained active listener. Dedicated to providing a safe, confidential space where you can speak your heart, unpack emotions, and move forward at your own pace.";
-
-                const bio = buddy.shortBio || defaultBio;
-
-                const languages =
-                  buddy.languages && buddy.languages.length > 0
-                    ? buddy.languages
-                    : ["English", "Hindi"];
-
-                const expertise =
-                  buddy.areasOfExpertise && buddy.areasOfExpertise.length > 0
-                    ? buddy.areasOfExpertise
-                    : ["Healing & Closure", "No-Contact Support", "Active Listening"];
-
-                return (
-                  <div
-                    key={buddy.id}
-                    className={`rounded-3xl bg-[#131d2e] border overflow-hidden shadow-xl transition-all flex flex-col justify-between group ${
-                      isAvailable ? "border-white/10 hover:border-indigo-500/40" : "border-amber-500/20 opacity-95"
-                    }`}
-                  >
-                    <div>
-                      {/* Card Top Banner / Avatar Header */}
-                      <div className="relative p-6 pb-4 bg-gradient-to-b from-white/5 to-transparent border-b border-white/5">
-                        <div className="flex items-start gap-4">
-                          {/* Profile Image or Initials Avatar */}
-                          <div className="relative shrink-0">
-                            {photoUrl ? (
-                              <img
-                                src={photoUrl}
-                                alt={displayName}
-                                className="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-500/40 shadow-md"
-                                onError={(e) => {
-                                  // Fallback to initial avatar on image error
-                                  (e.target as HTMLElement).style.display = "none";
-                                  const fallback = document.getElementById(
-                                    `avatar-fallback-${buddy.id}`
-                                  );
-                                  if (fallback) fallback.style.display = "flex";
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              id={`avatar-fallback-${buddy.id}`}
-                              style={{ display: photoUrl ? "none" : "flex" }}
-                              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-sky-600 items-center justify-center font-bold text-white text-xl border-2 border-indigo-500/40 shadow-md"
-                            >
-                              {displayName.charAt(0).toUpperCase()}
-                            </div>
-
-                            {/* Status Indicator Icon on Avatar */}
-                            {isAvailable ? (
-                              <div
-                                title="Accepting Requests"
-                                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#131d2e] flex items-center justify-center text-white"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              </div>
-                            ) : (
-                              <div
-                                title="Unavailable for Requests"
-                                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 border-2 border-[#131d2e] flex items-center justify-center text-white"
-                              >
-                                <Clock className="w-3 h-3" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Name and Badges */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                              <h3 className="text-base font-bold text-white truncate">
-                                {displayName}
-                              </h3>
-                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
-                                buddy.isAvailableForRequests !== false
-                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                  : "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                              }`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${
-                                  buddy.isAvailableForRequests !== false ? "bg-emerald-400" : "bg-rose-400"
-                                }`} />
-                                {buddy.isAvailableForRequests !== false ? "Available" : "Unavailable"}
-                              </div>
-                            </div>
-
-                            <p className="text-xs text-indigo-400 font-medium flex items-center gap-1 mt-0.5">
-                              <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
-                              <span>{displayCity}</span>
-                            </p>
-
-                            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-semibold">
-                                <ShieldCheck className="w-3 h-3" />
-                                <span>Admin Approved</span>
-                              </div>
-                              {isAvailable ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                  Available
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                  Unavailable for Requests
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Card Body */}
-                      <div className="p-6 space-y-4">
-                        {/* Short Bio */}
-                        <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
-                          "{bio}"
-                        </p>
-
-                        {/* Languages Spoken */}
-                        <div className="space-y-1.5">
-                          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                            <Globe className="w-3 h-3 text-sky-400" /> Languages:
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {languages.map((lang, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 rounded-md bg-white/5 text-slate-300 text-[11px] border border-white/5"
-                              >
-                                {lang}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Focus & Expertise */}
-                        <div className="space-y-1.5">
-                          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                            <Heart className="w-3 h-3 text-rose-400" /> Areas of Care:
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {expertise.map((exp, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 text-[11px] font-medium border border-indigo-500/30"
-                              >
-                                {exp}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Availability Details if present */}
-                        {!isAvailable ? (
-                          <div className="pt-3 border-t border-white/5 rounded-xl bg-amber-500/10 p-3 border border-amber-500/20 space-y-1">
-                            <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5 text-amber-400" /> Unavailable for Requests
-                            </span>
-                            <p className="text-[11px] text-slate-300 leading-relaxed">
-                              This Breakup Buddy is currently not taking new session requests right now.
-                            </p>
-                          </div>
-                        ) : (() => {
-                          let activeDays = [];
-                          let hasSlots = false;
-                          if (Array.isArray(buddy.weeklySchedule) && buddy.weeklySchedule.length > 0) {
-                            activeDays = buddy.weeklySchedule.filter((s: any) => s.slots && s.slots.length > 0).map((s: any) => s.day);
-                            hasSlots = activeDays.length > 0;
-                          } else if (buddy.availableDays && buddy.availableDays.length > 0) {
-                            activeDays = buddy.availableDays;
-                          }
-                          const shortDays = activeDays.map((d: string) => d.slice(0, 3));
-
-                          if (shortDays.length === 0 && !buddy.availableTimeStart && !hasSlots) return null;
-
-                          return (
-                            <div className="pt-3 border-t border-white/5 space-y-2">
-                              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-emerald-400" /> Availability
-                              </span>
-                              {shortDays.length > 0 ? (
-                                <div className="flex flex-col gap-1.5">
-                                  <div className="flex flex-wrap gap-1">
-                                    {shortDays.map((day: string, idx: number) => (
-                                      <span key={idx} className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
-                                        {day}
-                                      </span>
-                                    ))}
-                                  </div>
-                                  <p className="text-[10px] text-slate-400">
-                                    {buddy.availableTimeStart && buddy.availableTimeEnd 
-                                      ? `Usually active between ${buddy.availableTimeStart} - ${buddy.availableTimeEnd}`
-                                      : hasSlots ? "Specific timing slots available for booking." : "Flexible hours."}
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-slate-400">
-                                  Flexible Schedule 
-                                  {buddy.availableTimeStart && buddy.availableTimeEnd
-                                    ? ` (${buddy.availableTimeStart} - ${buddy.availableTimeEnd})`
-                                    : ""}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Card Footer Actions */}
-                    <div className="p-6 pt-0">
-                      {(() => {
-                        const existingReq = myRequests.find((r) => r.buddyId === buddy.id);
-                        
-                        if (existingReq?.status === 'Pending') {
-                          return (
-                            <div className="w-full py-3 rounded-2xl bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center gap-2 border border-amber-500/30">
-                              <Clock className="w-4 h-4 animate-pulse" />
-                              <span>Request Pending - Waiting for Acceptance</span>
-                            </div>
-                          );
-                        }
-                        
-                        if (existingReq?.status === 'Accepted') {
-                          return (
-                            <div className="grid grid-cols-3 gap-2">
-                              <Link
-                                href={`/dashboard?tab=messages&requestId=${existingReq.id}`}
-                                className="py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                              >
-                                <MessageCircle className="w-4 h-4" /> Chat
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveCallReqId(existingReq.id);
-                                  setActiveCallBuddyId(buddy.id);
-                                }}
-                                className="flex-1 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 font-bold text-xs transition flex items-center justify-center gap-1.5"
-                              >
-                                <Phone className="w-4 h-4" /> Call
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setFeedbackBuddyId(buddy.id);
-                                }}
-                                className="flex-1 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 font-bold text-xs transition flex items-center justify-center gap-1.5"
-                              >
-                                <Sparkles className="w-4 h-4" /> Feedback
-                              </button>
-                            </div>
-                          );
-                        }
-
-                        if (!isAvailable) {
-                          return (
-                            <div className="space-y-1.5">
-                              <button
-                                type="button"
-                                disabled={true}
-                                className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed opacity-75 select-none"
-                                title="This Breakup Buddy is currently not taking new requests"
-                              >
-                                <Clock className="w-4 h-4 text-amber-400" />
-                                <span>Unavailable for Requests</span>
-                              </button>
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedBuddy(buddy);
-                            }}
-                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition active:scale-[0.99] cursor-pointer"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            <span>Book Confidential Session</span>
-                            <ChevronRight className="w-3.5 h-3.5 opacity-70" />
-                          </button>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Connect & Book Session Modal */}
-      {selectedBuddy && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            {/* Modal Close Button */}
-            <button
-              onClick={() => setSelectedBuddy(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {bookingSuccess ? (
-              /* Success confirmation state */
-              <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  Support Session Requested!
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-300 max-w-sm mx-auto leading-relaxed">
-                  Your confidential request has been submitted to{" "}
-                  <strong>{selectedBuddy.displayName || selectedBuddy.name}</strong>. You will receive a discreet message via your contact details shortly.
-                </p>
-                <div className="pt-3">
-                  <button
-                    onClick={() => setSelectedBuddy(null)}
-                    className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
-                  >
-                    Close & Return to Directory
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Booking Form */
-              <form onSubmit={handleBookSession} className="space-y-5">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 text-[10px] font-semibold mb-2 border border-indigo-500/30">
-                    <ShieldCheck className="w-3 h-3" />
-                    100% Confidential
-                  </div>
-                  <h3 className="text-xl font-bold text-white">
-                    Connect with {selectedBuddy.displayName || selectedBuddy.name}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Choose your preferred session format. Your details remain confidential and are only shared to coordinate your support session.
-                  </p>
-                </div>
-
-                {selectedBuddy.isAvailableForRequests === false && (
-                  <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
-                    <Clock className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>This Breakup Buddy is currently unavailable and not accepting new requests right now.</span>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Session Format
-                    </label>
-                    <select
-                      value={sessionFormat}
-                      onChange={(e) => setSessionFormat(e.target.value)}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="Chat">💬 Chat</option>
-                      <option value="Voice Call">📞 Voice Call</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      How are you feeling right now? (Optional)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={feelingDescription}
-                      onChange={(e) => setFeelingDescription(e.target.value)}
-                      placeholder="Share as much or as little as you want. There is zero pressure to explain everything..."
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between border-t border-white/10">
-                  <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-                    <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Safe Space Guaranteed</span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={bookingSending || selectedBuddy.isAvailableForRequests === false}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition disabled:opacity-50 cursor-pointer"
-                  >
-                    {bookingSending ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Send Request</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Feedback Modal */}
-      {feedbackBuddyId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <button
-              onClick={() => setFeedbackBuddyId(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {feedbackSuccess ? (
-              <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold text-white">Feedback Submitted!</h3>
-                <p className="text-xs sm:text-sm text-slate-300 max-w-sm mx-auto leading-relaxed">
-                  Thank you for sharing how you felt about your buddy.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleFeedbackSubmit} className="space-y-5">
-                <div>
-                  <h3 className="text-xl font-bold text-white">Rate your Buddy</h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    How was your experience with this Breakup Buddy?
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Rating (1-5)
-                    </label>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setRating(star)}
-                          className={`text-2xl transition ${rating >= star ? 'text-amber-400' : 'text-slate-600 hover:text-slate-500'}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Comment
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={feedbackComment}
-                      onChange={(e) => setFeedbackComment(e.target.value)}
-                      placeholder="Share how you felt..."
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={feedbackSending}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
-                >
-                  {feedbackSending ? "Submitting..." : "Submit Feedback"}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Voice Call Overlay (Outgoing) */}
-      {activeCallReqId && activeCallBuddyId && (
+    <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white">
+      {/* Voice Call Overlay */}
+      {(activeCallReqId || userIncomingCall) && (
         <VoiceCallOverlay
-          key={activeCallReqId}
-          requestId={activeCallReqId}
-          buddyId={activeCallBuddyId}
+          requestId={activeCallReqId || userIncomingCall?.requestId || ""}
+          buddyId={activeCallBuddyId || ""}
           role="USER"
-          isInitiator={true}
-          callerName={currentUser?.name}
+          isInitiator={!userIncomingCall}
+          autoAccept={!!userIncomingCall}
+          callerName={currentUser?.name || "Member"}
+          targetName="Breakup Buddy"
           onClose={() => {
             setActiveCallReqId(null);
             setActiveCallBuddyId(null);
+            setUserIncomingCall(null);
           }}
         />
       )}
 
-      {/* Voice Call Overlay (Incoming) */}
-      {userIncomingCall && (
-        <VoiceCallOverlay
-          key={userIncomingCall.requestId}
-          requestId={userIncomingCall.requestId}
-          role="USER"
-          isInitiator={false}
-          callerName={userIncomingCall.callerName}
-          onClose={() => setUserIncomingCall(null)}
-        />
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1e293b] border border-[#e06d53] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in">
+          <Sparkles className="w-5 h-5 text-[#e06d53]" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
       )}
+
+      {/* TOP NAVBAR */}
+      <nav className="sticky top-0 z-40 bg-[#0b111e]/90 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg">
+                J
+              </div>
+              <span className="font-extrabold text-2xl tracking-tight text-white">
+                Jab<span className="text-[#e06d53]">We</span>Meet
+              </span>
+            </Link>
+
+            <Link
+              href={currentUser ? "/dashboard" : "/"}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-3 py-1.5 rounded-full bg-white/5 border border-white/10"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleConnectWithBuddy}
+              disabled={isConnecting || isPending}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold bg-[#e06d53] hover:bg-[#c95940] disabled:opacity-60 text-white shadow-lg shadow-[#e06d53]/30 transition"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              {isPending ? "Waiting for Buddy..." : "Connect with Breakup Buddy"}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO SECTION */}
+      <header className="pt-14 pb-12 px-6 text-center relative overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(224,109,83,0.18)_0%,transparent_65%)] border-b border-white/10">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#e06d53]/10 border border-[#e06d53]/30 text-xs font-semibold text-[#fca5a5]">
+            🎁 100% Confidential • First 30 Mins Free Call & Chat
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-serif leading-tight">
+            Healing Starts with a <span className="text-[#e06d53]">Safe Conversation</span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
+            Going through heartbreak, emotional overwhelm, or relationship distress? Connect with a compassionate Breakup Buddy who listens without judgment. Your privacy is 100% protected.
+          </p>
+
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={handleConnectWithBuddy}
+              disabled={isConnecting || isPending}
+              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#e06d53] to-[#b8432a] hover:from-[#c95940] hover:to-[#9f341d] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-[#e06d53]/30 transition flex items-center justify-center gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Sending Request...
+                </>
+              ) : isPending ? (
+                <>
+                  <Clock className="w-4 h-4 animate-spin" /> Waiting for Buddy to Accept...
+                </>
+              ) : (
+                <>
+                  <Heart className="w-4 h-4 fill-white" /> Connect with Breakup Buddy
+                </>
+              )}
+            </button>
+
+            <a
+              href="#packages"
+              className="w-full sm:w-auto px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs rounded-full transition text-center"
+            >
+              View Support Packages ↓
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="max-w-6xl mx-auto px-6 py-10 space-y-12">
+        {/* PENDING WAITING STATE */}
+        {isPending && (
+          <div className="bg-gradient-to-br from-[#1c1917] to-[#131d2e] border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 text-center">
+            <div className="w-14 h-14 bg-amber-500/20 text-amber-300 rounded-full flex items-center justify-center mx-auto animate-pulse">
+              <Clock className="w-7 h-7 animate-spin" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white">We are assigning you with a Breakup Buddy</h3>
+            <p className="text-xs sm:text-sm text-amber-200 max-w-lg mx-auto leading-relaxed">
+              Please wait, your request has been sent to our Breakup Buddy team. Once a Breakup Buddy accepts your request, you can freely chat or make a voice call during your 30 minutes free session.
+            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300 animate-pulse">
+              ⏳ Assigning your Breakup Buddy... Please wait.
+            </div>
+          </div>
+        )}
+
+        {/* ACCEPTED ACTIVE SESSION CARD */}
+        {isAccepted && (
+          <div className="bg-gradient-to-br from-[#131d2e] to-[#0f172a] border border-[#e06d53]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+              <div>
+                <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                  ✓ Connected with Breakup Buddy
+                </span>
+
+                <h3 className="text-xl sm:text-2xl font-bold text-white">
+                  Active Session with Breakup Buddy
+                </h3>
+
+                <p className="text-xs text-slate-300 mt-1">
+                  Your 30 minutes free session is active. You can freely call or chat with your buddy below.
+                </p>
+              </div>
+
+              {/* Free Minutes / Package Badges */}
+              <div className="flex items-center gap-2">
+                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center">
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Free Chat</div>
+                  <div className="text-sm font-bold text-[#fca5a5]">
+                    {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.chatMinutesLeft || 30}m Left`}
+                  </div>
+                </div>
+
+                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center">
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Free Call</div>
+                  <div className="text-sm font-bold text-[#fca5a5]">
+                    {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.callMinutesLeft || 30}m Left`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons: Chat and Call */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <Link
+                href="/messages"
+                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold rounded-xl shadow-lg shadow-[#e06d53]/30 transition"
+              >
+                <MessageCircle className="w-4 h-4" /> Open Chat with Breakup Buddy
+              </Link>
+
+              <button
+                onClick={() => {
+                  setActiveCallReqId(activeConnection.id);
+                  setActiveCallBuddyId(activeConnection.buddyId);
+                }}
+                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition"
+              >
+                <PhoneCall className="w-4 h-4" /> Start Voice Call with Breakup Buddy
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3 CORE PILLARS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 bg-[#131d2e] border border-white/10 rounded-3xl space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#e06d53]/10 text-[#e06d53] flex items-center justify-center text-xl">
+              🎁
+            </div>
+            <h3 className="text-base font-bold text-white">First 30 Mins Free</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Every connection starts with 30 minutes of free call and chat support so you can talk freely without hesitation.
+            </p>
+          </div>
+
+          <div className="p-6 bg-[#131d2e] border border-white/10 rounded-3xl space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#e06d53]/10 text-[#e06d53] flex items-center justify-center text-xl">
+              🛡️
+            </div>
+            <h3 className="text-base font-bold text-white">100% Confidential</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              All conversations and identities are completely private and confidential. No real names are ever exposed.
+            </p>
+          </div>
+
+          <div className="p-6 bg-[#131d2e] border border-white/10 rounded-3xl space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#e06d53]/10 text-[#e06d53] flex items-center justify-center text-xl">
+              ⚡
+            </div>
+            <h3 className="text-base font-bold text-white">Instant Team Dispatch</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your connection request is dispatched immediately to our Breakup Buddy network for the fastest response.
+            </p>
+          </div>
+        </div>
+
+        {/* PACKAGES SECTION */}
+        <section id="packages" className="space-y-6 pt-6">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold text-[#e06d53] uppercase tracking-wider">Session Plans</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif">Breakup Buddy Packages</h2>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
+              Completed your 30-min free session? Choose a package to keep speaking with your Breakup Buddy anytime.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className={`p-6 sm:p-8 rounded-3xl bg-[#131d2e] border transition duration-300 flex flex-col justify-between space-y-6 ${
+                  pkg.isPopular
+                    ? "border-[#e06d53] shadow-xl shadow-[#e06d53]/20 relative"
+                    : "border-white/10 hover:border-white/20 shadow-lg"
+                }`}
+              >
+                {pkg.isPopular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#e06d53] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-md">
+                    Most Popular
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-white">{pkg.name}</h3>
+                    <Clock className="w-4 h-4 text-[#e06d53]" />
+                  </div>
+
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-extrabold text-white">₹{pkg.price}</span>
+                    <span className="text-xs text-slate-400">/ {pkg.duration}</span>
+                  </div>
+
+                  <ul className="space-y-2.5 pt-2 border-t border-white/10 text-xs text-slate-300">
+                    {pkg.features.map((f: string, i: number) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button
+                  onClick={() => handleBuyPackage(pkg)}
+                  disabled={isProcessingPayment}
+                  className={`w-full py-3 rounded-2xl text-xs font-bold transition shadow-md ${
+                    pkg.isPopular
+                      ? "bg-[#e06d53] hover:bg-[#c95940] text-white shadow-[#e06d53]/30"
+                      : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
+                  }`}
+                >
+                  {isProcessingPayment ? "Processing..." : `Buy Package (₹${pkg.price})`}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

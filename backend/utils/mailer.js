@@ -1292,6 +1292,40 @@ async function sendNewConnectionRequestEmail({ buddyEmail, buddyName, userName, 
   }
 }
 
+async function sendRequestClaimedByOtherEmail({ buddyEmail, buddyName, userName }) {
+  if (!buddyEmail) return;
+  try {
+    const html = wrapTemplate({
+      title: 'Request Claimed - JabWeMeet',
+      badge: { text: '🔒 Session Claimed by Peer', type: 'badge-warning' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Hi ${buddyName || 'Breakup Buddy'},</h2>
+        <p>A recent emotional support connection request on JabWeMeet has just been accepted and claimed by another Breakup Buddy.</p>
+        <div class="card" style="background:rgba(245, 158, 11, 0.08); border-color:rgba(245, 158, 11, 0.3);">
+          <p style="margin:0; color:#fde68a; font-size:14px;">
+            ⚠️ <strong>Notice:</strong> You were a bit late to accept this request from <strong>${userName || 'a member'}</strong>. It is now assigned to another Breakup Buddy.
+          </p>
+        </div>
+        <p style="margin-top:16px; color:#94a3b8;">
+          No action is needed from you. Keep your dashboard open to accept future requests!
+        </p>
+      `,
+      buttonText: 'Open Buddy Dashboard 👉',
+      buttonUrl: DASHBOARD_URL,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: buddyEmail,
+      subject: `🔒 Connection Request Claimed by Another Breakup Buddy - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] Request Claimed email sent to ${buddyEmail}`);
+  } catch (err) {
+    console.error(`[Mailer Error] Request Claimed:`, err.message);
+  }
+}
+
 async function sendPassPurchasedEmail({ buddyEmail, buddyName, userName, packageName, durationHours, amountEarned }) {
   if (!buddyEmail) return;
   try {
@@ -1586,6 +1620,7 @@ module.exports = {
   sendCouponPromoEmail,
   // Buddy Emails
   sendNewConnectionRequestEmail,
+  sendRequestClaimedByOtherEmail,
   sendPassPurchasedEmail,
   sendNewReviewEmail,
   sendMissedCallEmail,
