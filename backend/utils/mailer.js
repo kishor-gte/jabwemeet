@@ -773,6 +773,111 @@ async function sendEventTicketResendEmail({ attendeeEmail, attendeeName, eventTi
   }
 }
 
+/** 24-Hour Event Reminder Email sent to attendees from host */
+async function sendEvent24hReminderEmail({
+  attendeeEmail,
+  attendeeName,
+  eventTitle,
+  eventDate,
+  eventLocation,
+  eventCity,
+  spots,
+  ticketCode,
+  hostName,
+  hostEmail,
+  hostPhone,
+}) {
+  if (!attendeeEmail) return;
+  try {
+    const formattedDate = new Date(eventDate).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const organizer = hostName || 'Event Host';
+    const html = wrapTemplate({
+      title: `Event Tomorrow Reminder: ${eventTitle} - JabWeMeet`,
+      badge: { text: '⏰ Event is Tomorrow!', type: 'badge-warning' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Tomorrow is Your Big Event, ${attendeeName || 'Friend'}! 🌟</h2>
+        <p>This is a friendly reminder that your upcoming JabWeMeet event <strong style="color:#e06d53;">"${eventTitle}"</strong> is taking place <strong>TOMORROW</strong>!</p>
+        
+        <div class="card" style="border-left:4px solid #f59e0b; background:linear-gradient(135deg, #18223c, #1f1d36);">
+          <h3 style="color:#ffffff; margin:0 0 12px 0; font-size:18px;">📋 Event & Schedule Details</h3>
+          <div class="highlight-row">
+            <span class="highlight-label">Event Name:</span>
+            <span class="highlight-val">${eventTitle}</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Host / Organizer:</span>
+            <span class="highlight-val" style="color:#fbbf24;">${organizer}</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Date & Time:</span>
+            <span class="highlight-val" style="color:#38bdf8;">📅 ${formattedDate}</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Venue Location:</span>
+            <span class="highlight-val">📍 ${eventLocation}, ${eventCity}</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Passes Booked:</span>
+            <span class="highlight-val">${spots || 1} Spot(s)</span>
+          </div>
+          ${ticketCode ? `
+            <div class="highlight-row" style="border-bottom:none;">
+              <span class="highlight-label">Digital Pass Code:</span>
+              <span class="highlight-val" style="font-family:monospace; color:#34d399; letter-spacing:1.5px; background:rgba(52,211,153,0.1); padding:2px 8px; border-radius:6px;">${ticketCode}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="card" style="background:#0f172a; border:1px solid rgba(245,158,11,0.25);">
+          <p style="margin:0 0 8px 0; color:#fbbf24; font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px;">💡 Tips for Tomorrow:</p>
+          <ul style="margin:0; padding-left:18px; color:#cbd5e1; font-size:13px; line-height:1.7;">
+            <li>Please arrive <strong>15 minutes early</strong> for smooth check-in and greeting.</li>
+            <li>Have your digital ticket code ready on your phone or in your email.</li>
+            <li>Dress comfortably (smart-casual recommended for singles mixers and socials).</li>
+            <li>Come with an open mind, ready to connect and meet amazing people!</li>
+          </ul>
+        </div>
+
+        <div style="background:rgba(224,109,83,0.1); border-left:4px solid #e06d53; border-radius:8px; padding:14px 18px; margin:20px 0;">
+          <p style="margin:0; color:#cbd5e1; font-size:13px; font-style:italic;">
+            "We are preparing a wonderful experience for you tomorrow. Can't wait to see you there!"
+            <br/><strong style="color:#ffffff; font-style:normal;">— ${organizer} (Event Host)</strong>
+          </p>
+        </div>
+
+        ${hostPhone ? `
+          <p style="font-size:12px; color:#94a3b8; margin:16px 0 0 0;">
+            Need help or venue directions tomorrow? Reach host at: <strong style="color:#ffffff;">${hostPhone}</strong>
+          </p>
+        ` : ''}
+      `,
+      buttonText: 'View My Ticket Pass 🎟️',
+      buttonUrl: `${FRONTEND_URL}/dashboard?tab=events`,
+    });
+
+    const fromHeader = `"${organizer} via JabWeMeet" <${process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com'}>`;
+
+    await transporter.sendMail({
+      from: fromHeader,
+      to: attendeeEmail,
+      replyTo: hostEmail || undefined,
+      subject: `⏰ Reminder: Your Event "${eventTitle}" is Tomorrow! [Pass: ${ticketCode || 'Ready'}]`,
+      html,
+    });
+    console.log(`[Mailer] 24h Event Reminder sent to ${attendeeEmail} for "${eventTitle}"`);
+  } catch (err) {
+    console.error(`[Mailer Error] 24h Event Reminder:`, err.message);
+  }
+}
+
 // ==========================================
 // 4. REFUNDS, INVOICES & PAYMENTS
 // ==========================================
@@ -1465,6 +1570,7 @@ module.exports = {
   sendEventPublishedEmail,
   sendEventCancelledOrUpdatedEmail,
   sendEventTicketResendEmail,
+  sendEvent24hReminderEmail,
   // Refunds & Invoices
   sendRefundProcessedEmail,
   sendInvoiceEmail,

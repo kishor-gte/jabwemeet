@@ -11,12 +11,16 @@ const adminRouter = require('./routes/admin');
 const matchmakerRouter = require('./routes/matchmaker');
 const servicesRouter = require('./routes/services');
 const { initAdminDb } = require('./db/adminInit');
+const { startEventReminderCron } = require('./services/eventReminderService');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Initialize admin schema safely in background
 initAdminDb().catch(err => console.error('Failed to initialize admin database:', err));
+
+// Initialize automated 24-hour event reminder scheduler
+startEventReminderCron();
 
 // Trust proxy for rate limiting behind reverse proxies (like Next.js rewrites)
 app.set('trust proxy', 1);
