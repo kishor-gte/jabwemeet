@@ -49,7 +49,8 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -73,6 +74,8 @@ const placesRouter = require('./routes/places');
 app.use('/api/auth', authRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/admin', adminRouter);
+const cafeRouter = require('./routes/cafe');
+app.use('/api/cafe', cafeRouter);
 app.use('/api/matchmaker', matchmakerRouter);
 app.use('/api/buddy', require('./routes/buddy'));
 app.use('/api/subscription', subscriptionRouter);

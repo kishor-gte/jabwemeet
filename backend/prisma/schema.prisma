@@ -12,6 +12,7 @@ enum Role {
   MATCHMAKER
   BREAKUP_BUDDY
   HOST
+  CAFE
 }
 
 model User {
@@ -25,6 +26,7 @@ model User {
   gender             String?
   relationshipIntent String?
   role               Role      @default(USER)
+  cafeProfile        CafeProfile?
   isVerified         Boolean   @default(true)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -354,3 +356,144 @@ model HostPayment {
 }
 
 
+
+
+model CafeProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  cafeName       String
+  description    String?
+  phone          String?
+  address        String?
+  city           String?
+  pincode        String?
+  openingTime    String?
+  closingTime    String?
+  fssaiNumber    String?
+  gstNumber      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  menuItems      MenuItem[]
+  reservations   CafeReservation[]
+  orders         CafeOrder[]
+  staff          CafeStaff[]
+  offers         CafeOffer[]
+  customers      CafeCustomer[]
+  reviews        CafeReview[]
+  transactions   CafeTransaction[]
+  notifications  CafeNotification[]
+}
+model MenuItem {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  name           String
+  category       String
+  description    String?
+  price          Float
+  discount       Float    @default(0)
+  isVeg          Boolean  @default(true)
+  prepTime       String?
+  isAvailable    Boolean  @default(true)
+  image          String?
+  createdAt      DateTime @default(now())
+}
+model CafeReservation {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  customerName   String
+  guests         Int
+  date           String
+  time           String
+  table          String?
+  status         String   @default("Pending")
+  createdAt      DateTime @default(now())
+}
+model CafeOrder {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  customerName   String?
+  totalAmount    Float
+  status         String   @default("New")
+  items          CafeOrderItem[]
+  createdAt      DateTime @default(now())
+}
+model CafeOrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          CafeOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemName       String
+  quantity       Int
+  price          Float
+}
+model CafeStaff {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  name           String
+  role           String
+  status         String   @default("Active")
+}
+model CafeOffer {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  name           String
+  code           String
+  type           String
+  value          String
+  minOrder       Int?
+  startDate      String?
+  endDate        String?
+  status         String   @default("Active")
+  createdAt      DateTime @default(now())
+}
+
+
+model CafeCustomer {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  name           String
+  contact        String?
+  visits         Int      @default(1)
+  totalSpent     Float    @default(0)
+  lastVisit      DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+model CafeReview {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  customerName   String
+  rating         Int
+  text           String?
+  reply          String?
+  isReplied      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model CafeTransaction {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  orderId        String?
+  customerName   String?
+  amount         Float
+  method         String   @default("Cash") // UPI, Card, Cash
+  status         String   @default("Completed") // Completed, Pending
+  createdAt      DateTime @default(now())
+}
+
+model CafeNotification {
+  id             String   @id @default(cuid())
+  cafeId         String
+  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  message        String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
