@@ -449,6 +449,7 @@ model CafeOffer {
   startDate      String?
   endDate        String?
   status         String   @default("Active")
+  createdAt      DateTime @default(now())
 }
 
 
