@@ -29,7 +29,10 @@ const {
   sendUserSafetyWarningEmail,
   sendBroadcastAnnouncementEmail,
   sendCouponPromoEmail,
+  sendStaffCredentialsEmail,
+  sendStaffStatusEmail,
 } = require('../utils/mailer');
+const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
@@ -1219,6 +1222,443 @@ router.get('/buddy-sessions', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to fetch buddy sessions' });
   }
 });
+
+// ==========================================
+// 9.1 DEDICATED STAFF PERSONNEL MANAGEMENT (BB & RM)
+// ==========================================
+
+async function getStaffMemberDetails(req, res) {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        email: true,
+        phone: true,
+        city: true,
+        gender: true,
+        role: true,
+        status: true,
+        isVerified: true,
+        isApproved: true,
+        createdAt: true,
+        updatedAt: true,
+        lastActiveAt: true,
+        profilePhoto: true,
+        profileImage: true,
+        shortBio: true,
+        languages: true,
+        areasOfExpertise: true,
+        sessionTypes: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
+        isAvailableForRequests: true,
+        workExperience: true,
+        internalNotes: true,
+        govIdProof: true,
+        addressProof: true,
+        eduCertificate: true,
+        idType: true,
+        idDocument: true,
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Personnel not found' });
+    }
+
+    if (user.role === 'BREAKUP_BUDDY') {
+      const [sessions, requests, callLogs, reviews] = await Promise.all([
+        prisma.buddySession.findMany({
+          where: { buddyId: id },
+          include: {
+            user: { select: { id: true, name: true, email: true, phone: true } },
+          },
+          orderBy: { scheduledAt: 'desc' },
+        }),
+        prisma.buddyRequest.findMany({
+          where: { buddyId: id },
+          include: {
+            user: { select: { id: true, name: true, email: true, phone: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.callLog.findMany({
+          where: {
+            OR: [{ callerId: id }, { receiverId: id }]
+          },
+          include: {
+            caller: { select: { id: true, name: true } },
+            receiver: { select: { id: true, name: true } },
+          },
+          orderBy: { startedAt: 'desc' },
+          take: 50,
+        }),
+        prisma.buddyReview.findMany({
+          where: { buddyId: id },
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+      ]);
+
+      const totalCallSeconds = callLogs.reduce((acc, c) => acc + (c.durationSec || 0), 0);
+      const totalCallMinutes = Math.round(totalCallSeconds / 60);
+
+      const avgRating = reviews.length > 0
+        ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
+        : 5.0;
+
+      const totalEarnings = sessions.reduce((acc, s) => acc + (s.amountEarned || 0), 0);
+      const completedSessions = sessions.filter(s => s.status === 'Completed').length;
+      const scheduledSessions = sessions.filter(s => s.status === 'Scheduled').length;
+      const cancelledSessions = sessions.filter(s => s.status === 'Cancelled').length;
+
+      const packagesPurchased = requests.filter(r => r.packageName).length;
+      const packageRevenue = requests.reduce((acc, r) => acc + (r.packagePrice || 0), 0);
+
+      return res.json({
+        success: true,
+        user,
+        analytics: {
+          totalSessions: sessions.length,
+          completedSessions,
+          scheduledSessions,
+          cancelledSessions,
+          totalCallMinutes,
+          totalRequests: requests.length,
+          activeRequests: requests.filter(r => r.status === 'Active' || r.status === 'Accepted').length,
+          totalEarnings: totalEarnings + packageRevenue,
+          packagesPurchased,
+          avgRating,
+          totalReviews: reviews.length,
+        },
+        sessions,
+        requests,
+        callLogs,
+        reviews,
+      });
+    }
+
+    if (user.role === 'MATCHMAKER') {
+      const [clients, suggestions, appointments] = await Promise.all([
+        prisma.user.findMany({
+          where: { assignedManagerId: id },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            city: true,
+            status: true,
+            isVerified: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.matchSuggestion.findMany({
+          where: { matchmakerId: id },
+          include: {
+            client: { select: { id: true, name: true, email: true, phone: true, city: true } },
+            suggestedProfile: { select: { id: true, name: true, email: true, city: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.appointment.findMany({
+          where: { matchmakerId: id },
+          include: {
+            client: { select: { id: true, name: true, email: true, phone: true } },
+          },
+          orderBy: { date: 'desc' },
+        }),
+      ]);
+
+      const completedAppointments = appointments.filter(a => a.status === 'Completed').length;
+      const scheduledAppointments = appointments.filter(a => a.status === 'Scheduled').length;
+
+      return res.json({
+        success: true,
+        user,
+        analytics: {
+          assignedClientsCount: clients.length,
+          madeSuggestionsCount: suggestions.length,
+          totalAppointments: appointments.length,
+          completedAppointments,
+          scheduledAppointments,
+          acceptedSuggestions: suggestions.filter(s => s.clientStatus === 'Approved' && s.suggestedStatus === 'Approved').length,
+        },
+        clients,
+        suggestions,
+        appointments,
+      });
+    }
+
+    return res.json({
+      success: true,
+      user,
+      analytics: {},
+    });
+  } catch (error) {
+    console.error('Error fetching staff member details:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch personnel details' });
+  }
+}
+
+async function handleStaffStatusUpdate(req, res) {
+  try {
+    const { id } = req.params;
+    const { status, reason, isApproved: reqIsApproved } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Personnel not found' });
+    }
+
+    let newStatus = status;
+    if (!newStatus) {
+      if (reqIsApproved !== undefined) {
+        newStatus = reqIsApproved ? 'ACTIVE' : 'SUSPENDED';
+      } else {
+        newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+      }
+    } else {
+      newStatus = newStatus.toUpperCase();
+    }
+
+    if (!['ACTIVE', 'SUSPENDED'].includes(newStatus)) {
+      return res.status(400).json({ success: false, message: 'Status must be either ACTIVE or SUSPENDED.' });
+    }
+
+    const isApproved = newStatus === 'ACTIVE';
+
+    const updateData = {
+      status: newStatus,
+      isApproved,
+    };
+
+    if (user.role === 'BREAKUP_BUDDY') {
+      updateData.isAvailableForRequests = (newStatus === 'ACTIVE');
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
+
+    const roleName = user.role === 'BREAKUP_BUDDY' ? 'Breakup Buddy' : (user.role === 'MATCHMAKER' ? 'Relationship Manager' : 'Staff');
+
+    // Send email notification to personnel
+    try {
+      await sendStaffStatusEmail({
+        email: user.email,
+        name: user.displayName || user.name,
+        roleName,
+        status: newStatus,
+        reason: reason || (newStatus === 'SUSPENDED' ? 'Administrative policy review / suspension' : 'Account reactivated by administrator'),
+      });
+    } catch (mailErr) {
+      console.warn('[Staff Status] Mail notification note:', mailErr.message);
+    }
+
+    await logAudit(req, {
+      action: 'STAFF_STATUS_UPDATE',
+      targetType: 'USER',
+      targetId: id,
+      before: { status: user.status, isApproved: user.isApproved },
+      after: { status: newStatus, isApproved },
+      reason: reason || `Admin updated status to ${newStatus}`,
+    });
+
+    return res.json({
+      success: true,
+      message: `${roleName} is now ${newStatus}`,
+      user: {
+        id: updatedUser.id,
+        status: updatedUser.status,
+        isApproved: updatedUser.isApproved,
+      }
+    });
+  } catch (error) {
+    console.error('Error updating staff status:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update personnel status' });
+  }
+}
+
+async function handleStaffVerify(req, res) {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Personnel not found' });
+    }
+
+    const newVerified = req.body.isVerified !== undefined ? Boolean(req.body.isVerified) : !user.isVerified;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { isVerified: newVerified },
+    });
+
+    await logAudit(req, {
+      action: 'STAFF_VERIFICATION_TOGGLE',
+      targetType: 'USER',
+      targetId: id,
+      before: { isVerified: user.isVerified },
+      after: { isVerified: newVerified },
+      reason: `Admin set verified status to ${newVerified}`,
+    });
+
+    return res.json({
+      success: true,
+      message: `Verified badge ${newVerified ? 'enabled' : 'disabled'} successfully`,
+      isVerified: updatedUser.isVerified,
+    });
+  } catch (error) {
+    console.error('Error toggling staff verification:', error);
+    return res.status(500).json({ success: false, message: 'Failed to toggle verification status' });
+  }
+}
+
+// Register new Breakup Buddy or Relationship Manager
+router.post('/staff/create', async (req, res) => {
+  try {
+    const { name, email, phone, password, role, city, experience, specialization, notes } = req.body;
+
+    if (!name || !email || !phone || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, phone, temporary password, and role are required.'
+      });
+    }
+
+    const normalizedRole = role.toUpperCase().trim();
+    if (!['BREAKUP_BUDDY', 'MATCHMAKER'].includes(normalizedRole)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be either BREAKUP_BUDDY or MATCHMAKER.'
+      });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPhone = phone.trim();
+
+    // Check duplicate email
+    const existingEmail = await prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: `An account with email "${cleanEmail}" already exists in the system.`
+      });
+    }
+
+    // Check duplicate phone
+    const existingPhone = await prisma.user.findUnique({ where: { phone: cleanPhone } });
+    if (existingPhone) {
+      return res.status(400).json({
+        success: false,
+        message: `An account with phone number "${cleanPhone}" already exists in the system.`
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+
+    let areasOfExpertise = ['Emotional Support', 'Empathetic Listening'];
+    if (specialization) {
+      if (Array.isArray(specialization)) {
+        areasOfExpertise = specialization;
+      } else {
+        areasOfExpertise = specialization.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+
+    const newUser = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        displayName: name.trim(),
+        email: cleanEmail,
+        phone: cleanPhone,
+        password: hashedPassword,
+        role: normalizedRole,
+        city: city ? city.trim() : null,
+        status: 'ACTIVE',
+        isApproved: true,
+        isVerified: true,
+        workExperience: experience ? experience.trim() : null,
+        internalNotes: notes ? notes.trim() : null,
+        shortBio: experience ? `Specialization: ${experience.trim()}` : (normalizedRole === 'BREAKUP_BUDDY' ? 'Empathetic listener & healing guide' : 'Curated relationship matchmaking advisor'),
+        areasOfExpertise,
+        languages: ['English', 'Hindi'],
+        sessionTypes: ['CALL', 'CHAT'],
+        availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        availableTimeStart: '09:00',
+        availableTimeEnd: '22:00',
+        isAvailableForRequests: true,
+      }
+    });
+
+    const roleName = normalizedRole === 'BREAKUP_BUDDY' ? 'Breakup Buddy' : 'Relationship Manager';
+
+    // Dispatch welcome credentials email
+    try {
+      await sendStaffCredentialsEmail({
+        email: newUser.email,
+        name: newUser.name,
+        roleName,
+        password: password.trim(),
+      });
+    } catch (mailErr) {
+      console.error('[Admin Staff Create] Welcome email delivery error:', mailErr.message);
+    }
+
+    await logAudit(req, {
+      action: 'STAFF_MEMBER_CREATED',
+      targetType: 'USER',
+      targetId: newUser.id,
+      after: { name: newUser.name, email: newUser.email, role: newUser.role, city: newUser.city },
+      reason: `Admin registered new ${roleName}`,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `${roleName} created successfully! Welcome credentials have been dispatched to ${newUser.email}.`,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: newUser.role,
+        city: newUser.city,
+        status: newUser.status,
+        isVerified: newUser.isVerified,
+        isApproved: newUser.isApproved,
+      }
+    });
+  } catch (error) {
+    console.error('Error creating staff personnel:', error);
+    return res.status(500).json({ success: false, message: 'Failed to create personnel: ' + (error.message || 'Server error') });
+  }
+});
+
+// Staff routes
+router.patch('/staff/:id/status', handleStaffStatusUpdate);
+router.patch('/staff/:id/verify', handleStaffVerify);
+router.get('/staff/:id/details', getStaffMemberDetails);
+
+// Aliases for breakup-buddies and relationship-managers routes
+router.get('/breakup-buddies/:id', getStaffMemberDetails);
+router.get('/breakup-buddies/:id/details', getStaffMemberDetails);
+router.patch('/breakup-buddies/:id/status', handleStaffStatusUpdate);
+router.patch('/breakup-buddies/:id/verify', handleStaffVerify);
+
+router.get('/relationship-managers/:id', getStaffMemberDetails);
+router.get('/relationship-managers/:id/details', getStaffMemberDetails);
+router.patch('/relationship-managers/:id/status', handleStaffStatusUpdate);
+router.patch('/relationship-managers/:id/verify', handleStaffVerify);
 
 // ==========================================
 // 10. MATCHMAKING CONTROL CENTER & DATES
