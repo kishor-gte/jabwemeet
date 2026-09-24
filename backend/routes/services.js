@@ -281,72 +281,98 @@ router.get("/my-matchmaking-requests", authenticateToken, async (req, res) => {
 });
 
 // 5. POST /api/services/buddy-request
-// Submit a request to a Breakup Buddy
+// Submit a connection request to Breakup Buddy (Broadcasts to all Breakup Buddies)
 router.post("/buddy-request", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { buddyId, sessionFormat, notes } = req.body;
+    let { buddyId, sessionFormat, notes, preferredLanguage } = req.body;
+
+    // If no specific buddyId is provided, assign to active buddy or fallback
+    if (!buddyId) {
+      const defaultBuddy = await prisma.user.findFirst({
+        where: { role: "BREAKUP_BUDDY", isApproved: true },
+      });
+      if (defaultBuddy) {
+        buddyId = defaultBuddy.id;
+      } else {
+        const anyBuddy = await prisma.user.findFirst({
+          where: { role: "BREAKUP_BUDDY" },
+        });
+        if (anyBuddy) {
+          buddyId = anyBuddy.id;
+        } else {
+          const fallbackUser = await prisma.user.findFirst({
+            where: { role: { in: ["ADMIN", "USER"] } },
+          });
+          if (fallbackUser) {
+            buddyId = fallbackUser.id;
+          }
+        }
+      }
+    }
 
     if (!buddyId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Buddy ID is required." });
-    }
-
-    const buddy = await prisma.user.findFirst({
-      where: { id: buddyId, role: "BREAKUP_BUDDY", isApproved: true },
-    });
-
-    if (!buddy) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Breakup Buddy not found or inactive.",
-        });
-    }
-
-    if (buddy.isAvailableForRequests === false) {
       return res.status(400).json({
         success: false,
-        message: "This Breakup Buddy is currently unavailable and not accepting new session requests.",
+        message: "Unable to find listener network. Please try again in a few moments.",
       });
     }
 
     const format = sessionFormat === "Voice Call" ? "Voice Call" : "Chat";
 
+    // Create broadcast connection request with 30 Mins (1800 seconds) Free Chat & 30 Mins (1800 seconds) Free Call
     const request = await prisma.buddyRequest.create({
       data: {
         userId,
         buddyId,
         sessionType: format,
-        topic: notes ? notes.trim() : `1-on-1 ${format} Support Session`,
+        topic: notes ? notes.trim() : `1-on-1 ${format} Emotional Support Session`,
         status: "Pending",
+        chatLimitSeconds: 1800, // 30 mins free chat
+        voiceCallLimitSeconds: 1800, // 30 mins free call
+        timeUsedSeconds: 0,
+        voiceCallSeconds: 0,
       },
     });
 
-    // Send email notification to Breakup Buddy
+    // Notify all active Breakup Buddies via email
     try {
       const requestingUser = await prisma.user.findUnique({
         where: { id: userId },
-        select: { name: true },
+        select: { name: true, city: true },
       });
-      if (buddy && buddy.email) {
-        sendNewConnectionRequestEmail({
-          buddyEmail: buddy.email,
-          buddyName: buddy.displayName || buddy.name,
-          userName: requestingUser?.name || "A Member",
-          topic: request.topic,
-          sessionFormat: format,
+
+      const allActiveBuddies = await prisma.user.findMany({
+        where: { role: "BREAKUP_BUDDY" },
+        select: { id: true, email: true, name: true, displayName: true },
+      });
+
+      allActiveBuddies.forEach((buddy) => {
+        if (buddy.email) {
+          sendNewConnectionRequestEmail({
+            buddyEmail: buddy.email,
+            buddyName: buddy.displayName || "Breakup Buddy",
+            userName: requestingUser?.name || "A Member",
+            topic: request.topic,
+            sessionFormat: format,
+          }).catch(e => {});
+        }
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("new-broadcast-request", { requestId: request.id, topic: request.topic });
+        allActiveBuddies.forEach((b) => {
+          io.to(`buddy-${b.id}`).emit("new-buddy-request", { requestId: request.id });
         });
       }
     } catch (mailErr) {
-      console.warn("Mail dispatch note:", mailErr.message);
+      console.warn("Mail broadcast note:", mailErr.message);
     }
 
     return res.json({
       success: true,
-      message: "Support session requested successfully!",
+      message: "Connection request sent to our Breakup Buddy team! Your first 30 Minutes of Chat & Call are 100% Free.",
       data: request,
     });
   } catch (error) {
@@ -358,7 +384,7 @@ router.post("/buddy-request", authenticateToken, async (req, res) => {
 });
 
 // 6. GET /api/services/my-buddy-requests
-// Fetch all buddy requests made by the logged-in user with live package timings
+// Fetch all buddy requests made by the logged-in user with live package timings & privacy protection
 router.get("/my-buddy-requests", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -370,8 +396,6 @@ router.get("/my-buddy-requests", authenticateToken, async (req, res) => {
             id: true,
             name: true,
             displayName: true,
-            email: true,
-            phone: true,
             city: true,
             profilePhoto: true,
             shortBio: true,
@@ -387,27 +411,36 @@ router.get("/my-buddy-requests", authenticateToken, async (req, res) => {
         const hasExpiry = !!r.packageExpiresAt;
         const isStillActive = hasExpiry && new Date(r.packageExpiresAt).getTime() > now;
 
-        // If a package was purchased but has now expired, deactivate and reset limits
-        if (hasExpiry && !isStillActive && (r.chatLimitSeconds > 900 || r.voiceCallLimitSeconds > 300)) {
-          await prisma.buddyRequest.update({
-            where: { id: r.id },
-            data: {
-              chatLimitSeconds: 900,
-              timeUsedSeconds: 900,
-              voiceCallLimitSeconds: 300,
-              voiceCallSeconds: 300,
-            },
-          }).catch((err) => console.error("Error auto-expiring pass:", err));
+        const chatLimit = r.chatLimitSeconds || 1800; // 30 mins default
+        const callLimit = r.voiceCallLimitSeconds || 1800; // 30 mins default
+        const timeUsed = r.timeUsedSeconds || 0;
+        const callUsed = r.voiceCallSeconds || 0;
 
-          r.chatLimitSeconds = 900;
-          r.timeUsedSeconds = 900;
-          r.voiceCallLimitSeconds = 300;
-          r.voiceCallSeconds = 300;
-        }
+        const chatSecondsLeft = Math.max(0, chatLimit - timeUsed);
+        const callSecondsLeft = Math.max(0, callLimit - callUsed);
+
+        const isFreeTrialCompleted = !isStillActive && (chatSecondsLeft <= 0 && callSecondsLeft <= 0);
+
+        // Sanitize Buddy Privacy: 100% confidential, no names or photos exposed to user
+        const maskedBuddy = r.buddy ? {
+          id: r.buddy.id,
+          name: "Breakup Buddy",
+          displayName: "Breakup Buddy",
+          city: "",
+          profilePhoto: "",
+          shortBio: "",
+        } : null;
 
         return {
           ...r,
+          buddy: maskedBuddy,
           isUnlimited: isStillActive,
+          chatSecondsLeft,
+          callSecondsLeft,
+          chatMinutesLeft: Math.ceil(chatSecondsLeft / 60),
+          callMinutesLeft: Math.ceil(callSecondsLeft / 60),
+          isFreeTrialCompleted,
+          hasActivePackage: isStillActive,
         };
       })
     );
@@ -973,31 +1006,83 @@ router.post("/buddy-review", async (req, res) => {
 // --- BREAKUP BUDDY USER PACKAGES & LIMITS ---
 
 // 14. GET /api/services/packages/breakup-buddy
-// Fetch available Breakup Buddy packages from the ServicePackage table
-router.get("/packages/breakup-buddy", authenticateToken, async (req, res) => {
+// Fetch available dynamic Breakup Buddy packages added by Admin from ServicePackage table
+router.get("/packages/breakup-buddy", async (req, res) => {
   try {
     const packages = await prisma.$queryRawUnsafe(`
       SELECT * FROM "ServicePackage" WHERE "type" = 'BREAKUP_BUDDY' AND "isActive" = true ORDER BY "price" ASC
     `);
-    
-    // Also fetch the user's current bb package stats
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: {
-        bbPackageId: true,
-        bbPackageStatus: true,
-        bbSessionsRemaining: true,
-        bbCallMinutesRemaining: true,
-        bbChatMinutesRemaining: true,
-        bbPackageExpiresAt: true,
+
+    const formattedPackages = (packages || []).map((pkg) => {
+      let features = [];
+      try {
+        if (pkg.features) {
+          features = typeof pkg.features === 'string' ? JSON.parse(pkg.features) : pkg.features;
+        }
+      } catch (e) {
+        features = [];
       }
+
+      // Calculate accurate human duration from durationHours and durationMinutes (set by Admin)
+      const h = pkg.durationHours !== null && pkg.durationHours !== undefined ? Number(pkg.durationHours) : 0;
+      const m = pkg.durationMinutes !== null && pkg.durationMinutes !== undefined ? Number(pkg.durationMinutes) : 0;
+
+      let durationLabel = "";
+      if (h > 0 && m > 0) {
+        durationLabel = `${h} ${h === 1 ? 'Hour' : 'Hours'} ${m} ${m === 1 ? 'Min' : 'Mins'}`;
+      } else if (h > 0) {
+        durationLabel = `${h} ${h === 1 ? 'Hour' : 'Hours'}`;
+      } else if (m > 0) {
+        durationLabel = `${m} ${m === 1 ? 'Minute' : 'Minutes'}`;
+      } else if (pkg.durationDays && pkg.durationDays > 0) {
+        durationLabel = `${pkg.durationDays} ${pkg.durationDays === 1 ? 'Day' : 'Days'}`;
+      } else {
+        durationLabel = "1 Hour";
+      }
+
+      if (!features || !Array.isArray(features) || features.length === 0) {
+        features = [
+          `Unlimited Voice Calls (${durationLabel})`,
+          `Unlimited Live Chat (${durationLabel})`,
+          '100% Confidential & Private Support',
+          'Compassionate Listening Space'
+        ];
+      }
+
+      return {
+        ...pkg,
+        durationHours: h,
+        durationMinutes: m,
+        features,
+        duration: durationLabel
+      };
     });
 
-    console.log("Sending packages to frontend:", packages.length);
-    console.log("User limits:", user);
-    return res.json({ success: true, packages, userLimits: user });
+    let userLimits = null;
+    if (req.cookies && req.cookies.token) {
+      try {
+        const jwt = require("jsonwebtoken");
+        const JWT_SECRET = process.env.JWT_SECRET || "jabwemeet_jwt_secret_key_2026_secure";
+        const decoded = jwt.verify(req.cookies.token, JWT_SECRET);
+        if (decoded && decoded.userId) {
+          userLimits = await prisma.user.findUnique({
+            where: { id: decoded.userId },
+            select: {
+              bbPackageId: true,
+              bbPackageStatus: true,
+              bbSessionsRemaining: true,
+              bbCallMinutesRemaining: true,
+              bbChatMinutesRemaining: true,
+              bbPackageExpiresAt: true,
+            }
+          });
+        }
+      } catch (e) {}
+    }
+
+    return res.json({ success: true, packages: formattedPackages, userLimits });
   } catch (error) {
-    console.error("Error fetching Breakup Buddy packages:", error);
+    console.error("Error fetching dynamic Breakup Buddy packages:", error);
     return res.status(500).json({ success: false, message: "Failed to fetch packages." });
   }
 });

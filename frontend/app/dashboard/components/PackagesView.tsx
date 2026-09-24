@@ -8,7 +8,6 @@ import {
   Clock,
   PhoneCall,
   MessageCircle,
-  UserCheck,
   Check,
   CreditCard,
   AlertCircle,
@@ -16,14 +15,14 @@ import {
   XCircle,
   X,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Heart
 } from "lucide-react";
 
 export default function PackagesView({ user }: { user: any }) {
   const [packages, setPackages] = useState<any[]>([]);
   const [buddyRequests, setBuddyRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBuddyReqId, setSelectedBuddyReqId] = useState<string>("");
   const [checkoutPkg, setCheckoutPkg] = useState<any | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [activeModal, setActiveModal] = useState<{
@@ -38,21 +37,20 @@ export default function PackagesView({ user }: { user: any }) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [pkgRes, buddyRes] = await Promise.all([
-        fetch("/api/services/packages/breakup-buddy", { credentials: "include" }),
-        fetch("/api/services/my-buddy-requests", { credentials: "include" })
+      const [buddyRes, pkgRes] = await Promise.all([
+        fetch("/api/services/my-buddy-requests", { credentials: "include" }),
+        fetch("/api/services/packages/breakup-buddy")
       ]);
-      const pkgData = await pkgRes.json();
-      const buddyData = await buddyRes.json();
 
-      if (pkgData.success) {
-        setPackages(pkgData.packages || []);
-      }
-      if (buddyData.success && buddyData.data) {
+      const buddyData = await buddyRes.json();
+      const pkgData = await pkgRes.json();
+
+      if (buddyData?.success && Array.isArray(buddyData.data)) {
         setBuddyRequests(buddyData.data);
-        if (buddyData.data.length > 0) {
-          setSelectedBuddyReqId((prev) => prev || buddyData.data[0].id);
-        }
+      }
+
+      if (pkgData?.success && Array.isArray(pkgData.packages)) {
+        setPackages(pkgData.packages);
       }
     } catch (e) {
       console.error("Fetch Error: ", e);
@@ -87,41 +85,31 @@ export default function PackagesView({ user }: { user: any }) {
     });
   };
 
-  const selectedBuddy = buddyRequests.find((r) => r.id === selectedBuddyReqId) || buddyRequests[0];
-  const selectedBuddyName = selectedBuddy?.buddy?.displayName || selectedBuddy?.buddy?.name || "Buddy";
-  const isSelectedBuddyActive = !!(
-    selectedBuddy &&
-    selectedBuddy.packageExpiresAt &&
-    new Date(selectedBuddy.packageExpiresAt).getTime() > currentTime
+  const activeRequest = buddyRequests[0];
+  const isPassActive = !!(
+    activeRequest &&
+    activeRequest.packageExpiresAt &&
+    new Date(activeRequest.packageExpiresAt).getTime() > currentTime
   );
-  const selectedBuddyHours = selectedBuddy ? Math.max(1, Math.round((selectedBuddy.chatLimitSeconds || 3600) / 3600)) : 1;
+
+  const freeCallMinsLeft = activeRequest ? Math.max(0, Math.ceil(((activeRequest.voiceCallLimitSeconds || 1800) - (activeRequest.voiceCallSeconds || 0)) / 60)) : 30;
+  const freeChatMinsLeft = activeRequest ? Math.max(0, Math.ceil(((activeRequest.chatLimitSeconds || 1800) - (activeRequest.timeUsedSeconds || 0)) / 60)) : 30;
 
   const handleInitiateBuy = (pkg: any) => {
-    if (!selectedBuddy) {
+    if (isPassActive) {
       setActiveModal({
         type: "warning",
-        title: "No Buddy Selected 👤",
-        message: "Please select a Breakup Buddy first from the top section to proceed.",
+        title: "Active Package in Progress! ⏳",
+        message: "You already have an active Breakup Buddy package running.",
+        subMessage: "You can purchase another package once your current pass duration completes.",
       });
       return;
     }
-
-    // Guard: Prevent taking another package ONLY if this buddy currently has an active unexpired pass
-    if (isSelectedBuddyActive) {
-      setActiveModal({
-        type: "warning",
-        title: "Active Pass Already in Progress! ⏳",
-        message: `You already have an active ${selectedBuddyHours} Hour Unlimited Pass with ${selectedBuddyName}.`,
-        subMessage: "You cannot purchase another package for this buddy until the current pass duration has completed.",
-      });
-      return;
-    }
-
     setCheckoutPkg(pkg);
   };
 
   const handleRazorpayPayment = async () => {
-    if (!checkoutPkg || !selectedBuddy) return;
+    if (!checkoutPkg) return;
     setIsProcessingPayment(true);
 
     try {
@@ -136,14 +124,22 @@ export default function PackagesView({ user }: { user: any }) {
         return;
       }
 
+      const targetReqId = activeRequest ? activeRequest.id : "new";
+
       // 1. Create order on backend
-      const res = await fetch("/api/services/packages/create-razorpay-order", {
+      const res = await fetch("/api/subscription/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          packageId: checkoutPkg.id,
-          requestId: selectedBuddy.id,
+          amount: checkoutPkg.price,
+          currency: "INR",
+          type: "BREAKUP_BUDDY_PACKAGE",
+          metadata: {
+            packageId: checkoutPkg.id,
+            packageName: checkoutPkg.name,
+            requestId: targetReqId,
+          }
         }),
       });
 
@@ -161,16 +157,15 @@ export default function PackagesView({ user }: { user: any }) {
       // 2. Configure Razorpay Options
       const options = {
         key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
-        amount: orderData.amount,
-        currency: orderData.currency || "INR",
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
         name: "JabWeMeet - Breakup Buddy",
-        description: `${checkoutPkg.name} with ${selectedBuddyName}`,
-        image: "https://jabwemeet.com/logo.png",
-        order_id: orderData.orderId,
+        description: checkoutPkg.name,
+        order_id: orderData.order.id,
         handler: async (response: any) => {
           try {
             // 3. Verify payment signature on backend
-            const verifyRes = await fetch("/api/services/packages/verify-razorpay-payment", {
+            const verifyRes = await fetch("/api/subscription/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
@@ -178,8 +173,12 @@ export default function PackagesView({ user }: { user: any }) {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                requestId: selectedBuddy.id,
-                packageId: checkoutPkg.id,
+                type: "BREAKUP_BUDDY_PACKAGE",
+                metadata: {
+                  packageId: checkoutPkg.id,
+                  packageName: checkoutPkg.name,
+                  requestId: targetReqId,
+                }
               }),
             });
 
@@ -190,8 +189,8 @@ export default function PackagesView({ user }: { user: any }) {
               setActiveModal({
                 type: "success",
                 title: "Payment Successful! 🎉🥳",
-                message: `Your ${checkoutPkg.durationHours || 1} Hour Unlimited Pass with ${selectedBuddyName} is now ACTIVE!`,
-                subMessage: "You can now make unlimited voice calls and send unlimited messages with your buddy.",
+                message: `Your ${checkoutPkg.name} is now ACTIVE!`,
+                subMessage: "You can now make voice calls and send unlimited messages with your Breakup Buddy.",
               });
             } else {
               setActiveModal({
@@ -216,610 +215,239 @@ export default function PackagesView({ user }: { user: any }) {
           contact: user?.phone || "",
         },
         theme: {
-          color: "#4f46e5",
-        },
-        modal: {
-          ondismiss: () => {
-            setIsProcessingPayment(false);
-          },
+          color: "#e06d53",
         },
       };
 
-      const razorpayInstance = new (window as any).Razorpay(options);
-      razorpayInstance.on("payment.failed", (response: any) => {
-        setActiveModal({
-          type: "error",
-          title: "Payment Failed ❌",
-          message: response.error?.description || "Payment transaction was declined.",
-        });
-        setIsProcessingPayment(false);
-      });
-
-      razorpayInstance.open();
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (err) {
-      console.error("Payment error:", err);
       setActiveModal({
         type: "error",
-        title: "Payment Error ⚠️",
-        message: "An unexpected error occurred while starting payment.",
+        title: "Payment Error ❌",
+        message: "An error occurred while processing payment.",
       });
       setIsProcessingPayment(false);
     }
   };
 
-  if (loading) {
-    return <div className="p-8 text-center text-slate-500 animate-pulse text-xs">Loading packages & buddy quotas...</div>;
-  }
-
-    // Real-time active check: Only active if packageExpiresAt exists and is strictly in the future
-    const isSelectedBuddyUnlimited = isSelectedBuddyActive;
-
-    // Timing calculation for selected buddy
-    const selStart = selectedBuddy?.packageStartedAt ? new Date(selectedBuddy.packageStartedAt) : new Date(selectedBuddy?.updatedAt || Date.now());
-    const selExpiry = selectedBuddy?.packageExpiresAt
-      ? new Date(selectedBuddy.packageExpiresAt)
-      : new Date(selStart.getTime() + (selectedBuddy?.chatLimitSeconds || 3600) * 1000);
-
-    const selTotalSec = Math.max(1, Math.round((selExpiry.getTime() - selStart.getTime()) / 1000));
-    const selRemSec = Math.min(selTotalSec, Math.max(0, Math.floor((selExpiry.getTime() - currentTime) / 1000)));
-    const selHoursLeft = Math.floor(selRemSec / 3600);
-    const selMinsLeft = Math.floor((selRemSec % 3600) / 60);
-    const selSecsLeft = selRemSec % 60;
-    const selProgress = Math.min(100, Math.max(0, Math.round(((selTotalSec - selRemSec) / selTotalSec) * 100)));
-    const selPercentRemaining = Math.min(100, Math.max(0, Math.round((selRemSec / selTotalSec) * 100)));
-
-    const selStartFmt = selStart.toLocaleString(undefined, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    const selExpiryFmt = selExpiry.toLocaleString(undefined, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-          <Package className="w-6 h-6 text-emerald-400" />
-          My Buddy Subscriptions & Quotas
+          <Package className="w-6 h-6 text-[#e06d53]" />
+          Breakup Buddy Packages & Session Quotas
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Click on any Breakup Buddy below to inspect their status or purchase an hourly unlimited pass.
+          First 30 minutes of Chat and Voice Call are 100% free with your Breakup Buddy. Choose a support pass below to extend your sessions anytime.
         </p>
       </div>
 
-      {/* ACTIVE BUDDY SESSIONS & QUOTAS LIST (CLICKABLE) */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-indigo-400" />
-            1. Select a Connected Buddy ({buddyRequests.length})
-          </h3>
-          <span className="text-xs text-indigo-300 font-medium">Click a buddy card to select</span>
+      {/* ACTIVE STATUS & QUOTAS SUMMARY CARD */}
+      <div className="bg-gradient-to-br from-[#121e38] to-[#1c2e56] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#e06d53]/20 text-[#e06d53] flex items-center justify-center font-bold text-lg">
+              <Heart className="w-5 h-5 fill-[#e06d53]" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Current Session Status</h3>
+              <span className="text-xs text-slate-300">
+                {isPassActive
+                  ? "Active Package Running"
+                  : activeRequest
+                  ? "30-Min Free Trial Connection"
+                  : "Ready to Connect (30 Mins Free Available)"}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            {isPassActive ? (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Active Package
+              </span>
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                🎁 Free 30-Min Quota
+              </span>
+            )}
+          </div>
         </div>
 
-        {buddyRequests.length === 0 ? (
-          <div className="p-6 text-center border border-white/10 border-dashed rounded-2xl text-slate-400 text-xs bg-white/5">
-            You have not connected with any Breakup Buddies yet. Request a buddy from the Breakup Buddy page to unlock 5m free call and 15m free chat!
+        {/* Minutes Breakdown Grid */}
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mb-1">
+              <PhoneCall className="w-4 h-4 text-rose-400" />
+              <span>Voice Calls</span>
+            </div>
+            <div className="text-lg font-bold text-white">
+              {isPassActive ? (
+                <span className="text-emerald-400 font-extrabold">Unlimited</span>
+              ) : (
+                `${freeCallMinsLeft}m Free Left`
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mb-1">
+              <MessageCircle className="w-4 h-4 text-sky-400" />
+              <span>Live Chats</span>
+            </div>
+            <div className="text-lg font-bold text-white">
+              {isPassActive ? (
+                <span className="text-emerald-400 font-extrabold">Unlimited</span>
+              ) : (
+                `${freeChatMinsLeft}m Free Left`
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PACKAGES SELECTION GRID (GENERIC PACKAGES ONLY) */}
+      <div className="space-y-4 pt-2">
+        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#e06d53]" />
+          Available Support Packages
+        </h3>
+
+        {packages.length === 0 ? (
+          <div className="p-8 rounded-3xl bg-[#0d1526] border border-white/10 text-center space-y-2">
+            <p className="text-sm font-semibold text-slate-300">No active Breakup Buddy packages found.</p>
+            <p className="text-xs text-slate-500">Packages configured by Admin will appear here.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {buddyRequests.map((req) => {
-              const bName = req.buddy?.displayName || req.buddy?.name || "Buddy";
-              const isPassActive = !!(req.packageExpiresAt && new Date(req.packageExpiresAt).getTime() > currentTime);
-              const hasExpiredPass = !!(req.packageExpiresAt && new Date(req.packageExpiresAt).getTime() <= currentTime);
-              const durationHours = Math.max(1, Math.round((req.chatLimitSeconds || 3600) / 3600));
-              // Free tier: 5 mins free call (300s) and 15 mins free chat (900s)
-              const freeCallLeft = hasExpiredPass
-                ? 0
-                : Math.max(0, Math.ceil((300 - Math.min(300, req.voiceCallSeconds || 0)) / 60));
-              const freeChatLeft = hasExpiredPass
-                ? 0
-                : Math.max(0, Math.ceil((900 - Math.min(900, req.timeUsedSeconds || 0)) / 60));
-              const isSelected = selectedBuddy?.id === req.id;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className={`p-6 sm:p-7 rounded-3xl bg-[#0d1526] border transition-all duration-200 flex flex-col justify-between space-y-5 ${
+                  pkg.isPopular
+                    ? "border-[#e06d53] ring-2 ring-[#e06d53]/30 shadow-2xl relative"
+                    : "border-white/10 hover:border-white/20 shadow-lg"
+                }`}
+              >
+                {pkg.isPopular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-[#e06d53] text-white text-[10px] font-extrabold uppercase rounded-full shadow-md">
+                    Most Popular
+                  </span>
+                )}
 
-              // Buddy card live countdown
-              const bStart = req.packageStartedAt ? new Date(req.packageStartedAt) : new Date(req.updatedAt || Date.now());
-              const bExpiry = req.packageExpiresAt ? new Date(req.packageExpiresAt) : new Date(bStart.getTime() + (req.chatLimitSeconds || 3600) * 1000);
-              const bTotalSec = Math.max(1, Math.round((bExpiry.getTime() - bStart.getTime()) / 1000));
-              const bRemSec = Math.min(bTotalSec, Math.max(0, Math.floor((bExpiry.getTime() - currentTime) / 1000)));
-              const bMinsLeft = Math.ceil(bRemSec / 60);
-
-              return (
-                <div
-                  key={req.id}
-                  onClick={() => setSelectedBuddyReqId(req.id)}
-                  className={`p-5 rounded-2xl transition-all duration-200 shadow-xl space-y-3 cursor-pointer relative ${
-                    isSelected
-                      ? "bg-gradient-to-br from-[#121e38] to-[#1c2e56] border-2 border-indigo-500 ring-2 ring-indigo-500/30 scale-[1.02]"
-                      : "bg-gradient-to-br from-[#0d1526] to-[#121c32] border border-white/10 hover:border-white/30 hover:scale-[1.01]"
-                  }`}
-                >
-                  {isSelected && (
-                    <span className="absolute -top-2.5 left-5 px-2.5 py-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full shadow flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Selected
-                    </span>
-                  )}
-
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center font-bold text-white text-xs shadow">
-                        {bName[0]}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{bName}</h4>
-                        <span className="text-[10px] text-slate-400">Breakup Buddy</span>
-                      </div>
-                    </div>
-                    {isPassActive ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        {durationHours}h Pass Active
-                      </span>
-                    ) : hasExpiredPass ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300 border border-white/10 text-[10px] font-semibold">
-                        Pass Completed
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
-                        Free Quota
-                      </span>
-                    )}
+                    <h4 className="text-base font-bold text-white">{pkg.name}</h4>
+                    <Clock className="w-4 h-4 text-[#e06d53]" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5 text-center">
-                    <div className="bg-white/5 rounded-xl p-2.5">
-                      <div className="text-[11px] text-slate-400 flex items-center justify-center gap-1 mb-1">
-                        <PhoneCall className="w-3 h-3 text-rose-400" />
-                        <span>Calls</span>
-                      </div>
-                      <div className="text-xs sm:text-sm font-bold text-white">
-                        {isPassActive ? (
-                          <span className="text-emerald-400 font-bold">
-                            Unlimited ({durationHours}h)
-                          </span>
-                        ) : hasExpiredPass ? (
-                          <span className="text-slate-400 font-medium">0m left</span>
-                        ) : (
-                          `${freeCallLeft}m free left`
-                        )}
-                      </div>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-2.5">
-                      <div className="text-[11px] text-slate-400 flex items-center justify-center gap-1 mb-1">
-                        <MessageCircle className="w-3 h-3 text-sky-400" />
-                        <span>Chats</span>
-                      </div>
-                      <div className="text-xs sm:text-sm font-bold text-white">
-                        {isPassActive ? (
-                          <span className="text-emerald-400 font-bold">
-                            Unlimited ({durationHours}h)
-                          </span>
-                        ) : hasExpiredPass ? (
-                          <span className="text-slate-400 font-medium">0m left</span>
-                        ) : (
-                          `${freeChatLeft}m free left`
-                        )}
-                      </div>
-                    </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-white">₹{pkg.price}</span>
+                    <span className="text-[11px] text-slate-400">
+                      / {pkg.duration || (pkg.durationHours > 0 || pkg.durationMinutes > 0
+                          ? `${pkg.durationHours ? `${pkg.durationHours} ${pkg.durationHours === 1 ? 'Hour' : 'Hours'}` : ''} ${pkg.durationMinutes ? `${pkg.durationMinutes} ${pkg.durationMinutes === 1 ? 'Min' : 'Mins'}` : ''}`.trim()
+                          : (pkg.durationDays ? `${pkg.durationDays} Days` : 'pass'))}
+                    </span>
                   </div>
 
-                  {/* Live Mini Expiry Badge on Card */}
-                  {isPassActive && (
-                    <div className="bg-emerald-950/40 border border-emerald-500/20 rounded-xl p-2 text-[11px] text-emerald-300 flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-emerald-400" />
-                        <span>Expires: {bExpiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </span>
-                      <strong className="text-emerald-400 font-bold">{bMinsLeft}m left</strong>
-                    </div>
+                  {Array.isArray(pkg.features) && pkg.features.length > 0 && (
+                    <ul className="space-y-2 pt-2 border-t border-white/5 text-xs text-slate-300">
+                      {pkg.features.map((f: string, i: number) => (
+                        <li key={i} className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
-              );
-            })}
+
+                <button
+                  onClick={() => handleInitiateBuy(pkg)}
+                  className={`w-full py-3 rounded-2xl text-xs font-bold transition shadow-md cursor-pointer ${
+                    pkg.isPopular
+                      ? "bg-[#e06d53] hover:bg-[#c95940] text-white shadow-[#e06d53]/30"
+                      : "bg-white/10 hover:bg-white/15 text-white border border-white/10"
+                  }`}
+                >
+                  Buy Package (₹{pkg.price})
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* DEDICATED LIVE ACTIVE SUBSCRIPTION TRACKER CARD (ONLY VISIBLE WHEN CURRENTLY ACTIVE) */}
-      {selectedBuddy && isSelectedBuddyActive && (
-        <div className="bg-gradient-to-br from-[#0c1f36] via-[#0d1b2f] to-[#0a232c] border-2 border-emerald-500/50 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-emerald-950/40 space-y-5 animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 text-2xl shadow-inner">
-                ⚡
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black text-white">
-                    {selectedBuddy.packageName || `${selectedBuddyHours} Hour Unlimited Pass`}
-                  </h3>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black tracking-wide flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
-                    LIVE ACTIVE
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  Connected with <strong className="text-emerald-300">{selectedBuddyName}</strong> • Unlimited calls & chats enabled
-                </p>
-              </div>
-            </div>
-
-            {/* Live Clock Pill */}
-            <div className="bg-black/40 border border-emerald-500/30 rounded-2xl px-4 py-2.5 text-right self-start sm:self-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Time Remaining</span>
-              <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono tracking-tight flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-emerald-400 animate-spin" />
-                <span>
-                  {selRemSec > 0
-                    ? `${selHoursLeft > 0 ? `${selHoursLeft}h ` : ""}${selMinsLeft}m ${selSecsLeft}s`
-                    : "Pass Expired"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Time Breakdown & Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-semibold text-slate-300">
-              <span className="flex items-center gap-1 text-slate-400">
-                <span>🚀 Activated:</span>
-                <strong className="text-white">{selStartFmt}</strong>
-              </span>
-              <span className="flex items-center gap-1 text-slate-400">
-                <span>🏁 Expires At:</span>
-                <strong className="text-emerald-300">{selExpiryFmt}</strong>
-              </span>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden p-0.5 border border-white/5">
-              <div
-                className="bg-gradient-to-r from-emerald-500 via-teal-400 to-sky-400 h-full rounded-full transition-all duration-1000 shadow-sm"
-                style={{ width: `${Math.max(3, 100 - selProgress)}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-[11px] text-slate-400 font-medium">
-              <span>Duration: {selectedBuddyHours} {selectedBuddyHours === 1 ? "Hour" : "Hours"}</span>
-              <span>{selRemSec > 0 ? `${selPercentRemaining}% remaining` : "Expired"}</span>
-            </div>
-          </div>
-
-          {/* Feature Highlights Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                <PhoneCall className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Voice Calls</span>
-                <p className="text-xs font-bold text-emerald-400">Unlimited (No Minutes Deducted)</p>
-              </div>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400">
-                <MessageCircle className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Chat Messages</span>
-                <p className="text-xs font-bold text-sky-400">Unlimited Real-Time Chat</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* EXPIRED PASS SUMMARY CARD (WHEN PREVIOUS PASS HAS COMPLETED) */}
-      {selectedBuddy && !isSelectedBuddyActive && selectedBuddy.packageExpiresAt && (
-        <div className="bg-gradient-to-br from-[#121927] to-[#182338] border border-white/15 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 text-xl">
-                ⏳
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-base font-bold text-white">
-                    {selectedBuddy.packageName || "Previous Pass"} - Completed
-                  </h4>
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold border border-white/10">
-                    Session Expired
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Your previous unlimited session with <strong className="text-indigo-300">{selectedBuddyName}</strong> has ended.
-                </p>
-              </div>
-            </div>
-            <div className="text-xs text-slate-400 bg-black/30 border border-white/5 px-3 py-2 rounded-xl">
-              <span>Ready for next package 👇</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300">
-            <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex justify-between">
-              <span className="text-slate-400">🚀 Activated:</span>
-              <strong className="text-white">{selStartFmt}</strong>
-            </div>
-            <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex justify-between">
-              <span className="text-slate-400">🏁 Ended:</span>
-              <strong className="text-amber-300">{selExpiryFmt}</strong>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AVAILABLE PACKAGES FOR SELECTED BUDDY */}
-      {selectedBuddy && (
-        <div className="pt-6 border-t border-white/10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <span>2. Available Passes for</span>
-                <span className="text-indigo-400 font-extrabold underline underline-offset-4">
-                  {selectedBuddyName}
-                </span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {isSelectedBuddyActive 
-                  ? `An active ${selectedBuddyHours}h pass is currently running. You cannot take another package until it expires.`
-                  : `Choose a pass below to pay with Razorpay and unlock unlimited calls & chats with ${selectedBuddyName}.`}
-              </p>
-            </div>
-
-            {isSelectedBuddyActive ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold self-start">
-                <ShieldCheck className="w-4 h-4" />
-                Active Pass ({selectedBuddyHours}h)
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium self-start">
-                Free Quota Active
-              </span>
-            )}
-          </div>
-
-          {packages.length === 0 ? (
-            <div className="p-8 text-center border border-white/10 border-dashed rounded-2xl text-slate-500 text-sm">
-              No packages configured by admin yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {packages.map((pkg) => {
-                const durationLabel = (() => {
-                  const parts = [];
-                  if (pkg.durationHours > 0) parts.push(`${pkg.durationHours} ${pkg.durationHours === 1 ? "hour" : "hours"}`);
-                  if (pkg.durationMinutes > 0) parts.push(`${pkg.durationMinutes} ${pkg.durationMinutes === 1 ? "min" : "mins"}`);
-                  return parts.length > 0 ? parts.join(" ") : (pkg.durationHours ? `${pkg.durationHours} hours` : "1 hour");
-                })();
-
-                const totalPkgSec = ((pkg.durationHours || 0) * 3600) + ((pkg.durationMinutes || 0) * 60) || 3600;
-                const isThisPassActive =
-                  isSelectedBuddyActive &&
-                  Math.abs((selectedBuddy.chatLimitSeconds || 3600) - totalPkgSec) < 60;
-
-                return (
-                  <div
-                    key={pkg.id}
-                    className={`bg-[#0a101d] border rounded-3xl p-6 transition flex flex-col justify-between relative ${
-                      isThisPassActive
-                        ? "border-emerald-500 shadow-emerald-950/50 shadow-2xl bg-gradient-to-b from-[#0a1826] to-[#0a101d]"
-                        : "border-white/10 hover:border-indigo-500/50"
-                    }`}
-                  >
-                    {isThisPassActive && (
-                      <span className="absolute -top-3 right-6 px-3 py-1 bg-emerald-500 text-slate-950 text-[10px] font-black rounded-full shadow-md tracking-wider">
-                        ACTIVE PLAN
-                      </span>
-                    )}
-
-                    <div>
-                      <h4 className="text-base font-bold text-white">{pkg.name}</h4>
-                      <div className="text-2xl font-black text-emerald-400 mt-2">
-                        ₹{pkg.price}
-                        <span className="text-xs text-slate-400 font-normal"> / {durationLabel}</span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-3">{pkg.description}</p>
-                      
-                      <ul className="mt-4 space-y-2 text-xs text-slate-300 font-medium pb-6 border-b border-white/10">
-                        <li className="flex justify-between">
-                          <span className="text-slate-500">Duration:</span>
-                          <span className="text-indigo-400 font-bold capitalize">{durationLabel}</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span className="text-slate-500">Call Quota:</span>
-                          <span className="text-emerald-400 font-semibold">Unlimited</span>
-                        </li>
-                        <li className="flex justify-between">
-                          <span className="text-slate-500">Chat Quota:</span>
-                          <span className="text-emerald-400 font-semibold">Unlimited</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    {isThisPassActive ? (
-                      <button
-                        disabled
-                        className="mt-6 w-full py-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-default"
-                      >
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                        <span>Active Plan with {selectedBuddyName}</span>
-                      </button>
-                    ) : isSelectedBuddyActive ? (
-                      <button
-                        onClick={() => handleInitiateBuy(pkg)}
-                        className="mt-6 w-full py-2.5 rounded-xl bg-slate-800 text-slate-400 border border-white/5 text-xs font-medium transition hover:bg-slate-700/50"
-                      >
-                        Pass Already Active
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleInitiateBuy(pkg)}
-                        className="mt-6 w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs sm:text-sm font-bold transition shadow-lg flex items-center justify-center gap-1.5"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        <span>Get Pass for {selectedBuddyName}</span>
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* RAZORPAY CHECKOUT CONFIRMATION MODAL */}
-      {checkoutPkg && selectedBuddy && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 relative">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white">Confirm Subscription</h3>
-                  <span className="text-[11px] text-slate-400">Razorpay Secure Checkout</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setCheckoutPkg(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs">
-              <div className="flex justify-between items-center text-slate-300">
-                <span>Selected Breakup Buddy:</span>
-                <strong className="text-white text-sm">{selectedBuddyName}</strong>
-              </div>
-              <div className="flex justify-between items-center text-slate-300">
-                <span>Package Plan:</span>
-                <span className="font-bold text-indigo-300">{checkoutPkg.name}</span>
-              </div>
-              <div className="flex justify-between items-center text-slate-300">
-                <span>Duration:</span>
-                <span className="font-bold text-white">
-                  {(() => {
-                    const parts = [];
-                    if (checkoutPkg.durationHours > 0) parts.push(`${checkoutPkg.durationHours} ${checkoutPkg.durationHours === 1 ? "Hour" : "Hours"}`);
-                    if (checkoutPkg.durationMinutes > 0) parts.push(`${checkoutPkg.durationMinutes} ${checkoutPkg.durationMinutes === 1 ? "Min" : "Mins"}`);
-                    return parts.length > 0 ? parts.join(" ") : (checkoutPkg.durationHours ? `${checkoutPkg.durationHours} Hours` : "1 Hour");
-                  })()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-slate-300">
-                <span>Calls & Chats:</span>
-                <span className="text-emerald-400 font-bold">100% Unlimited</span>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex justify-between items-center">
-                <span className="text-sm font-bold text-white">Total Amount:</span>
-                <span className="text-xl font-black text-emerald-400">₹{checkoutPkg.price}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setCheckoutPkg(null)}
-                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleRazorpayPayment}
-                disabled={isProcessingPayment}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white text-xs font-bold transition shadow-lg flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                {isProcessingPayment ? (
-                  <span>Processing...</span>
-                ) : (
-                  <>
-                    <span>Pay ₹{checkoutPkg.price}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 pt-1">
-              <Lock className="w-3 h-3 text-emerald-400" />
-              <span>Encrypted & Secured by Razorpay</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DYNAMIC INTERACTIVE FEEDBACK POPUP (SUCCESS, WARNING, ERROR) */}
-      {activeModal && (
-        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-center space-y-4 relative">
+      {/* CHECKOUT CONFIRMATION MODAL */}
+      {checkoutPkg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#131d2e] border border-white/15 rounded-3xl w-full max-w-md p-6 sm:p-7 space-y-5 shadow-2xl relative">
             <button
-              onClick={() => setActiveModal(null)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-white rounded-lg"
+              onClick={() => setCheckoutPkg(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex justify-center">
-              {activeModal.type === "success" && (
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/20 animate-bounce">
-                  <CheckCircle2 className="w-9 h-9" />
-                </div>
-              )}
-              {activeModal.type === "warning" && (
-                <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20 animate-pulse">
-                  <AlertCircle className="w-9 h-9" />
-                </div>
-              )}
-              {activeModal.type === "error" && (
-                <div className="w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-500/20">
-                  <XCircle className="w-9 h-9" />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold text-white tracking-tight">{activeModal.title}</h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm mx-auto">
-                {activeModal.message}
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e06d53]/10 border border-[#e06d53]/30 text-[11px] font-semibold text-[#fca5a5] mb-2">
+                💳 Secure Checkout
+              </div>
+              <h3 className="text-xl font-bold text-white">Confirm Package Purchase</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                You are purchasing the <strong className="text-white">{checkoutPkg.name}</strong>.
               </p>
-              {activeModal.subMessage && (
-                <p className="text-[11px] text-slate-400 leading-relaxed max-w-sm mx-auto pt-1">
-                  {activeModal.subMessage}
-                </p>
-              )}
             </div>
 
-            <div className="pt-3">
+            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2 text-xs">
+              <div className="flex justify-between text-slate-300">
+                <span>Package:</span>
+                <span className="font-bold text-white">{checkoutPkg.name}</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Access:</span>
+                <span className="font-bold text-emerald-400">Unlimited Voice & Chat</span>
+              </div>
+              <div className="flex justify-between text-slate-300 pt-2 border-t border-white/10">
+                <span>Total Amount:</span>
+                <span className="text-base font-extrabold text-[#e06d53]">₹{checkoutPkg.price}</span>
+              </div>
+            </div>
+
+            <div className="pt-2">
               <button
-                onClick={() => setActiveModal(null)}
-                className={`w-full py-2.5 rounded-xl font-bold text-xs transition shadow-lg ${
-                  activeModal.type === "success"
-                    ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
-                    : activeModal.type === "warning"
-                    ? "bg-amber-500 hover:bg-amber-600 text-slate-950 font-black shadow-amber-500/20"
-                    : "bg-white/10 hover:bg-white/20 text-white"
-                }`}
+                onClick={handleRazorpayPayment}
+                disabled={isProcessingPayment}
+                className="w-full py-3.5 bg-[#e06d53] hover:bg-[#c95940] disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-[#e06d53]/30 transition text-sm flex items-center justify-center gap-2"
               >
-                {activeModal.type === "success" ? "Awesome, Got it! 🚀" : "Okay, Understood"}
+                {isProcessingPayment ? "Processing..." : `Pay ₹${checkoutPkg.price} via Razorpay`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ALERT / MODAL NOTIFICATION */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#131d2e] border border-white/15 rounded-3xl w-full max-w-sm p-6 text-center space-y-4 shadow-2xl relative">
+            <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-white/5 border border-white/10">
+              {activeModal.type === "success" ? "✓" : activeModal.type === "warning" ? "⚠️" : "✕"}
+            </div>
+            <h4 className="text-base font-bold text-white">{activeModal.title}</h4>
+            <p className="text-xs text-slate-300">{activeModal.message}</p>
+            {activeModal.subMessage && (
+              <p className="text-[11px] text-slate-400">{activeModal.subMessage}</p>
+            )}
+            <button
+              onClick={() => setActiveModal(null)}
+              className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-xs transition"
+            >
+              Okay
+            </button>
           </div>
         </div>
       )}

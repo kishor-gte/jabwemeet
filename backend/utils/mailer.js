@@ -1292,6 +1292,40 @@ async function sendNewConnectionRequestEmail({ buddyEmail, buddyName, userName, 
   }
 }
 
+async function sendRequestClaimedByOtherEmail({ buddyEmail, buddyName, userName }) {
+  if (!buddyEmail) return;
+  try {
+    const html = wrapTemplate({
+      title: 'Request Claimed - JabWeMeet',
+      badge: { text: '🔒 Session Claimed by Peer', type: 'badge-warning' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Hi ${buddyName || 'Breakup Buddy'},</h2>
+        <p>A recent emotional support connection request on JabWeMeet has just been accepted and claimed by another Breakup Buddy.</p>
+        <div class="card" style="background:rgba(245, 158, 11, 0.08); border-color:rgba(245, 158, 11, 0.3);">
+          <p style="margin:0; color:#fde68a; font-size:14px;">
+            ⚠️ <strong>Notice:</strong> You were a bit late to accept this request from <strong>${userName || 'a member'}</strong>. It is now assigned to another Breakup Buddy.
+          </p>
+        </div>
+        <p style="margin-top:16px; color:#94a3b8;">
+          No action is needed from you. Keep your dashboard open to accept future requests!
+        </p>
+      `,
+      buttonText: 'Open Buddy Dashboard 👉',
+      buttonUrl: DASHBOARD_URL,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: buddyEmail,
+      subject: `🔒 Connection Request Claimed by Another Breakup Buddy - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] Request Claimed email sent to ${buddyEmail}`);
+  } catch (err) {
+    console.error(`[Mailer Error] Request Claimed:`, err.message);
+  }
+}
+
 async function sendPassPurchasedEmail({ buddyEmail, buddyName, userName, packageName, durationHours, amountEarned }) {
   if (!buddyEmail) return;
   try {
@@ -1586,11 +1620,108 @@ module.exports = {
   sendCouponPromoEmail,
   // Buddy Emails
   sendNewConnectionRequestEmail,
+  sendRequestClaimedByOtherEmail,
   sendPassPurchasedEmail,
   sendNewReviewEmail,
   sendMissedCallEmail,
   sendSessionScheduledEmail,
+  // Staff Admin Emails
+  sendStaffCredentialsEmail,
+  sendStaffStatusEmail,
 };
+
+async function sendStaffCredentialsEmail({ email, name, roleName, password }) {
+  if (!email) return;
+  try {
+    const html = wrapTemplate({
+      title: `Welcome to JabWeMeet - ${roleName} Account Created`,
+      badge: { text: `🛡️ New ${roleName} Account`, type: 'badge-success' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Welcome to JabWeMeet, ${name}! 🎉</h2>
+        <p>An administrative account has been registered for you as a <strong>${roleName}</strong>.</p>
+        <p>You can now log in to the portal using your credentials below:</p>
+        <div class="card" style="background:rgba(99, 102, 241, 0.08); border-color:rgba(99, 102, 241, 0.3);">
+          <div class="highlight-row">
+            <span class="highlight-label">Login Email:</span>
+            <span class="highlight-val" style="color:#818cf8; font-weight:bold;">${email}</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Password:</span>
+            <span class="highlight-val" style="color:#34d399; font-weight:bold; font-family:monospace;">${password}</span>
+          </div>
+          <div class="highlight-row" style="border-bottom:none;">
+            <span class="highlight-label">Assigned Role:</span>
+            <span class="highlight-val">${roleName}</span>
+          </div>
+        </div>
+        <p style="margin-top:16px; color:#cbd5e1;">
+          Please log in immediately, update your profile details (such as your display alias/nickname, photo, and availability), and change your password for security.
+        </p>
+      `,
+      buttonText: 'Log In to Your Dashboard 👉',
+      buttonUrl: `${FRONTEND_URL}/login`,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: email,
+      subject: `🎉 Your ${roleName} Account Credentials - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] Staff credentials email sent to ${email}`);
+  } catch (err) {
+    console.error(`[Mailer Error] Staff Credentials:`, err.message);
+  }
+}
+
+async function sendStaffStatusEmail({ email, name, roleName, status, reason }) {
+  if (!email) return;
+  try {
+    const isSuspended = status === 'SUSPENDED';
+    const html = wrapTemplate({
+      title: `Account Status Update - JabWeMeet`,
+      badge: {
+        text: isSuspended ? '⚠️ Account Suspended' : '✓ Account Reactivated',
+        type: isSuspended ? 'badge-rose' : 'badge-success'
+      },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Hello ${name},</h2>
+        <p>This is an official notification regarding your <strong>${roleName}</strong> account status on JabWeMeet.</p>
+        <div class="card" style="background:${isSuspended ? 'rgba(244,63,94,0.08)' : 'rgba(16,185,129,0.08)'}; border-color:${isSuspended ? 'rgba(244,63,94,0.3)' : 'rgba(16,185,129,0.3)'};">
+          <div class="highlight-row">
+            <span class="highlight-label">Account Status:</span>
+            <span class="highlight-val" style="color:${isSuspended ? '#fda4af' : '#34d399'}; font-weight:bold;">
+              ${isSuspended ? 'SUSPENDED' : 'ACTIVE / REACTIVATED'}
+            </span>
+          </div>
+          ${reason ? `
+          <div class="highlight-row" style="border-bottom:none;">
+            <span class="highlight-label">Reason / Remarks:</span>
+            <span class="highlight-val">${reason}</span>
+          </div>
+          ` : ''}
+        </div>
+        <p style="margin-top:16px; color:#cbd5e1;">
+          ${isSuspended
+            ? 'Your account has been temporarily suspended by the administrator. During this time, your profile is hidden from new client bookings and connections.'
+            : 'Your account is now active and approved! You can accept client requests and conduct sessions as usual.'}
+        </p>
+      `,
+      buttonText: 'Open Portal 👉',
+      buttonUrl: `${FRONTEND_URL}/login`,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: email,
+      subject: `${isSuspended ? '⚠️ Notice: Your Account Has Been Suspended' : '✓ Good News: Your Account Has Been Reactivated'} - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] Staff status email sent to ${email} (${status})`);
+  } catch (err) {
+    console.error(`[Mailer Error] Staff Status:`, err.message);
+  }
+}
 
 
 async function sendPasswordResetEmail({ userEmail, userName, resetToken }) {

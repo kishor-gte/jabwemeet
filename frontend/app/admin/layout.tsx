@@ -53,6 +53,8 @@ const NAV_SECTIONS = [
     title: "Platform Core",
     items: [
       { label: "Overview", href: "/admin", icon: LayoutDashboard },
+      { label: "Breakup Buddies", href: "/admin/breakup-buddies", icon: Heart },
+      { label: "Relationship Managers", href: "/admin/relationship-managers", icon: HeartHandshake },
       { label: "User Management", href: "/admin/users", icon: Users },
       { label: "Event Control", href: "/admin/events", icon: Calendar },
     ],
@@ -61,8 +63,6 @@ const NAV_SECTIONS = [
     title: "Staff & Matchmaking",
     items: [
       { label: "Event Managers", href: "/admin/event-managers", icon: UserCheck },
-      { label: "Relationship Managers", href: "/admin/relationship-managers", icon: HeartHandshake },
-      { label: "Breakup Buddies", href: "/admin/breakup-buddies", icon: Heart },
       { label: "Buddy Sessions", href: "/admin/breakup-buddy/sessions", icon: Clock },
       { label: "Matchmaking Center", href: "/admin/matchmaking", icon: Sparkles },
       { label: "Date Scheduling", href: "/admin/matchmaking/dates", icon: Calendar },

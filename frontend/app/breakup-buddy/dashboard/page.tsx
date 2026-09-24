@@ -395,6 +395,40 @@ export default function BreakupBuddyDashboardPage() {
       });
     });
 
+    s.on("new-broadcast-request", () => {
+      handleRefreshRequests();
+      const newNotif = {
+        id: `notif-${Date.now()}`,
+        title: "⚡ New Connection Request",
+        message: "A member requested a Breakup Buddy session! Click to review and claim.",
+        timestamp: "Just now",
+        read: false,
+        targetTab: "Requests",
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+    });
+
+    s.on("new-buddy-request", () => {
+      handleRefreshRequests();
+    });
+
+    s.on("buddy-request-claimed", () => {
+      handleRefreshRequests();
+      const newNotif = {
+        id: `notif-${Date.now()}`,
+        title: "🔒 Request Claimed",
+        message: "A connection request was claimed by another Breakup Buddy.",
+        timestamp: "Just now",
+        read: false,
+        targetTab: "Requests",
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+    });
+
+    s.on("broadcast-request-claimed", () => {
+      handleRefreshRequests();
+    });
+
     return () => {
       s.disconnect();
     };
@@ -1164,10 +1198,19 @@ export default function BreakupBuddyDashboardPage() {
 
                   {/* Card Footer Actions */}
                   <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                    {req.status === "Pending" ? (
+                    {req.isClaimedByOther ? (
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs text-amber-700 font-semibold flex items-center gap-1.5">
+                          <span>🔒</span> Claimed & accepted by another Breakup Buddy.
+                        </span>
+                        <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                          Claimed by Peer
+                        </span>
+                      </div>
+                    ) : req.status === "Pending" ? (
                       <>
                         <p className="text-xs text-slate-500 font-medium hidden sm:block">
-                          Accepting creates a scheduled session and notifies the client.
+                          First 30 Mins Free session. Accepting connects you directly with the client.
                         </p>
                         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                           <button
@@ -1183,10 +1226,10 @@ export default function BreakupBuddyDashboardPage() {
                             className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-bold transition shadow-sm hover:shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 text-center"
                           >
                             {actionLoadingId === req.id ? (
-                              <span>Accepting...</span>
+                              <span>Claiming...</span>
                             ) : (
                               <>
-                                <span>✓</span> Accept & Connect
+                                <span>✓</span> Accept & Claim Request
                               </>
                             )}
                           </button>
@@ -1195,7 +1238,7 @@ export default function BreakupBuddyDashboardPage() {
                     ) : req.status === "Accepted" ? (
                       <div className="flex items-center justify-between w-full">
                         <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
-                          <span>✓</span> Session confirmed & scheduled.
+                          <span>✓</span> Active session assigned to you.
                         </span>
                         <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                           ✓ Confirmed
@@ -3019,15 +3062,18 @@ export default function BreakupBuddyDashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1 sm:pt-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Display Name <span className="text-teal-600">*</span>
+                      What people call you (Display Alias / Nickname) <span className="text-teal-600">*</span>
                     </label>
                     <input
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="e.g., Alex Bennett"
+                      placeholder="e.g., Buddy Sam, Listener Alex, Hope..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
                     />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      🔒 This is the only name shown to users. Your original legal name is kept 100% private.
+                    </p>
                   </div>
 
                   <div>
