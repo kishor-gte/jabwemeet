@@ -59,6 +59,8 @@ function getRoleRedirect(role) {
     case 'EVENT_MANAGER':
     case 'EVENT_HOST':
       return '/host/dashboard';
+    case 'CAFE':
+      return '/cafe/dashboard';
     case 'USER':
     default:
       return '/dashboard';
@@ -184,7 +186,7 @@ router.post('/register', upload.fields([
 
     // Normalize role
     let normalizedRole = 'USER';
-    if (role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST') {
+    if (role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST' || role === 'CAFE') {
       normalizedRole = role;
     } else if (role === 'EVENT_MANAGER' || role === 'EVENT_HOST') {
       normalizedRole = 'HOST';
@@ -204,13 +206,13 @@ router.post('/register', upload.fields([
       if (age < 18) {
         return res.status(400).json({ success: false, message: 'You must be at least 18 years old to join JabWeMeet.' });
       }
-    } else if (normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'HOST') {
+    } else if (normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE') {
       return res.status(400).json({ success: false, message: 'Date of birth is required.' });
     }
 
     // City validation - optional for Breakup Buddy, Matchmaker & Host
     let validCity = city && typeof city === 'string' ? city.trim() : null;
-    if (normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'HOST') {
+    if (normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE') {
       if (!validCity || validCity.length < 2) {
         return res.status(400).json({ success: false, message: 'City is required.' });
       }
@@ -265,8 +267,8 @@ router.post('/register', upload.fields([
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
 
         role: normalizedRole,
-        isVerified: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST'),
-        isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST'),
+        isVerified: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+        isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
 
         idType: idType ? String(idType).trim() : null,
         idDocument: idDocument ? String(idDocument).trim() : null,
@@ -370,7 +372,7 @@ router.post('/verify-registration-otp', async (req, res) => {
     const { sendRegistrationSuccessEmail } = require('../utils/mailer');
     await sendRegistrationSuccessEmail({ userEmail: cleanEmail, userName: user.name, role: user.role });
 
-    const pendingApproval = (user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST');
+    const pendingApproval = (user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST' || user.role === 'CAFE');
 
     return res.status(200).json({
       success: true,
@@ -433,7 +435,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST') && !user.isApproved) {
+    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST' || user.role === 'CAFE') && !user.isApproved) {
       return res.status(403).json({
         success: false,
         pendingApproval: true,

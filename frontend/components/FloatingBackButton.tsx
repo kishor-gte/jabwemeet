@@ -1,20 +1,14 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 export default function FloatingBackButton() {
   const router = useRouter();
-  const pathname = usePathname();
-
-  // Don't show on the main landing page
-  if (pathname === "/") return null;
 
   return (
     <button
       onClick={() => {
-        // Fallback: if they somehow get stuck, this at least triggers a back navigation
-        // or they can just click it to go back in history.
         if (window.history.length > 1) {
           router.back();
         } else {

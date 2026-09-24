@@ -13,7 +13,7 @@ function RegisterContent() {
 
   useEffect(() => {
     const urlRole = searchParams.get("role");
-    if (urlRole === "MATCHMAKER" || urlRole === "BREAKUP_BUDDY" || urlRole === "USER" || urlRole === "HOST") {
+    if (urlRole === "MATCHMAKER" || urlRole === "BREAKUP_BUDDY" || urlRole === "USER" || urlRole === "HOST" || urlRole === "CAFE") {
       setRole(urlRole);
     } else if (urlRole === "EVENT_MANAGER" || urlRole === "EVENT_HOST") {
       setRole("HOST");
@@ -101,7 +101,7 @@ function RegisterContent() {
           phone: phone.trim(),
           password,
           confirmPassword,
-          dateOfBirth: role === "BREAKUP_BUDDY" || role === "HOST" ? (dob || undefined) : dob,
+          dateOfBirth: role === "BREAKUP_BUDDY" || role === "HOST" || role === "CAFE" ? (dob || undefined) : dob,
           city: role === "BREAKUP_BUDDY" ? undefined : city,
           gender,
           relationshipIntent: intent,
@@ -197,7 +197,7 @@ function RegisterContent() {
 
         {/* Role Selector Tabs */}
         {!success && (
-          <div className="grid grid-cols-4 gap-1 p-1 bg-black/30 rounded-2xl border border-white/10 mb-6 text-[11px] font-semibold">
+          <div className="grid grid-cols-5 gap-1 p-1 bg-black/30 rounded-2xl border border-white/10 mb-6 text-[11px] font-semibold">
             <button
               type="button"
               onClick={() => setRole("USER")}
@@ -242,6 +242,17 @@ function RegisterContent() {
             >
               Breakup Buddy
             </button>
+            <button
+              type="button"
+              onClick={() => setRole("CAFE")}
+              className={`py-2 px-1 text-center rounded-xl transition ${
+                role === "CAFE"
+                  ? "bg-sky-600 text-white shadow-md"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Cafe Partner
+            </button>
           </div>
         )}
 
@@ -255,6 +266,12 @@ function RegisterContent() {
         {role === "MATCHMAKER" && !success && (
           <div className="mb-5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
             <strong>Relationship Manager Account:</strong> Help verified members find real connections and guide offline date arrangements. Applications are reviewed by the admin team.
+          </div>
+        )}
+
+        {role === "CAFE" && !success && (
+          <div className="mb-5 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-xs text-sky-300">
+            <strong>Cafe Partner Account:</strong> Register your venue to host JabWeMeet offline events. Applications are reviewed by the admin team before you can manage your venue.
           </div>
         )}
 
@@ -351,13 +368,15 @@ function RegisterContent() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">Full Name *</label>
+              <label className="block text-slate-300 font-semibold mb-1">
+                {role === "CAFE" ? "Cafe Name *" : "Full Name *"}
+              </label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Priya Sharma"
+                placeholder={role === "CAFE" ? "e.g. The Daily Grind" : "e.g. Priya Sharma"}
                 className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
               />
             </div>
@@ -492,8 +511,8 @@ function RegisterContent() {
               </>
             )}
 
-            {/* Relationship Manager & Host Fields */}
-            {(role === "MATCHMAKER" || role === "HOST") && (
+            {/* Relationship Manager, Host & Cafe Fields */}
+            {(role === "MATCHMAKER" || role === "HOST" || role === "CAFE") && (
               <div className="space-y-4 pt-2">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">

@@ -54,9 +54,8 @@ export default function HomePage() {
   const [regRole, setRegRole] = useState("USER");
 
   const openRegisterModalWithRole = (role: string) => {
-    setRegRole(role);
-    setShowRegisterModal(true);
     setActiveJoinDropdownId(null);
+    router.push(`/register?role=${role}`);
   };
 
   // Real-time validation feedback
@@ -333,7 +332,8 @@ export default function HomePage() {
           setRegSuccess(true);
           setRedirectTarget("pending");
         } else {
-          const dest = (regRole === "HOST" || regRole === "EVENT_MANAGER") ? "/host/dashboard" : (data.redirectUrl || "/dashboard");
+          const dest = (regRole === "HOST" || regRole === "EVENT_MANAGER") ? "/host/dashboard" : 
+                       regRole === "CAFE" ? "/cafe/dashboard" : (data.redirectUrl || "/dashboard");
           setRedirectTarget(dest);
           setRegSuccess(true);
           setTimeout(() => {
@@ -396,6 +396,7 @@ export default function HomePage() {
                     currentUser.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
                     currentUser.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
                     currentUser.role === 'HOST' ? '/host/dashboard' :
+                    currentUser.role === 'CAFE' ? '/cafe/dashboard' :
                     '/dashboard'
                   }
                   className="px-4 py-2 rounded-full text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition"
@@ -430,6 +431,7 @@ export default function HomePage() {
                       <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
                       <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
                       <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                      <button onClick={() => openRegisterModalWithRole('CAFE')} className="block w-full text-left px-4 py-3 text-sm text-amber-300 hover:bg-white/10 transition">Cafe Partner</button>
                     </div>
                   )}
                 </div>
@@ -488,6 +490,7 @@ export default function HomePage() {
                   <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
                   <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
                   <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
+                  <button onClick={() => openRegisterModalWithRole('CAFE')} className="block w-full text-left px-4 py-3 text-sm text-amber-300 hover:bg-white/10 transition">Cafe Partner</button>
                 </div>
               )}
             </div>
@@ -834,7 +837,7 @@ export default function HomePage() {
                           <button
                             onClick={() => {
                               if (!currentUser) {
-                                setShowRegisterModal(true);
+                                router.push('/register');
                                 return;
                               }
                               router.push("/dashboard?tab=events");
@@ -879,7 +882,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400 mb-6">Meet people through curated social mixers, board games, and relaxed gatherings.</p>
                 </div>
                 <button
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => router.push('/register')}
                   className="w-full py-2.5 rounded-full border border-[#e06d53] text-[#e06d53] hover:bg-[#e06d53] hover:text-white font-semibold text-xs transition"
                 >
                   Explore Mixers
@@ -897,7 +900,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400 mb-6">Short conversations. Real chemistry without endless texting or awkward delays.</p>
                 </div>
                 <button
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => router.push('/register')}
                   className="w-full py-2.5 rounded-full border border-[#e06d53] text-[#e06d53] hover:bg-[#e06d53] hover:text-white font-semibold text-xs transition"
                 >
                   Book Speed Date
@@ -915,7 +918,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400 mb-6">Let our matchmaking team hand-pick and introduce you at a cozy public bistro.</p>
                 </div>
                 <button
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => router.push('/register')}
                   className="w-full py-2.5 rounded-full border border-[#e06d53] text-[#e06d53] hover:bg-[#e06d53] hover:text-white font-semibold text-xs transition"
                 >
                   Request Match
@@ -933,7 +936,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400 mb-6">Meet through music, movement and fun. Salsa & Bachata socials with beginner lessons.</p>
                 </div>
                 <button
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => router.push('/register')}
                   className="w-full py-2.5 rounded-full border border-[#e06d53] text-[#e06d53] hover:bg-[#e06d53] hover:text-white font-semibold text-xs transition"
                 >
                   Join Dance Night
@@ -951,7 +954,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400 mb-6">Travel with adventurous singles and create unforgettable shared memories.</p>
                 </div>
                 <button
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => router.push('/register')}
                   className="w-full py-2.5 rounded-full border border-[#e06d53] text-[#e06d53] hover:bg-[#e06d53] hover:text-white font-semibold text-xs transition"
                 >
                   Explore Trips
@@ -969,7 +972,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400 mb-6">Connect, share, laugh, and move forward in a compassionate, uplifting space.</p>
                 </div>
                 <button
-                  onClick={() => setShowRegisterModal(true)}
+                  onClick={() => router.push('/register')}
                   className="w-full py-2.5 rounded-full border border-[#e06d53] text-[#e06d53] hover:bg-[#e06d53] hover:text-white font-semibold text-xs transition"
                 >
                   Join Recovery Circle
@@ -1311,7 +1314,7 @@ export default function HomePage() {
               <button
                 onClick={() => {
                   setShowLoginModal(false);
-                  setShowRegisterModal(true);
+                  router.push('/register');
                 }}
                 className="text-[#e06d53] font-semibold hover:underline"
               >
@@ -1323,450 +1326,6 @@ export default function HomePage() {
       )}
 
       {/* REGISTER MODAL */}
-      {showRegisterModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="bg-[#131d2e] border border-white/10 rounded-2xl w-full max-w-lg p-8 relative my-8 shadow-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <button
-              onClick={() => setShowRegisterModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg"
-            >
-              ✕
-            </button>
-
-            {regSuccess ? (
-              <div className="text-center py-8 space-y-4">
-                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
-                {redirectTarget === "pending" ? (
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-white">Application Submitted!</h3>
-                    <p className="text-sm text-slate-300">
-                      Your Relationship Manager application has been submitted for admin verification.
-                    </p>
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl text-amber-300 text-xs text-left leading-relaxed">
-                      <strong>Admin Portal:</strong> You can review and approve this Relationship Manager account at{" "}
-                      <Link href="/admin" className="underline font-bold text-amber-200">
-                        /admin
-                      </Link>. Once approved, you can log in directly at{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowRegisterModal(false);
-                          setShowLoginModal(true);
-                        }}
-                        className="underline font-bold text-amber-200"
-                      >
-                        Login
-                      </button>.
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-center pt-2">
-                      <button
-                        onClick={() => setShowRegisterModal(false)}
-                        className="px-5 py-2.5 bg-[#e06d53] hover:bg-[#c95940] text-white rounded-full text-xs font-semibold transition shadow-lg"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="text-xl font-bold text-white">Welcome to JabWeMeet!</h3>
-                    <p className="text-sm text-slate-400">Your account is ready. Redirecting to your dashboard...</p>
-                    <div className="pt-4 flex justify-center">
-                      <div className="w-6 h-6 border-2 border-[#e06d53] border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold font-serif text-white">Join JabWeMeet</h2>
-                  <p className="text-xs text-slate-400 mt-1">Real People. Real Places. Real Connections.</p>
-                  {regRole === "HOST" && (
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 text-xs font-semibold">
-                      <span>Registering as: Event Host / Manager</span>
-                    </div>
-                  )}
-                  {regRole === "MATCHMAKER" && (
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">
-                      <span>Registering as: Relationship Manager</span>
-                    </div>
-                  )}
-                  {regRole === "BREAKUP_BUDDY" && (
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-xs font-semibold">
-                      <span>Registering as: Breakup Buddy</span>
-                    </div>
-                  )}
-                </div>
-
-                {regError && (
-                  <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-xs">
-                    {regError}
-                  </div>
-                )}
-
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      placeholder="e.g. Priya Sharma"
-                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                    />
-                    {nameFeedback && (
-                      <div className={`text-xs mt-1 ${nameFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
-                        {nameFeedback}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Email *</label>
-                      <input
-                        type="email"
-                        required
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        placeholder="priya@example.com"
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      />
-                      {emailFeedback.msg && (
-                        <div className={`text-xs mt-1 ${emailFeedback.type === "valid" ? "text-emerald-400" : emailFeedback.type === "checking" ? "text-amber-400" : "text-red-400"}`}>
-                          {emailFeedback.msg}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Mobile Number *</label>
-                      <input
-                        type="tel"
-                        required
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                      />
-                      {phoneFeedback && (
-                        <div className={`text-xs mt-1 ${phoneFeedback.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>
-                          {phoneFeedback}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Password *</label>
-                    <div className="relative">
-                      <input
-                        type={showRegPassword ? "text" : "password"}
-                        required
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegPassword(!showRegPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                      >
-                        {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    <div className="mt-2 p-3 bg-white/5 rounded-lg border border-white/5 text-xs grid grid-cols-2 gap-1 text-slate-400">
-                      <span className={isPwLen ? "text-emerald-400 font-medium" : ""}>{isPwLen ? "✓" : "✕"} 8+ chars</span>
-                      <span className={isPwUpper ? "text-emerald-400 font-medium" : ""}>{isPwUpper ? "✓" : "✕"} Uppercase</span>
-                      <span className={isPwLower ? "text-emerald-400 font-medium" : ""}>{isPwLower ? "✓" : "✕"} Lowercase</span>
-                      <span className={isPwNum ? "text-emerald-400 font-medium" : ""}>{isPwNum ? "✓" : "✕"} Number</span>
-                      <span className={isPwSpec ? "text-emerald-400 font-medium" : ""}>{isPwSpec ? "✓" : "✕"} Special char</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Confirm Password *</label>
-                    <div className="relative">
-                      <input
-                        type={showRegConfirmPassword ? "text" : "password"}
-                        required
-                        value={regConfirmPassword}
-                        onChange={(e) => setRegConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                      >
-                        {showRegConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    {confirmPwFeedback && (
-                      <div className={`text-xs mt-1 ${confirmPwFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
-                        {confirmPwFeedback}
-                      </div>
-                    )}
-                  </div>
-
-                  {regRole !== 'BREAKUP_BUDDY' && regRole !== 'MATCHMAKER' && regRole !== 'HOST' && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Date of Birth *</label>
-                          <input
-                            type="date"
-                            required
-                            value={regDob}
-                            onChange={(e) => setRegDob(e.target.value)}
-                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                          />
-                          {dobFeedback && (
-                            <div className={`text-xs mt-1 ${dobFeedback.startsWith("✅") ? "text-emerald-400" : "text-red-400"}`}>
-                              {dobFeedback}
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">City *</label>
-                          <input
-                            type="text"
-                            required
-                            value={regCity}
-                            onChange={(e) => setRegCity(e.target.value)}
-                            placeholder="e.g. Bangalore"
-                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Gender</label>
-                          <select
-                            value={regGender}
-                            onChange={(e) => setRegGender(e.target.value)}
-                            className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                          >
-                            <option value="">Select gender</option>
-                            <option value="Female">Female</option>
-                            <option value="Male">Male</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Looking For</label>
-                          <select
-                            value={regIntent}
-                            onChange={(e) => setRegIntent(e.target.value)}
-                            className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                          >
-                            <option value="Relationship">Relationship</option>
-                            <option value="Marriage">Marriage</option>
-                            <option value="Friendship">Friendship</option>
-                            <option value="Social Connections">Social Connections</option>
-                          </select>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {regRole === 'BREAKUP_BUDDY' && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">ID Type *</label>
-                        <select
-                          required
-                          value={regIdType}
-                          onChange={(e) => setRegIdType(e.target.value)}
-                          className="w-full px-4 py-2 rounded-lg bg-[#131d2e] border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                        >
-                          <option value="">Select ▼</option>
-                          <option value="Aadhaar">Aadhaar</option>
-                          <option value="PAN">PAN</option>
-                          <option value="Passport">Passport</option>
-                          <option value="Driving License">Driving License</option>
-                        </select>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">ID Document *</label>
-                          <div className="relative">
-                            <input
-                              type="file"
-                              required
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files.length > 0) {
-                                  setRegIdDocument(e.target.files[0].name);
-                                }
-                              }}
-                              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
-                            />
-                            {regIdDocument && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓</span>}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-300 mb-1">Profile Photo *</label>
-                          <div className="relative">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              required
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files.length > 0) {
-                                  setRegProfilePhoto(e.target.files[0].name);
-                                }
-                              }}
-                              className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53] file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#e06d53]/20 file:text-[#e06d53] hover:file:bg-[#e06d53]/30"
-                            />
-                            {regProfilePhoto && <span className="absolute right-3 top-3 text-xs text-emerald-400">✓ Uploaded</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {(regRole === "MATCHMAKER" || regRole === "HOST") && (
-                    <div className="space-y-4 pt-2">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          Operating City <span className="text-slate-400 font-normal">(Optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={regCity}
-                          onChange={(e) => setRegCity(e.target.value)}
-                          placeholder="e.g. Bangalore, Mumbai, Delhi"
-                          className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#e06d53]"
-                        />
-                      </div>
-
-                      <div className="space-y-4 pt-4 border-t border-white/10">
-                        <div>
-                          <h4 className="text-sm font-semibold text-white">Document Verification</h4>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            Upload verification documents for admin review. You can also upload or update these after account approval.
-                          </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
-                              <span>Govt ID Proof</span>
-                              {mmGovId && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
-                            </label>
-                            <input
-                              type="file"
-                              id="govIdProof"
-                              onChange={(e) => setMmGovId(e.target.files?.[0]?.name || "")}
-                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
-                              accept=".jpg,.jpeg,.png,.pdf"
-                            />
-                          </div>
-                          <div>
-                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
-                              <span>Address Proof</span>
-                              {mmAddressProof && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
-                            </label>
-                            <input
-                              type="file"
-                              id="addressProof"
-                              onChange={(e) => setMmAddressProof(e.target.files?.[0]?.name || "")}
-                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
-                              accept=".jpg,.jpeg,.png,.pdf"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
-                              <span>Educational Certificate</span>
-                              {mmEduCert && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
-                            </label>
-                            <input
-                              type="file"
-                              id="eduCertificate"
-                              onChange={(e) => setMmEduCert(e.target.files?.[0]?.name || "")}
-                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
-                              accept=".jpg,.jpeg,.png,.pdf"
-                            />
-                          </div>
-                          <div>
-                            <label className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
-                              <span>Work Experience Proof</span>
-                              {mmWorkExp && <span className="text-emerald-400 font-normal text-[11px]">✓ Selected</span>}
-                            </label>
-                            <input
-                              type="file"
-                              id="workExperience"
-                              onChange={(e) => setMmWorkExp(e.target.files?.[0]?.name || "")}
-                              className="w-full bg-[#182337] border border-white/10 rounded-lg px-4 py-2 text-xs text-slate-300 focus:outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition"
-                              accept=".jpg,.jpeg,.png,.pdf"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-2 pt-2 text-xs text-slate-400">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={regTerms}
-                        onChange={(e) => setRegTerms(e.target.checked)}
-                        className="accent-[#e06d53]"
-                        required
-                      />
-                      <span>I agree to the Terms & Conditions.</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={regPrivacy}
-                        onChange={(e) => setRegPrivacy(e.target.checked)}
-                        className="accent-[#e06d53]"
-                        required
-                      />
-                      <span>I agree to the Privacy Policy.</span>
-                    </label>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!isRegValid || regLoading}
-                    className="w-full py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-semibold text-sm transition shadow-lg disabled:opacity-60"
-                  >
-                    {regLoading ? "Creating account..." : "CREATE MY ACCOUNT"}
-                  </button>
-                </form>
-
-                <p className="text-center text-xs text-slate-400 mt-6">
-                  Already have an account?{" "}
-                  <button
-                    onClick={() => {
-                      setShowRegisterModal(false);
-                      setShowLoginModal(true);
-                    }}
-                    className="text-[#e06d53] font-semibold hover:underline"
-                  >
-                    Login
-                  </button>
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* SAFETY MODAL */}
       {showSafetyModal && (
