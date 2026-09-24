@@ -120,14 +120,25 @@ export default function BreakupBuddyPage() {
     s.on("incoming-call", (data) => {
       setUserIncomingCall(data);
     });
+    s.on("buddy-request-accepted", () => {
+      fetchMyRequests();
+    });
     return () => {
       s.disconnect();
     };
   }, [currentUser]);
 
-  const activeConnection = myRequests[0];
+  const activeConnection =
+    myRequests.find((r) => r.status === "Accepted") ||
+    myRequests.find((r) => r.status === "Pending") ||
+    myRequests[0];
   const isAccepted = activeConnection && activeConnection.status === "Accepted";
   const isPending = activeConnection && activeConnection.status === "Pending";
+  const buddyDisplayName =
+    activeConnection?.buddy?.displayName ||
+    activeConnection?.buddy?.name ||
+    "Breakup Buddy";
+  const buddyProfilePhoto = activeConnection?.buddy?.profilePhoto;
 
   // Polling for live acceptance when request is pending
   useEffect(() => {
@@ -302,7 +313,7 @@ export default function BreakupBuddyPage() {
           isInitiator={!userIncomingCall}
           autoAccept={!!userIncomingCall}
           callerName={currentUser?.name || "Member"}
-          targetName="Breakup Buddy"
+          targetName={userIncomingCall?.callerName || buddyDisplayName}
           onClose={() => {
             setActiveCallReqId(null);
             setActiveCallBuddyId(null);
@@ -343,11 +354,15 @@ export default function BreakupBuddyPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleConnectWithBuddy}
-              disabled={isConnecting || isPending}
+              disabled={isConnecting || isPending || isAccepted}
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold bg-[#e06d53] hover:bg-[#c95940] disabled:opacity-60 text-white shadow-lg shadow-[#e06d53]/30 transition"
             >
               <Heart className="w-4 h-4 fill-white" />
-              {isPending ? "Waiting for Buddy..." : "Connect with Breakup Buddy"}
+              {isAccepted
+                ? `Connected: ${buddyDisplayName}`
+                : isPending
+                ? "Waiting for Buddy..."
+                : "Connect with Breakup Buddy"}
             </button>
           </div>
         </div>
@@ -369,25 +384,31 @@ export default function BreakupBuddyPage() {
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={handleConnectWithBuddy}
-              disabled={isConnecting || isPending}
-              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#e06d53] to-[#b8432a] hover:from-[#c95940] hover:to-[#9f341d] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-[#e06d53]/30 transition flex items-center justify-center gap-2"
-            >
-              {isConnecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Sending Request...
-                </>
-              ) : isPending ? (
-                <>
-                  <Clock className="w-4 h-4 animate-spin" /> Waiting for Buddy to Accept...
-                </>
-              ) : (
-                <>
-                  <Heart className="w-4 h-4 fill-white" /> Connect with Breakup Buddy
-                </>
-              )}
-            </button>
+            {isAccepted ? (
+              <div className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-sm rounded-full shadow-lg flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Connected with {buddyDisplayName}
+              </div>
+            ) : (
+              <button
+                onClick={handleConnectWithBuddy}
+                disabled={isConnecting || isPending}
+                className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#e06d53] to-[#b8432a] hover:from-[#c95940] hover:to-[#9f341d] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-[#e06d53]/30 transition flex items-center justify-center gap-2"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Sending Request...
+                  </>
+                ) : isPending ? (
+                  <>
+                    <Clock className="w-4 h-4 animate-spin" /> Waiting for Buddy to Accept...
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-4 h-4 fill-white" /> Connect with Breakup Buddy
+                  </>
+                )}
+              </button>
+            )}
 
             <a
               href="#packages"
@@ -419,34 +440,66 @@ export default function BreakupBuddyPage() {
 
         {/* ACCEPTED ACTIVE SESSION CARD */}
         {isAccepted && (
-          <div className="bg-gradient-to-br from-[#131d2e] to-[#0f172a] border border-[#e06d53]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#131d2e] to-[#0f172a] border border-[#e06d53]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
-              <div>
-                <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
-                  ✓ Connected with Breakup Buddy
-                </span>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border-b border-white/10 pb-6">
+              <div className="flex items-center gap-4">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#e06d53]/25 to-[#b8432a]/30 border border-[#e06d53]/40 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                  {buddyProfilePhoto ? (
+                    <img
+                      src={
+                        buddyProfilePhoto.startsWith("http") || buddyProfilePhoto.startsWith("/") || buddyProfilePhoto.startsWith("data:")
+                          ? buddyProfilePhoto
+                          : `/uploads/${buddyProfilePhoto}`
+                      }
+                      alt={buddyDisplayName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                        const parent = (e.target as HTMLElement).parentElement;
+                        const fallback = parent?.querySelector(".avatar-fallback");
+                        if (fallback) (fallback as HTMLElement).style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <span
+                    className={`avatar-fallback font-extrabold text-2xl text-[#fca5a5] ${
+                      buddyProfilePhoto ? "hidden" : "flex"
+                    } items-center justify-center`}
+                  >
+                    {buddyDisplayName.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#131d2e] rounded-full" title="Online & Connected" />
+                </div>
 
-                <h3 className="text-xl sm:text-2xl font-bold text-white">
-                  Active Session with Breakup Buddy
-                </h3>
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                      ✓ Connected with {buddyDisplayName}
+                    </span>
+                  </div>
 
-                <p className="text-xs text-slate-300 mt-1">
-                  Your 30 minutes free session is active. You can freely call or chat with your buddy below.
-                </p>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white">
+                    Active Session with {buddyDisplayName}
+                  </h3>
+
+                  <p className="text-xs text-slate-300 mt-1">
+                    Your 30 minutes free session is active. You can freely call or chat with {buddyDisplayName} below.
+                  </p>
+                </div>
               </div>
 
               {/* Free Minutes / Package Badges */}
-              <div className="flex items-center gap-2">
-                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center">
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center min-w-[90px]">
                   <div className="text-[10px] text-slate-400 uppercase font-semibold">Free Chat</div>
                   <div className="text-sm font-bold text-[#fca5a5]">
                     {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.chatMinutesLeft || 30}m Left`}
                   </div>
                 </div>
 
-                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center">
+                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center min-w-[90px]">
                   <div className="text-[10px] text-slate-400 uppercase font-semibold">Free Call</div>
                   <div className="text-sm font-bold text-[#fca5a5]">
                     {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.callMinutesLeft || 30}m Left`}
@@ -456,12 +509,12 @@ export default function BreakupBuddyPage() {
             </div>
 
             {/* Action Buttons: Chat and Call */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
               <Link
                 href="/messages"
                 className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold rounded-xl shadow-lg shadow-[#e06d53]/30 transition"
               >
-                <MessageCircle className="w-4 h-4" /> Open Chat with Breakup Buddy
+                <MessageCircle className="w-4 h-4" /> Open Chat with {buddyDisplayName}
               </Link>
 
               <button
@@ -471,7 +524,7 @@ export default function BreakupBuddyPage() {
                 }}
                 className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition"
               >
-                <PhoneCall className="w-4 h-4" /> Start Voice Call with Breakup Buddy
+                <PhoneCall className="w-4 h-4" /> Start Voice Call with {buddyDisplayName}
               </button>
             </div>
           </div>
@@ -516,7 +569,9 @@ export default function BreakupBuddyPage() {
             <span className="text-xs font-bold text-[#e06d53] uppercase tracking-wider">Session Plans</span>
             <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif">Breakup Buddy Packages</h2>
             <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
-              Completed your 30-min free session? Choose a package to keep speaking with your Breakup Buddy anytime.
+              {isAccepted
+                ? `Completed your 30-min free session? Choose a package to keep speaking with ${buddyDisplayName} anytime.`
+                : "Completed your 30-min free session? Choose a package to keep speaking with your Breakup Buddy anytime."}
             </p>
           </div>
 

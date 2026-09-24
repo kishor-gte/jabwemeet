@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, User, Sparkles, ShieldCheck, Camera, CheckCircle2 } from "lucide-react";
 
 export default function MatchmakerAvailabilityPage() {
   const router = useRouter();
   const [manager, setManager] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Profile & Display Alias State
+  const [displayName, setDisplayName] = useState<string>("");
+  const [profilePhoto, setProfilePhoto] = useState<string>("");
+  const [shortBio, setShortBio] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [savingProfile, setSavingProfile] = useState<boolean>(false);
+  const [profileMessage, setProfileMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   // Availability & Schedule Dynamic States
   const [isAvailableForRequests, setIsAvailableForRequests] = useState<boolean>(true);
@@ -37,6 +45,10 @@ export default function MatchmakerAvailabilityPage() {
         const data = await res.json();
         if (data.success && data.user.role === "MATCHMAKER") {
           setManager(data.user);
+          setDisplayName(data.user.displayName || data.user.name || "");
+          setProfilePhoto(data.user.profilePhoto || data.user.profileImage || "");
+          setShortBio(data.user.shortBio || "");
+          setCity(data.user.city || "");
           fetchAvailability();
         } else {
           router.replace("/login");
@@ -103,6 +115,35 @@ export default function MatchmakerAvailabilityPage() {
     }
   };
 
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMessage(null);
+    try {
+      const res = await fetch("/api/matchmaker/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          displayName,
+          profilePhoto,
+          shortBio,
+          city,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProfileMessage({ text: "✓ Profile & Display Alias saved successfully! Clients will now see this persona.", type: "success" });
+      } else {
+        setProfileMessage({ text: data.message || "Failed to update profile", type: "error" });
+      }
+    } catch (e) {
+      setProfileMessage({ text: "Error saving profile", type: "error" });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   if (loading) {
@@ -126,9 +167,138 @@ export default function MatchmakerAvailabilityPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <h2 className="text-2xl font-bold font-serif text-slate-800">Manage Availability</h2>
-            <p className="text-slate-500 text-sm mt-0.5">Set your weekly routine, active timeslots, and blocked days.</p>
+            <h2 className="text-2xl font-bold font-serif text-slate-800">Profile & Availability</h2>
+            <p className="text-slate-500 text-sm mt-0.5">Manage your client-facing alias, weekly routine, and active matchmaking timeslots.</p>
           </div>
+        </div>
+
+        {/* Profile & Display Alias Card */}
+        <div className="bg-white border border-rose-100 rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b border-rose-50 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                <Sparkles className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Profile & Display Alias</h3>
+                <p className="text-xs text-slate-500">Configure how clients see your name and persona across JabWeMeet.</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+              Client Facing
+            </span>
+          </div>
+
+          {profileMessage && (
+            <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+              profileMessage.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"
+            }`}>
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{profileMessage.text}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              <div className="relative group shrink-0">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-rose-100 to-pink-100 text-rose-600 flex items-center justify-center font-bold text-2xl border-2 border-rose-200 overflow-hidden shadow-inner">
+                  {profilePhoto ? (
+                    <img
+                      src={
+                        profilePhoto.startsWith("http") || profilePhoto.startsWith("/") || profilePhoto.startsWith("data:")
+                          ? profilePhoto
+                          : `/uploads/${profilePhoto}`
+                      }
+                      alt={displayName || "RM"}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <span>{(displayName || manager?.name || "R")[0].toUpperCase()}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 w-full space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    What people call you (Display Alias / Nickname) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Matchmaker Priya, Advisor Aryan, Rose..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-rose-400 focus:bg-white transition"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    This alias replaces your legal name on client dashboards and matchmaking consultation cards.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Profile Photo (URL or filename)
+                    </label>
+                    <input
+                      type="text"
+                      value={profilePhoto}
+                      onChange={(e) => setProfilePhoto(e.target.value)}
+                      placeholder="e.g. photo.jpg or https://..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-rose-400 focus:bg-white transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Operating City / Location
+                    </label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g. Bangalore, Delhi, Remote..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-rose-400 focus:bg-white transition"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Short Bio / Expertise Introduction
+              </label>
+              <textarea
+                value={shortBio}
+                onChange={(e) => setShortBio(e.target.value)}
+                placeholder="A warm note to prospective clients describing your matchmaking experience and dating philosophy..."
+                rows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-rose-400 focus:bg-white transition resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-md shadow-rose-500/20 transition flex items-center gap-1.5"
+              >
+                {savingProfile ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Save Profile & Display Alias</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* 1. Your Status Card */}

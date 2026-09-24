@@ -103,14 +103,17 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
 
   // Combine buddy requests and connections into a unified list
   const activeChats = [
-    ...requests.map(req => ({
-      id: req.id,
-      type: "buddy" as const,
-      name: "Breakup Buddy",
-      subtitle: "Confidential Support",
-      initial: "B",
-      raw: req,
-    })),
+    ...requests.map(req => {
+      const buddyName = req.buddy?.displayName || req.buddy?.name || "Breakup Buddy";
+      return {
+        id: req.id,
+        type: "buddy" as const,
+        name: buddyName,
+        subtitle: "Breakup Buddy Support",
+        initial: (buddyName[0] || "B").toUpperCase(),
+        raw: req,
+      };
+    }),
     ...connections.filter(c => c.status === "DateFixed" || c.status === "BothApproved").map(conn => {
       const isClient = conn.client.id === userId;
       const otherPerson = isClient ? conn.suggestedProfile : conn.client;

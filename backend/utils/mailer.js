@@ -1625,6 +1625,10 @@ module.exports = {
   sendNewReviewEmail,
   sendMissedCallEmail,
   sendSessionScheduledEmail,
+  // Relationship Manager (Matchmaker) Emails
+  sendNewRMClientRequestEmail,
+  sendRMRequestClaimedByOtherEmail,
+  sendRMClientConnectedEmail,
   // Staff Admin Emails
   sendStaffCredentialsEmail,
   sendStaffStatusEmail,
@@ -1751,5 +1755,117 @@ async function sendPasswordResetEmail({ userEmail, userName, resetToken }) {
     console.log(`[Mailer] Password reset email sent to ${userEmail}`);
   } catch (err) {
     console.error(`[Mailer Error] Password Reset:`, err.message);
+  }
+}
+
+// ==========================================
+// 9. RELATIONSHIP MANAGER (MATCHMAKER) EMAILS
+// ==========================================
+
+async function sendNewRMClientRequestEmail({ rmEmail, rmName, clientName, goal, notes }) {
+  if (!rmEmail) return;
+  try {
+    const html = wrapTemplate({
+      title: 'New Client Request - Relationship Manager',
+      badge: { text: '💍 New Matchmaking Client', type: 'badge-purple' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Hi ${rmName || 'Relationship Manager'},</h2>
+        <p>A new client has just requested a personalized matchmaking consultation on JabWeMeet!</p>
+        <div class="card">
+          <div class="highlight-row">
+            <span class="highlight-label">Client:</span>
+            <span class="highlight-val">${clientName || 'A Member'}</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Relationship Goal:</span>
+            <span class="highlight-val" style="color:#c084fc;">${goal || 'Long-term Relationship'}</span>
+          </div>
+          ${notes ? `
+          <div>
+            <span class="highlight-label">Client Notes:</span>
+            <p style="margin:4px 0 0 0; color:#e2e8f0; font-style:italic;">"${notes}"</p>
+          </div>` : ''}
+        </div>
+        <p>This request is waiting to be claimed. Log in to your Relationship Manager dashboard now to accept and claim this client.</p>
+      `,
+      buttonText: 'Claim Client in Dashboard 👉',
+      buttonUrl: `${FRONTEND_URL}/matchmaker/requests`,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: rmEmail,
+      subject: `💍 New Client Consultation Request from ${clientName || 'a Member'} - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] RM client request email sent to ${rmEmail}`);
+  } catch (err) {
+    console.error(`[Mailer Error] RM Request:`, err.message);
+  }
+}
+
+async function sendRMRequestClaimedByOtherEmail({ rmEmail, rmName, clientName, claimedByName }) {
+  if (!rmEmail) return;
+  try {
+    const html = wrapTemplate({
+      title: 'Client Request Claimed - JabWeMeet',
+      badge: { text: '🔒 Request Claimed by Peer', type: 'badge-warning' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Hi ${rmName || 'Relationship Manager'},</h2>
+        <p>A recent client matchmaking request on JabWeMeet has just been claimed by another Relationship Manager.</p>
+        <div class="card" style="background:rgba(245, 158, 11, 0.08); border-color:rgba(245, 158, 11, 0.3);">
+          <p style="margin:0; color:#fde68a; font-size:14px;">
+            ⚠️ <strong>Notice:</strong> You were a bit late to accept the request from <strong>${clientName || 'a member'}</strong>. It has been claimed by <strong>${claimedByName || 'another Relationship Manager'}</strong>.
+          </p>
+        </div>
+        <p style="margin-top:16px; color:#94a3b8;">
+          No action is needed from you. Keep your dashboard active to claim upcoming client consultations!
+        </p>
+      `,
+      buttonText: 'Open Matchmaker Dashboard 👉',
+      buttonUrl: `${FRONTEND_URL}/matchmaker/requests`,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: rmEmail,
+      subject: `🔒 Client Request Claimed by Another Manager - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] RM Request Claimed email sent to ${rmEmail}`);
+  } catch (err) {
+    console.error(`[Mailer Error] RM Request Claimed:`, err.message);
+  }
+}
+
+async function sendRMClientConnectedEmail({ clientEmail, clientName, rmDisplayName }) {
+  if (!clientEmail) return;
+  try {
+    const html = wrapTemplate({
+      title: 'Relationship Manager Assigned! - JabWeMeet',
+      badge: { text: '🎉 Manager Connected', type: 'badge-success' },
+      contentHtml: `
+        <h2 style="color:#ffffff; margin-top:0;">Great News, ${clientName || 'Member'}! 💖</h2>
+        <p>Your Relationship Manager <strong style="color:#ffffff;">${rmDisplayName || 'Your Relationship Manager'}</strong> has accepted your consultation request!</p>
+        <div class="card" style="background:linear-gradient(135deg, rgba(224,109,83,0.1), rgba(168,85,247,0.1)); border-color:rgba(224,109,83,0.3);">
+          <p style="margin:0; color:#e2e8f0; font-size:14px;">
+            Your certified Relationship Manager is ready to guide you on your journey. You can now chat directly, review match suggestions, and schedule one-on-one sessions.
+          </p>
+        </div>
+        <p style="margin-top:16px;">Visit your Relationship Manager portal to start communicating:</p>
+      `,
+      buttonText: 'Open Relationship Manager Session 👉',
+      buttonUrl: `${FRONTEND_URL}/relationship-manager`,
+    });
+
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: clientEmail,
+      subject: `🎉 Connected with Your Relationship Manager (${rmDisplayName || 'Relationship Manager'}) - JabWeMeet`,
+      html,
+    });
+    console.log(`[Mailer] RM Client connected email sent to ${clientEmail}`);
+  } catch (err) {
+    console.error(`[Mailer Error] RM Client Connected:`, err.message);
   }
 }

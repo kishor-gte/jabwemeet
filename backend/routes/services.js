@@ -28,11 +28,14 @@ router.get("/relationship-managers", async (req, res) => {
       select: {
         id: true,
         name: true,
+        displayName: true,
         email: true,
         phone: true,
         city: true,
         gender: true,
         profileImage: true,
+        profilePhoto: true,
+        shortBio: true,
         isVerified: true,
         isApproved: true,
         isAvailableForRequests: true,
@@ -199,6 +202,100 @@ router.post("/matchmaking-requests", authenticateToken, async (req, res) => {
   }
 });
 
+// 3b. POST /api/services/rm-broadcast-request
+// Broadcasts client matchmaking request to all certified Relationship Managers
+router.post("/rm-broadcast-request", authenticateToken, async (req, res) => {
+  try {
+    const clientId = req.user.userId;
+    const { goal, notes } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: clientId },
+      select: { id: true, name: true, city: true, email: true, assignedManagerId: true },
+    });
+
+    if (user?.assignedManagerId) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have an active Relationship Manager connected.",
+      });
+    }
+
+    // Check if an existing Pending request already exists
+    const existingPending = await prisma.matchmakingRequest.findFirst({
+      where: {
+        clientId,
+        status: { in: ["Pending", "New"] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existingPending) {
+      return res.json({
+        success: true,
+        message: "⏳ Your consultation request is already awaiting Relationship Manager assignment.",
+        data: existingPending,
+        alreadyPending: true,
+      });
+    }
+
+    const requestPayload = {
+      goal: goal || "Long-term Relationship",
+      notes: notes ? notes.trim() : "Looking for relationship guidance and personalized matchmaking",
+      isBroadcast: true,
+      submittedAt: new Date().toISOString(),
+    };
+
+    const request = await prisma.matchmakingRequest.create({
+      data: {
+        clientId,
+        lookingFor: JSON.stringify(requestPayload),
+        status: "Pending",
+      },
+    });
+
+    // Notify all active Relationship Managers via email
+    try {
+      const { sendNewRMClientRequestEmail } = require("../utils/mailer");
+      const activeRMs = await prisma.user.findMany({
+        where: { role: "MATCHMAKER", isApproved: true },
+        select: { id: true, email: true, name: true, displayName: true },
+      });
+
+      activeRMs.forEach((rm) => {
+        if (rm.email) {
+          sendNewRMClientRequestEmail({
+            rmEmail: rm.email,
+            rmName: rm.displayName || rm.name || "Relationship Manager",
+            clientName: user?.name || "A Member",
+            goal: requestPayload.goal,
+            notes: requestPayload.notes,
+          }).catch((e) => {});
+        }
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("new-rm-broadcast-request", { requestId: request.id, goal: requestPayload.goal });
+        activeRMs.forEach((rm) => {
+          io.to(`rm-${rm.id}`).emit("new-rm-request", { requestId: request.id });
+        });
+      }
+    } catch (mailErr) {
+      console.warn("RM Mail broadcast note:", mailErr.message);
+    }
+
+    return res.json({
+      success: true,
+      message: "Connection request sent to our Relationship Manager team! A certified manager will claim your consultation shortly.",
+      data: request,
+    });
+  } catch (error) {
+    console.error("Error creating RM broadcast request:", error);
+    return res.status(500).json({ success: false, message: "Failed to submit consultation request." });
+  }
+});
+
 // 4. GET /api/services/my-matchmaking-requests
 // Fetch current member's introduction requests and assigned manager status
 router.get("/my-matchmaking-requests", authenticateToken, async (req, res) => {
@@ -215,10 +312,12 @@ router.get("/my-matchmaking-requests", authenticateToken, async (req, res) => {
           select: {
             id: true,
             name: true,
+            displayName: true,
             email: true,
             phone: true,
             city: true,
             profileImage: true,
+            profilePhoto: true,
           },
         },
       },
@@ -264,11 +363,23 @@ router.get("/my-matchmaking-requests", authenticateToken, async (req, res) => {
 
     // Latest active request
     const latestRequest = formattedRequests[0] || null;
+    const pendingRequest = formattedRequests.find((r) => r.status === "Pending" || r.status === "New") || null;
+    const isPending = !!pendingRequest && !user?.assignedManagerId;
+
+    const formattedManager = user?.assignedManager
+      ? {
+          ...user.assignedManager,
+          displayName: user.assignedManager.displayName || user.assignedManager.name,
+          profilePhoto: user.assignedManager.profilePhoto || user.assignedManager.profileImage || null,
+        }
+      : null;
 
     return res.json({
       success: true,
-      assignedManager: user?.assignedManager || null,
+      assignedManager: formattedManager,
       latestRequest,
+      pendingRequest,
+      isPending,
       requests: formattedRequests,
     });
   } catch (error) {
@@ -421,14 +532,15 @@ router.get("/my-buddy-requests", authenticateToken, async (req, res) => {
 
         const isFreeTrialCompleted = !isStillActive && (chatSecondsLeft <= 0 && callSecondsLeft <= 0);
 
-        // Sanitize Buddy Privacy: 100% confidential, no names or photos exposed to user
+        // Expose Breakup Buddy display alias ("What people call you") and public profile details
+        const buddyDisplayName = r.buddy?.displayName?.trim() || r.buddy?.name || "Breakup Buddy";
         const maskedBuddy = r.buddy ? {
           id: r.buddy.id,
-          name: "Breakup Buddy",
-          displayName: "Breakup Buddy",
-          city: "",
-          profilePhoto: "",
-          shortBio: "",
+          name: buddyDisplayName,
+          displayName: buddyDisplayName,
+          city: r.buddy.city || "",
+          profilePhoto: r.buddy.profilePhoto || "",
+          shortBio: r.buddy.shortBio || "",
         } : null;
 
         return {

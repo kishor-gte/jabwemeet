@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, Mail, Phone, MapPin, Search, Sparkles, X } from "lucide-react";
+import { Users, Mail, Phone, MapPin, Search, Sparkles, X, Loader2, CheckCircle2 } from "lucide-react";
 
 interface Client {
   id: string;
@@ -35,6 +35,8 @@ export default function ClientsPage() {
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [connectingMatchId, setConnectingMatchId] = useState<string | null>(null);
+  const [connectNotice, setConnectNotice] = useState<string | null>(null);
 
   const fetchClients = async () => {
     try {
@@ -71,6 +73,44 @@ export default function ClientsPage() {
     }
   };
 
+  const handleConnect = async (match: Match) => {
+    if (!activeClient) return;
+    setConnectingMatchId(match.id);
+    setConnectNotice(null);
+    try {
+      const res = await fetch("/api/matchmaker/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          suggestedProfileId: match.id,
+        }),
+        credentials: "include",
+      });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        data = { success: res.ok, message: res.statusText };
+      }
+
+      if (!res.ok && !data?.success && !data?.alreadyConnected) {
+        throw new Error(data?.message || "Failed to create connection request.");
+      }
+
+      setMatches((prev) =>
+        prev.map((m) => (m.id === match.id ? { ...m, isConnected: true } : m))
+      );
+      setConnectNotice(`✓ Connection request created for ${activeClient.name} & ${match.name}!`);
+    } catch (err: any) {
+      console.error("Connect error:", err);
+      setConnectNotice(err.message || "Failed to send connection request.");
+    } finally {
+      setConnectingMatchId(null);
+    }
+  };
+
   const [genderFilter, setGenderFilter] = useState<string>("All");
 
   const filteredClients = clients.filter(c => {
@@ -101,6 +141,17 @@ export default function ClientsPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            
+            {connectNotice && (
+              <div className={`px-6 py-2.5 text-xs font-semibold flex items-center gap-2 ${
+                connectNotice.startsWith("✓")
+                  ? "bg-emerald-50 text-emerald-700 border-b border-emerald-100"
+                  : "bg-amber-50 text-amber-700 border-b border-amber-100"
+              }`}>
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{connectNotice}</span>
+              </div>
+            )}
             
             <div className="p-6 max-h-[60vh] overflow-y-auto">
               {loadingMatches ? (
@@ -134,44 +185,26 @@ export default function ClientsPage() {
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
                              <h4 className="font-bold text-slate-800 text-sm">{match.name}</h4>
-                             {match.isConnected ? (<span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg shadow-sm">Connected</span>) : (<button
-                                onClick={async () => {
-                                  try {
-                                    // Fetch current matchmaker ID (mocked as checking from session/local or we assume backend uses req.user)
-                                    // Since we don't have matchmakerId readily available here, backend can get it from token if authenticated.
-                                    // Wait, the API requires matchmakerId in body? Let's check backend... I added `matchmakerId` to req.body.
-                                    // Actually, we can fetch it from `/api/auth/me` or just pass a dummy one if we don't have it, but let's pass a string and let backend handle it if needed.
-                                    const resMe = await fetch("/api/auth/me", { credentials: "include" });
-                                    if (!resMe.ok) throw new Error("Not logged in");
-                                    const { user } = await resMe.json();
-                                    
-                                    const res = await fetch("/api/matchmaker/suggestions", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({
-                                        clientId: activeClient.id,
-                                        suggestedProfileId: match.id,
-                                        matchmakerId: user.id
-                                      }),
-                                      credentials: "include"
-                                    });
-
-                                    if (!res.ok) {
-                                      const errData = await res.json();
-                                      throw new Error(errData.message || "Failed to create");
-                                    }
-
-                                    setMatches(matches.map(m => m.id === match.id ? { ...m, isConnected: true } : m));
-                                    alert(`Connection request sent to ${activeClient.name} and ${match.name}!`);
-                                  } catch (err: any) {
-                                    console.error(err);
-                                    alert(err.message || "Failed to send connection request.");
-                                  }
-                                }}
-                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold rounded-lg transition shadow-sm"
-                             >
-                               Connect
-                             </button>)}
+                             {match.isConnected ? (
+                               <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1">
+                                 <CheckCircle2 className="w-3 h-3" /> Connected
+                               </span>
+                             ) : (
+                               <button
+                                 disabled={connectingMatchId === match.id}
+                                 onClick={() => handleConnect(match)}
+                                 className="px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-[10px] font-bold rounded-lg transition shadow-sm flex items-center gap-1 cursor-pointer"
+                               >
+                                 {connectingMatchId === match.id ? (
+                                   <>
+                                     <Loader2 className="w-3 h-3 animate-spin" />
+                                     <span>Connecting...</span>
+                                   </>
+                                 ) : (
+                                   <span>Connect</span>
+                                 )}
+                               </button>
+                             )}
                           </div>
                           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                             <span className="font-semibold text-purple-600">Why it works: </span>

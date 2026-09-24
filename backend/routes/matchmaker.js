@@ -182,9 +182,13 @@ router.get('/requests', async (req, res) => {
 
     const where = {};
     if (status && status !== 'all') {
-      where.status = status;
-    } else {
-      where.status = { not: 'Approved' };
+      if (status === 'New' || status === 'Pending') {
+        where.status = { in: ['New', 'Pending'] };
+      } else if (status === 'Approved' || status === 'Accepted') {
+        where.status = { in: ['Approved', 'Accepted'] };
+      } else {
+        where.status = status;
+      }
     }
 
     const requests = await prisma.matchmakingRequest.findMany({
@@ -236,6 +240,10 @@ router.get('/requests', async (req, res) => {
           )
         : null;
 
+      const isClaimedByMe = (r.status === 'Approved' || r.status === 'Accepted') && (parsed.targetMatchmakerId === matchmakerId || r.client.assignedManagerId === matchmakerId);
+      const isClaimedByOther = (r.status === 'Approved' || r.status === 'Accepted') && !isClaimedByMe;
+      const isClaimable = (r.status === 'New' || r.status === 'Pending') && !r.client.assignedManagerId;
+
       return {
         id: r.id,
         clientId: r.clientId,
@@ -253,6 +261,9 @@ router.get('/requests', async (req, res) => {
         targetMatchmakerId: parsed.targetMatchmakerId,
         targetMatchmakerName: parsed.targetMatchmakerName,
         status: r.status,
+        isClaimedByMe,
+        isClaimedByOther,
+        isClaimable,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
       };
@@ -274,8 +285,8 @@ router.get('/requests', async (req, res) => {
     });
     const counts = {
       total: allRequests.length,
-      new: allRequests.filter((r) => r.status === 'New').length,
-      approved: allRequests.filter((r) => r.status === 'Approved').length,
+      new: allRequests.filter((r) => r.status === 'New' || r.status === 'Pending').length,
+      approved: allRequests.filter((r) => r.status === 'Approved' || r.status === 'Accepted').length,
       rejected: allRequests.filter((r) => r.status === 'Rejected').length,
     };
 
@@ -332,6 +343,195 @@ router.get('/clients', async (req, res) => {
   } catch (error) {
     console.error('Error fetching assigned clients:', error);
     return res.status(500).json({ success: false, message: 'Failed to load clients' });
+  }
+});
+
+// POST /api/matchmaker/requests/:id/claim
+// First-come, first-served atomic claim endpoint with race protection & "Too Late" notifications
+router.post('/requests/:id/claim', async (req, res) => {
+  try {
+    const matchmakerId = req.user.userId;
+    const { id } = req.params;
+
+    const matchmakerUser = await prisma.user.findUnique({
+      where: { id: matchmakerId },
+      select: { id: true, name: true, displayName: true, email: true, role: true }
+    });
+
+    if (!matchmakerUser || matchmakerUser.role !== 'MATCHMAKER') {
+      return res.status(403).json({ success: false, message: 'Unauthorized. Relationship Managers only.' });
+    }
+
+    const existing = await prisma.matchmakingRequest.findUnique({
+      where: { id },
+      include: { client: true },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    // Check if already claimed / approved
+    let currentClaimedId = null;
+    if (existing.lookingFor && existing.lookingFor.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(existing.lookingFor);
+        currentClaimedId = parsed.claimedBy || parsed.matchmakerId;
+      } catch (e) {}
+    }
+
+    if (existing.status === 'Approved' || existing.status === 'Accepted') {
+      if (currentClaimedId === matchmakerId || existing.client?.assignedManagerId === matchmakerId) {
+        return res.json({ success: true, message: 'You have already claimed this client consultation.' });
+      }
+      return res.status(409).json({
+        success: false,
+        message: 'This client request was already claimed by another Relationship Manager. You were a moment too late!'
+      });
+    }
+
+    // Atomically claim request
+    let payload = {};
+    try {
+      if (existing.lookingFor && existing.lookingFor.startsWith('{')) {
+        payload = JSON.parse(existing.lookingFor);
+      }
+    } catch (e) {}
+
+    const rmDisplayName = matchmakerUser.displayName || matchmakerUser.name || 'Relationship Manager';
+    payload.claimedBy = matchmakerId;
+    payload.managerName = rmDisplayName;
+    payload.claimedAt = new Date().toISOString();
+
+    const updated = await prisma.matchmakingRequest.update({
+      where: { id },
+      data: {
+        status: 'Accepted',
+        lookingFor: JSON.stringify(payload),
+      },
+    });
+
+    // Officially assign manager to user
+    await prisma.user.update({
+      where: { id: existing.clientId },
+      data: { assignedManagerId: matchmakerId },
+    });
+
+    // 1. Send confirmation email to client
+    try {
+      const { sendRMClientConnectedEmail, sendRMRequestClaimedByOtherEmail } = require('../utils/mailer');
+      if (existing.client?.email) {
+        sendRMClientConnectedEmail({
+          clientEmail: existing.client.email,
+          clientName: existing.client.name,
+          rmDisplayName,
+        }).catch(e => {});
+      }
+
+      // 2. Send "Too Late" emails to all OTHER active Relationship Managers
+      const otherRMs = await prisma.user.findMany({
+        where: { role: 'MATCHMAKER', id: { not: matchmakerId }, isApproved: true },
+        select: { id: true, email: true, name: true, displayName: true }
+      });
+
+      otherRMs.forEach((otherRM) => {
+        if (otherRM.email) {
+          sendRMRequestClaimedByOtherEmail({
+            rmEmail: otherRM.email,
+            rmName: otherRM.displayName || otherRM.name || 'Relationship Manager',
+            clientName: existing.client?.name || 'A Member',
+            claimedByName: rmDisplayName,
+          }).catch(e => {});
+        }
+      });
+
+      // 3. Emit real-time Sockets
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`user-${existing.clientId}`).emit('rm-request-accepted', {
+          requestId: id,
+          rmId: matchmakerId,
+          rmName: rmDisplayName,
+        });
+        otherRMs.forEach((orm) => {
+          io.to(`rm-${orm.id}`).emit('rm-request-claimed', { requestId: id, claimedBy: rmDisplayName });
+        });
+        io.emit('broadcast-rm-request-claimed', { requestId: id, claimedBy: rmDisplayName });
+      }
+    } catch (notificationErr) {
+      console.warn('RM claim notification note:', notificationErr.message);
+    }
+
+    return res.json({
+      success: true,
+      message: `Client consultation claimed successfully! You are now connected with ${existing.client?.name || 'Client'}.`,
+      data: updated,
+    });
+  } catch (error) {
+    console.error('Error claiming RM request:', error);
+    return res.status(500).json({ success: false, message: 'Failed to claim client request.' });
+  }
+});
+
+// GET /api/matchmaker/profile
+router.get('/profile', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        email: true,
+        phone: true,
+        city: true,
+        gender: true,
+        profileImage: true,
+        profilePhoto: true,
+        shortBio: true,
+        isAvailableForRequests: true,
+      },
+    });
+    if (!user) return res.status(404).json({ success: false, message: 'Profile not found' });
+    return res.json({ success: true, user });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Failed to load profile' });
+  }
+});
+
+// PUT /api/matchmaker/profile
+router.put('/profile', async (req, res) => {
+  try {
+    const { displayName, profilePhoto, shortBio, city, phone } = req.body;
+    const updateData = {};
+    if (displayName !== undefined && typeof displayName === 'string') updateData.displayName = displayName.trim();
+    if (profilePhoto !== undefined) {
+      updateData.profilePhoto = profilePhoto;
+      updateData.profileImage = profilePhoto;
+    }
+    if (shortBio !== undefined && typeof shortBio === 'string') updateData.shortBio = shortBio.trim();
+    if (city !== undefined && typeof city === 'string') updateData.city = city.trim();
+    if (phone !== undefined && typeof phone === 'string') updateData.phone = phone.trim();
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        email: true,
+        phone: true,
+        city: true,
+        profilePhoto: true,
+        profileImage: true,
+        shortBio: true,
+      },
+    });
+
+    return res.json({ success: true, message: 'Profile updated successfully!', user: updated });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 });
 
@@ -637,7 +837,16 @@ Respond ONLY with valid JSON (an array of objects).
 // Create a new MatchSuggestion
 router.post('/suggestions', async (req, res) => {
   try {
-    const { clientId, suggestedProfileId, matchmakerId } = req.body;
+    const matchmakerId = req.user?.userId || req.body.matchmakerId;
+    const { clientId, suggestedProfileId } = req.body;
+
+    if (!matchmakerId) {
+      return res.status(401).json({ success: false, message: 'Matchmaker authorization required.' });
+    }
+
+    if (!clientId || !suggestedProfileId) {
+      return res.status(400).json({ success: false, message: 'Client ID and Suggested Profile ID are required.' });
+    }
     
     // Check if already suggested
     const existing = await prisma.matchSuggestion.findFirst({
@@ -650,7 +859,12 @@ router.post('/suggestions', async (req, res) => {
     });
 
     if (existing) {
-      return res.status(400).json({ success: false, message: 'These profiles have already been connected.' });
+      return res.json({
+        success: true,
+        message: 'These profiles are already connected.',
+        alreadyConnected: true,
+        suggestion: existing,
+      });
     }
 
     const suggestion = await prisma.matchSuggestion.create({
@@ -664,46 +878,55 @@ router.post('/suggestions', async (req, res) => {
       }
     });
 
-    // Send emails to both clients
-    try {
-      const client1 = await prisma.user.findUnique({ where: { id: clientId } });
-      const client2 = await prisma.user.findUnique({ where: { id: suggestedProfileId } });
-      
-      const { sendMail } = require('../services/emailService');
-      
-      if (client1 && client1.email) {
-        await sendMail(
-          client1.email,
-          'New Connection Request - JabWeMeet',
-          `Hello ${client1.name},\n\nYou have a new connection request from ${client2.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
-          `<p>Hello <strong>${client1.name}</strong>,</p><p>You have a new connection request from <strong>${client2.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
-        );
+    // Send emails to both clients asynchronously (non-blocking)
+    setImmediate(async () => {
+      try {
+        const client1 = await prisma.user.findUnique({ where: { id: clientId } });
+        const client2 = await prisma.user.findUnique({ where: { id: suggestedProfileId } });
+        
+        const { sendMail } = require('../services/emailService');
+        
+        if (client1 && client1.email && client2) {
+          sendMail(
+            client1.email,
+            'New Connection Request - JabWeMeet',
+            `Hello ${client1.name},\n\nYou have a new connection request from ${client2.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
+            `<p>Hello <strong>${client1.name}</strong>,</p><p>You have a new connection request from <strong>${client2.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
+          ).catch((e) => console.warn('Email dispatch warning for client 1:', e.message));
+        }
+        if (client2 && client2.email && client1) {
+          sendMail(
+            client2.email,
+            'New Connection Request - JabWeMeet',
+            `Hello ${client2.name},\n\nYou have a new connection request from ${client1.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
+            `<p>Hello <strong>${client2.name}</strong>,</p><p>You have a new connection request from <strong>${client1.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
+          ).catch((e) => console.warn('Email dispatch warning for client 2:', e.message));
+        }
+      } catch (mailError) {
+        console.warn('Error in background suggestion emails:', mailError.message);
       }
-      if (client2 && client2.email) {
-        await sendMail(
-          client2.email,
-          'New Connection Request - JabWeMeet',
-          `Hello ${client2.name},\n\nYou have a new connection request from ${client1.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
-          `<p>Hello <strong>${client2.name}</strong>,</p><p>You have a new connection request from <strong>${client1.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
-        );
-      }
-    } catch (mailError) {
-      console.error('Error sending suggestion emails:', mailError);
-    }
+    });
 
-    res.json({ success: true, suggestion });
+    // Real-time socket notification to clients if connected
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`user-${clientId}`).emit('new-match-suggestion', { suggestionId: suggestion.id });
+        io.to(`user-${suggestedProfileId}`).emit('new-match-suggestion', { suggestionId: suggestion.id });
+      }
+    } catch (e) {}
+
+    return res.json({ success: true, message: 'Connection request created successfully!', suggestion });
   } catch (error) {
     console.error('Error creating suggestion:', error);
-    res.status(500).json({ success: false, message: 'Failed to create connection request.' });
+    return res.status(500).json({ success: false, message: 'Failed to create connection request.' });
   }
 });
 
 // Get all suggestions created by the matchmaker
 router.get('/connections', async (req, res) => {
   try {
-    // Ideally use req.user.id but for this matchmaker route we might rely on the token or pass ID.
-    // In this codebase, it seems matchmaker is assumed or we can pass matchmakerId. Let's just fetch all or pass ?matchmakerId=...
-    const { matchmakerId } = req.query;
+    const matchmakerId = req.query.matchmakerId || req.user?.userId;
     if (!matchmakerId) {
       return res.status(400).json({ success: false, message: 'matchmakerId required' });
     }

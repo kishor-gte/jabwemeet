@@ -26,36 +26,22 @@ import {
   X,
   Menu,
   LogOut,
+  Loader2,
 } from "lucide-react";
+import { io } from "socket.io-client";
 import DashboardSidebar from "../dashboard/components/DashboardSidebar";
 
-interface RelationshipManager {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  city: string | null;
-  gender: string | null;
-  profileImage: string | null;
-  isVerified: boolean;
-  isApproved: boolean;
-  isAvailableForRequests: boolean;
-  weeklySchedule: any;
-  blockedDates: string[];
-  createdAt: string;
-  _count?: {
-    assignedClients: number;
-    madeSuggestions: number;
-  };
-}
+
 
 interface AssignedManager {
   id: string;
   name: string;
+  displayName?: string;
   email: string;
   phone: string;
   city: string | null;
   profileImage: string | null;
+  profilePhoto?: string | null;
 }
 
 interface UserMatchmakingRequest {
@@ -64,7 +50,7 @@ interface UserMatchmakingRequest {
   notes: string;
   matchmakerId: string | null;
   managerName: string | null;
-  status: "New" | "Approved" | "Rejected";
+  status: "New" | "Pending" | "Approved" | "Accepted" | "Rejected";
   createdAt: string;
   updatedAt: string;
 }
@@ -72,12 +58,12 @@ interface UserMatchmakingRequest {
 export default function RelationshipManagerPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [managers, setManagers] = useState<RelationshipManager[]>([]);
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{text: string, type: 'success' | 'error'} | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCity, setSelectedCity] = useState("all");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Broadcast & Connect State
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
   // User's Real-time Matchmaking Status
   const [assignedManager, setAssignedManager] = useState<AssignedManager | null>(null);
@@ -97,13 +83,6 @@ export default function RelationshipManagerPage() {
     notificationsCount: 0,
   });
 
-  // Connect Modal State
-  const [selectedManager, setSelectedManager] = useState<RelationshipManager | null>(null);
-  const [introGoal, setIntroGoal] = useState("Long-term Relationship");
-  const [introNotes, setIntroNotes] = useState("");
-  const [introSending, setIntroSending] = useState(false);
-  const [introSuccess, setIntroSuccess] = useState(false);
-
   // Fetch real-time matchmaking request and assigned manager from backend
   const fetchMyMatchmakingStatus = async () => {
     try {
@@ -114,12 +93,95 @@ export default function RelationshipManagerPage() {
         if (data?.success) {
           setAssignedManager(data.assignedManager || null);
           setLatestRequest(data.latestRequest || null);
+          setIsPending(Boolean(data.isPending));
         }
       }
     } catch (err) {
       console.error("Failed to fetch user matchmaking status:", err);
     } finally {
       setStatusLoading(false);
+    }
+  };
+
+  // Real-time socket listener for RM request acceptance
+  useEffect(() => {
+    if (!currentUser) return;
+    const s = io("http://localhost:5001", { withCredentials: true });
+    s.on("connect", () => {
+      s.emit("join-user-room", currentUser.id);
+    });
+    s.on("rm-request-accepted", (data: any) => {
+      setIsPending(false);
+      fetchMyMatchmakingStatus();
+      setToast({
+        text: `🎉 Connected with Relationship Manager: ${data?.managerDisplayName || data?.managerName || "Relationship Manager"}!`,
+        type: "success",
+      });
+      setTimeout(() => setToast(null), 6000);
+    });
+    return () => {
+      s.disconnect();
+    };
+  }, [currentUser]);
+
+  // Polling for live acceptance when request is pending
+  useEffect(() => {
+    if (!isPending) return;
+    const interval = setInterval(() => {
+      fetchMyMatchmakingStatus();
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [isPending]);
+
+  // Broadcast Connect Handler (Broadcasts to all approved Relationship Managers)
+  const handleConnectWithRM = async () => {
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+
+    if (isPending) {
+      setToast({ text: "⏳ Please wait, a Relationship Manager is already reviewing your request.", type: "error" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
+    if (assignedManager) {
+      setToast({ text: `✓ You are already connected with ${assignedManager.displayName || assignedManager.name}!`, type: "success" });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      const res = await fetch("/api/services/rm-broadcast-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          goal: "Curated 1-on-1 Offline Matchmaking",
+          notes: "Need dedicated certified Relationship Manager for curated offline dating introductions",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsPending(true);
+        await fetchMyMatchmakingStatus();
+        setToast({
+          text: "📢 Request sent! Please wait, a certified Relationship Manager will claim and connect with you shortly.",
+          type: "success",
+        });
+        setTimeout(() => setToast(null), 5000);
+      } else {
+        setToast({ text: data.message || "Could not submit broadcast request.", type: "error" });
+        setTimeout(() => setToast(null), 4500);
+      }
+    } catch (e) {
+      setToast({ text: "Failed to submit connection request. Please try again.", type: "error" });
+      setTimeout(() => setToast(null), 4500);
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -234,21 +296,6 @@ export default function RelationshipManagerPage() {
         }
       })
       .catch(() => {});
-
-    // 2. Fetch approved Relationship Managers from backend
-    fetch("/api/services/relationship-managers")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.success && Array.isArray(data.data)) {
-          setManagers(data.data);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch relationship managers:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
   }, []);
 
   const handleLogout = async () => {
@@ -256,87 +303,6 @@ export default function RelationshipManagerPage() {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch (e) {}
     router.replace("/login");
-  };
-
-  // Filter managers by search and city
-  const filteredManagers = managers.filter((m) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.city && m.city.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCity =
-      selectedCity === "all" ||
-      (m.city && m.city.toLowerCase() === selectedCity.toLowerCase());
-    return matchesSearch && matchesCity;
-  });
-
-  // Unique cities list
-  const availableCities = Array.from(
-    new Set(
-      managers
-        .map((m) => m.city)
-        .filter((c): c is string => Boolean(c && c !== "N/A"))
-    )
-  );
-
-  const handleSendIntro = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedManager) return;
-
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-
-    setIntroSending(true);
-
-    try {
-      const res = await fetch("/api/services/matchmaking-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          matchmakerId: selectedManager.id,
-          managerName: selectedManager.name,
-          goal: introGoal,
-          notes: introNotes,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data?.success) {
-        // Refresh live status from backend
-        await fetchMyMatchmakingStatus();
-
-        // Sync local storage for dashboard
-        try {
-          const services = JSON.parse(
-            localStorage.getItem(`jwm_services_${currentUser.id}`) || "{}"
-          );
-          services.relationshipManager = true;
-          localStorage.setItem(
-            `jwm_services_${currentUser.id}`,
-            JSON.stringify(services)
-          );
-        } catch (e) {}
-
-        setIntroSuccess(true);
-        setTimeout(() => {
-          setIntroSuccess(false);
-          setSelectedManager(null);
-          setIntroNotes("");
-        }, 2200);
-      } else {
-        setToast({ text: data?.message || "Failed to submit request. Please try again.", type: 'error' });
-        setTimeout(() => setToast(null), 4500);
-      }
-    } catch (err) {
-      console.error("Error submitting matchmaking request:", err);
-      setToast({ text: "Network error sending introduction request. Please try again.", type: 'error' });
-      setTimeout(() => setToast(null), 4500);
-    } finally {
-      setIntroSending(false);
-    }
   };
 
   const sidebarUser = currentUser
@@ -469,7 +435,19 @@ export default function RelationshipManagerPage() {
             <span className="text-xs font-semibold text-white hidden sm:inline">Relationship Managers</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleConnectWithRM}
+              disabled={isConnecting || isPending || !!assignedManager}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] disabled:opacity-60 text-white shadow-md shadow-amber-500/20 transition"
+            >
+              <HeartHandshake className="w-3.5 h-3.5" />
+              {assignedManager
+                ? `Connected: ${assignedManager.displayName || assignedManager.name}`
+                : isPending
+                ? "Assigning RM..."
+                : "Connect with Relationship Manager"}
+            </button>
             <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-400" />
               Matchmaking Network
@@ -510,111 +488,155 @@ export default function RelationshipManagerPage() {
                 Values-First Matching
               </span>
             </div>
+
+            {/* Action CTA */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+              {assignedManager ? (
+                <div className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-sm rounded-full shadow-lg flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Connected with {assignedManager.displayName || assignedManager.name}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectWithRM}
+                  disabled={isConnecting || isPending}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-amber-500/30 transition flex items-center justify-center gap-2"
+                >
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Sending Broadcast Request...
+                    </>
+                  ) : isPending ? (
+                    <>
+                      <Clock className="w-4 h-4 animate-spin" /> Waiting for Manager to Accept...
+                    </>
+                  ) : (
+                    <>
+                      <HeartHandshake className="w-4 h-4" /> Connect with Relationship Manager
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
         {/* Main Content Area */}
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8 flex-1">
-          {/* Real-time Matchmaking Status Banner */}
-          {/* Real-time Matchmaking Status Banner (Vanishes after 10 seconds) */}
-          {assignedManager && showAssignedBanner ? (
-            <div
-              className={`relative p-6 rounded-3xl bg-gradient-to-r from-emerald-950/70 via-[#102924] to-[#131d2e] border border-emerald-500/50 shadow-2xl shadow-emerald-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition-all duration-500 ${
-                isVanishing
-                  ? "opacity-0 -translate-y-3 max-h-0 py-0 overflow-hidden border-transparent pointer-events-none"
-                  : "opacity-100 translate-y-0"
-              }`}
-            >
-              {/* Top right dismiss & countdown badge */}
-              <div className="absolute top-4 right-4 flex items-center gap-2">
-                <span className="text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-emerald-400" />
-                  <span>{bannerSecondsLeft}s</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleDismissBanner}
-                  className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition"
-                  title="Dismiss banner"
-                  aria-label="Close"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+          {/* PENDING WAITING STATE */}
+          {isPending && !assignedManager && (
+            <div className="bg-gradient-to-br from-[#1c1917] to-[#131d2e] border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 text-center">
+              <div className="w-14 h-14 bg-amber-500/20 text-amber-300 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                <Clock className="w-7 h-7 animate-spin" />
               </div>
-
-              <div className="flex items-start gap-4 pr-16 md:pr-0">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0 shadow-lg shadow-emerald-500/10">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                    Official Relationship Manager Assigned
-                  </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                    You are paired with {assignedManager.name}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                    Your certified Relationship Manager has accepted your introduction request. They are actively curating hand-picked compatible profiles and organizing 1-on-1 offline date experiences for you.
-                  </p>
-                  <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-emerald-200/90 font-medium">
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                      {assignedManager.city || "Bangalore / Remote"}
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-emerald-400" />
-                      {assignedManager.email}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="shrink-0 w-full md:w-auto">
-                <div className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center justify-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Status: Active & Approved</span>
-                </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white">We are assigning you with a Relationship Manager</h3>
+              <p className="text-xs sm:text-sm text-amber-200 max-w-lg mx-auto leading-relaxed">
+                Please wait, your request has been broadcast to all verified Relationship Managers. The first manager to claim will be assigned to guide your dating journey and arrange hand-picked offline introductions.
+              </p>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300 animate-pulse">
+                ⏳ Assigning your Relationship Manager... Please wait.
               </div>
             </div>
-          ) : latestRequest?.status === "New" ? (
-            <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/70 via-[#261e14] to-[#131d2e] border border-amber-500/50 shadow-2xl shadow-amber-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold text-xl shrink-0">
-                  <Clock className="w-8 h-8 text-amber-400 animate-pulse" />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-500/30">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    Introduction Request Pending Review
+          )}
+
+          {/* ACTIVE ASSIGNED RELATIONSHIP MANAGER CARD */}
+          {assignedManager && (
+            <div className="bg-gradient-to-br from-[#131d2e] to-[#0f172a] border border-[#e06d53]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border-b border-white/10 pb-6">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#e06d53]/25 to-[#b8432a]/30 border border-[#e06d53]/40 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                    {assignedManager.profilePhoto || assignedManager.profileImage ? (
+                      <img
+                        src={
+                          (assignedManager.profilePhoto || assignedManager.profileImage)!.startsWith("http") ||
+                          (assignedManager.profilePhoto || assignedManager.profileImage)!.startsWith("/") ||
+                          (assignedManager.profilePhoto || assignedManager.profileImage)!.startsWith("data:")
+                            ? (assignedManager.profilePhoto || assignedManager.profileImage)!
+                            : `/uploads/${assignedManager.profilePhoto || assignedManager.profileImage}`
+                        }
+                        alt={assignedManager.displayName || assignedManager.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                          const parent = (e.target as HTMLElement).parentElement;
+                          const fallback = parent?.querySelector(".avatar-fallback");
+                          if (fallback) (fallback as HTMLElement).style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <span
+                      className={`avatar-fallback font-extrabold text-2xl text-[#fca5a5] ${
+                        assignedManager.profilePhoto || assignedManager.profileImage ? "hidden" : "flex"
+                      } items-center justify-center`}
+                    >
+                      {(assignedManager.displayName || assignedManager.name).charAt(0).toUpperCase()}
+                    </span>
+                    <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#131d2e] rounded-full" title="Online & Connected" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                    Request Sent to {latestRequest.managerName || "Relationship Manager"}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                    Your request for <strong>"{latestRequest.goal}"</strong> was submitted on{" "}
-                    {new Date(latestRequest.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                    . The matchmaker is reviewing your profile and preferences.
-                  </p>
-                  {latestRequest.notes && (
-                    <div className="text-xs text-amber-200/90 bg-black/30 rounded-xl px-3.5 py-2 mt-1 border border-amber-500/20">
-                      <span className="font-semibold text-amber-300">Your notes: </span>"{latestRequest.notes}"
+
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                        ✓ Connected with {assignedManager.displayName || assignedManager.name}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
+                        {assignedManager.city && assignedManager.city !== "N/A" ? assignedManager.city : "Pan-India"}
+                      </span>
+                    </div>
+
+                    <h3 className="text-xl sm:text-2xl font-bold text-white">
+                      Active Relationship Manager: {assignedManager.displayName || assignedManager.name}
+                    </h3>
+
+                    <p className="text-xs text-slate-300 mt-1">
+                      Your certified Relationship Manager is actively curating compatible introductions and organizing 1-on-1 offline date experiences for you.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Manager Contact details */}
+                <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+                  <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-left">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">RM Email</div>
+                    <div className="text-xs font-bold text-slate-200 truncate max-w-[180px]">
+                      {assignedManager.email}
+                    </div>
+                  </div>
+                  {assignedManager.phone && (
+                    <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-left">
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">RM Phone</div>
+                      <div className="text-xs font-bold text-[#fca5a5]">
+                        {assignedManager.phone}
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="shrink-0 w-full md:w-auto">
-                <div className="px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center justify-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span>Awaiting Matchmaker Decision</span>
-                </div>
+
+              {/* Action Buttons: Chat & View Dashboard */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                <Link
+                  href="/messages"
+                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold rounded-xl shadow-lg shadow-[#e06d53]/30 transition"
+                >
+                  <MessageCircle className="w-4 h-4" /> Message {assignedManager.displayName || assignedManager.name}
+                </Link>
+
+                <Link
+                  href="/dashboard"
+                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold rounded-xl transition"
+                >
+                  <Calendar className="w-4 h-4 text-amber-400" /> Member Dashboard
+                </Link>
               </div>
             </div>
-          ) : latestRequest?.status === "Rejected" ? (
+          )}
+
+          {/* Rejection Alert */}
+          {!assignedManager && latestRequest?.status === "Rejected" && (
             <div className="p-6 rounded-3xl bg-gradient-to-r from-rose-950/70 via-[#261517] to-[#131d2e] border border-rose-500/50 shadow-2xl shadow-rose-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold text-xl shrink-0">
@@ -628,388 +650,155 @@ export default function RelationshipManagerPage() {
                     Previous Request Could Not Be Accommodated
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                    Your previous request to {latestRequest.managerName || "the relationship manager"} could not be accepted at this time due to capacity. Please browse and select another verified Relationship Manager below.
+                    Your previous request could not be accepted at this time due to capacity. You can broadcast a new request below to connect with an available Relationship Manager.
                   </p>
                 </div>
               </div>
               <div className="shrink-0 w-full md:w-auto">
-                <span className="inline-flex w-full md:w-auto items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold">
-                  Browse Available Managers
-                </span>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Search & Filter Bar */}
-          <div className="p-4 rounded-2xl bg-[#131d2e] border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-            {/* Search Box */}
-            <div className="relative w-full sm:w-96">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by manager name or city..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0b111e] border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#e06d53] transition"
-              />
-            </div>
-
-            {/* City Filter */}
-            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto text-xs">
-              <span className="text-slate-400 font-medium shrink-0 flex items-center gap-1">
-                <Filter className="w-3.5 h-3.5" /> City:
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedCity("all")}
-                className={`px-3 py-1.5 rounded-lg font-medium shrink-0 transition ${
-                  selectedCity === "all"
-                    ? "bg-[#e06d53] text-white shadow-md shadow-[#e06d53]/20"
-                    : "bg-white/5 text-slate-400 hover:text-white"
-                }`}
-              >
-                All Cities ({managers.length})
-              </button>
-              {availableCities.map((c) => (
                 <button
-                  key={c}
                   type="button"
-                  onClick={() => setSelectedCity(c)}
-                  className={`px-3 py-1.5 rounded-lg font-medium shrink-0 transition ${
-                    selectedCity.toLowerCase() === c.toLowerCase()
-                      ? "bg-[#e06d53] text-white shadow-md shadow-[#e06d53]/20"
-                      : "bg-white/5 text-slate-400 hover:text-white"
-                  }`}
+                  onClick={handleConnectWithRM}
+                  disabled={isConnecting}
+                  className="inline-flex w-full md:w-auto items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#e06d53] text-white text-xs font-bold shadow-md shadow-amber-500/20"
                 >
-                  {c}
+                  Connect with Available RM
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Live Count Header */}
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>
-              Showing <strong className="text-white">{filteredManagers.length}</strong> verified Relationship Manager{filteredManagers.length === 1 ? "" : "s"} approved by admin
-            </span>
-            <span className="text-emerald-400 font-medium flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> All Profiles Vetted
-            </span>
-          </div>
-
-        {/* Loading Skeleton */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-72 rounded-3xl bg-[#131d2e] border border-white/5 animate-pulse p-6"
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && filteredManagers.length === 0 && (
-          <div className="text-center py-16 px-6 rounded-3xl bg-[#131d2e] border border-white/10 space-y-4 shadow-xl">
-            <div className="w-16 h-16 rounded-full bg-amber-500/15 text-amber-400 flex items-center justify-center text-2xl mx-auto">
-              <HeartHandshake className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-bold text-white">
-              {searchTerm || selectedCity !== "all"
-                ? "No Relationship Managers Match Your Filter"
-                : "No Approved Relationship Managers Available Right Now"}
-            </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              {searchTerm || selectedCity !== "all"
-                ? "Try clearing your city filter or search terms to view all registered Relationship Managers."
-                : "New certified matchmakers will appear here once reviewed and approved by JabWeMeet administrators."}
-            </p>
-            {(searchTerm || selectedCity !== "all") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm("");
-                  setSelectedCity("all");
-                }}
-                className="px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition"
-              >
-                Reset Filters
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Relationship Managers Cards Grid */}
-        {!loading && filteredManagers.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredManagers.map((manager) => {
-              const initials = manager.name
-                ? manager.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()
-                : "RM";
-
-              const isAssigned = assignedManager?.id === manager.id;
-              const isPending =
-                !isAssigned &&
-                latestRequest?.matchmakerId === manager.id &&
-                latestRequest?.status === "New";
-
-              return (
-                <div
-                  key={manager.id}
-                  className={`rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 transition shadow-xl group ${
-                    isAssigned
-                      ? "bg-gradient-to-b from-[#102924] to-[#0d1c1a] border-2 border-emerald-500/80 shadow-emerald-950/40 ring-1 ring-emerald-500/50"
-                      : isPending
-                      ? "bg-gradient-to-b from-[#241c14] to-[#14120e] border-2 border-amber-500/80 shadow-amber-950/40 ring-1 ring-amber-500/50"
-                      : "bg-[#131d2e] border border-white/10 hover:border-amber-500/40 hover:shadow-amber-500/10"
-                  }`}
-                >
-                  <div className="space-y-4">
-                    {/* Header: Avatar & Badges */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div
-                        className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl shadow-lg shrink-0 ${
-                          isAssigned
-                            ? "bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-emerald-500/30"
-                            : isPending
-                            ? "bg-gradient-to-tr from-amber-500 to-orange-400 shadow-amber-500/30"
-                            : "bg-gradient-to-tr from-amber-500 to-[#e06d53] shadow-amber-500/20"
-                        }`}
-                      >
-                        {initials}
-                      </div>
-
-                      <div className="text-right">
-                        {isAssigned ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            Your Assigned Manager
-                          </span>
-                        ) : isPending ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
-                            <Clock className="w-3.5 h-3.5 text-amber-400" />
-                            Request Pending Review
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            Approved
-                          </span>
-                        )}
-                        <div className="text-[10px] text-slate-400 mt-1">
-                          Joined {new Date(manager.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Manager Name & City */}
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition flex items-center gap-2">
-                          <span>{manager.name}</span>
-                        </h3>
-                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
-                          manager.isAvailableForRequests !== false
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                        }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${
-                            manager.isAvailableForRequests !== false ? "bg-emerald-400" : "bg-rose-400"
-                          }`} />
-                          {manager.isAvailableForRequests !== false ? "Available" : "Unavailable"}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-slate-400 mt-1 capitalize">
-                        <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
-                        <span>{manager.city && manager.city !== "N/A" ? manager.city : "All India / Remote"}</span>
-                      </div>
-                    </div>
-
-                    {/* Matchmaker Expertise Pills */}
-                    <div className="space-y-1.5 pt-1">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Core Matchmaking Services
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 text-[11px]">
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-slate-300">
-                          Values Assessment
-                        </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-slate-300">
-                          Pre-Screened Introductions
-                        </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-slate-300">
-                          Offline Venue Curation
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Activity Stats */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 text-xs border-t border-white/5">
-                      <div className="p-2.5 rounded-xl bg-[#0b111e] border border-white/5">
-                        <span className="text-[10px] text-slate-400 block">Assigned Clients</span>
-                        <span className="font-bold text-white text-sm">
-                          {manager._count?.assignedClients || 12}+
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-[#0b111e] border border-white/5">
-                        <span className="text-[10px] text-slate-400 block">Match Suggestions</span>
-                        <span className="font-bold text-amber-400 text-sm">
-                          {manager._count?.madeSuggestions || 28}+
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Connect Action Button */}
-                  <div className="pt-2">
-                    {isAssigned ? (
-                      <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span>Assigned & Connected</span>
-                      </div>
-                    ) : isPending ? (
-                      <div className="w-full py-2.5 px-4 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-2">
-                        <Clock className="w-4 h-4 text-amber-400" />
-                        <span>Request Awaiting Review</span>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedManager(manager)}
-                        disabled={manager.isAvailableForRequests === false}
-                        className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                          manager.isAvailableForRequests !== false
-                            ? "bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] text-white shadow-lg shadow-amber-500/20"
-                            : "bg-white/5 text-slate-500 cursor-not-allowed border border-white/10"
-                        }`}
-                      >
-                        {manager.isAvailableForRequests !== false ? (
-                          <>
-                            <HeartHandshake className="w-4 h-4" />
-                            <span>Request Introduction with {manager.name.split(" ")[0]}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-4 h-4" />
-                            <span>Currently Unavailable</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-      </main>
-    </div>
-
-      {/* Connect / Consultation Modal */}
-      {selectedManager && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#131d2e] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 relative shadow-2xl space-y-5">
-            <button
-              onClick={() => setSelectedManager(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {introSuccess ? (
-              <div className="text-center py-8 space-y-3">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto">
-                  ✓
-                </div>
-                <h3 className="text-xl font-bold text-white">Introduction Requested!</h3>
-                <p className="text-xs text-slate-300 max-w-sm mx-auto">
-                  Your request has been forwarded directly to <strong>{selectedManager.name}</strong>. They will review your matching criteria and contact you shortly.
-                </p>
               </div>
-            ) : (
-              <>
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold mb-2">
-                    <HeartHandshake className="w-3.5 h-3.5" />
-                    Curated Introduction
+            </div>
+          )}
+
+          {/* HOW IT WORKS & SERVICE BENEFITS (When not yet assigned) */}
+          {!assignedManager && !isPending && (
+            <div className="space-y-8">
+              {/* 3 Step Broadcast Flow */}
+              <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <div className="text-center max-w-xl mx-auto space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-semibold border border-amber-500/30">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    How Curated Matching Works
                   </div>
-                  <h3 className="text-xl font-bold text-white">
-                    Connect with {selectedManager.name}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Certified Relationship Manager in {selectedManager.city || "All India"}
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    Instant Broadcast & Personal Pairing
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-400">
+                    No directory browsing or waiting days for approvals. Connect directly with our certified Relationship Managers in 3 simple steps:
                   </p>
                 </div>
 
-                <form onSubmit={handleSendIntro} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block text-slate-300 font-semibold mb-1">
-                      Primary Dating / Relationship Goal *
-                    </label>
-                    <select
-                      value={introGoal}
-                      onChange={(e) => setIntroGoal(e.target.value)}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
-                    >
-                      <option value="Long-term Relationship">Long-term Relationship</option>
-                      <option value="Marriage / Matrimonial">Marriage / Matrimonial</option>
-                      <option value="Intentional Dating">Intentional Dating</option>
-                      <option value="Curated 1-on-1 Blind Date">Curated 1-on-1 Blind Date</option>
-                      <option value="Offline Event Table Placement">Offline Event Table Placement</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 font-semibold mb-1">
-                      What are you looking for in a partner? (Optional notes for manager)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={introNotes}
-                      onChange={(e) => setIntroNotes(e.target.value)}
-                      placeholder="e.g. Someone calm, ambitious, values good conversation, enjoys outdoor hikes..."
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
-                    />
-                  </div>
-
-                  {(assignedManager || latestRequest) && (
-                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-2">
-                      <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <span>
-                        Note: Submitting this request will update your target Relationship Manager to{" "}
-                        <strong>{selectedManager.name}</strong>.
-                      </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                  <div className="bg-[#0b111e] border border-white/5 rounded-2xl p-5 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 font-extrabold flex items-center justify-center text-sm border border-amber-500/30">
+                      1
                     </div>
-                  )}
-
-                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-slate-300 flex items-start gap-2.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>
-                      Your contact details and criteria are encrypted. {selectedManager.name} will only facilitate introductions that match your explicit values.
-                    </span>
+                    <h3 className="text-base font-bold text-white">Click to Connect</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Click the "Connect with Relationship Manager" button. Your matchmaking request is immediately broadcast to all approved Relationship Managers.
+                    </p>
                   </div>
 
+                  <div className="bg-[#0b111e] border border-white/5 rounded-2xl p-5 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#e06d53]/20 text-[#fca5a5] font-extrabold flex items-center justify-center text-sm border border-[#e06d53]/30">
+                      2
+                    </div>
+                    <h3 className="text-base font-bold text-white">First RM Claims You</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      The first available Relationship Manager accepts and claims your request. All other managers are automatically notified that you are paired.
+                    </p>
+                  </div>
+
+                  <div className="bg-[#0b111e] border border-white/5 rounded-2xl p-5 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 font-extrabold flex items-center justify-center text-sm border border-emerald-500/30">
+                      3
+                    </div>
+                    <h3 className="text-base font-bold text-white">Curated Offline Dates</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Your assigned manager contacts you directly to review your lifestyle and values, and arranges hand-picked 1-on-1 offline date introductions.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Core Features Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">1-on-1 Dedicated RM</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Personalized consultation with a certified relationship expert devoted to your portfolio.
+                  </p>
+                </div>
+
+                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">100% Vetted Members</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Zero fake profiles. Every introduction candidate is pre-screened for background and intent.
+                  </p>
+                </div>
+
+                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
+                  <div className="w-9 h-9 rounded-xl bg-[#e06d53]/15 text-[#fca5a5] flex items-center justify-center">
+                    <HeartHandshake className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">Offline Venue Curation</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Relaxed, private table bookings arranged seamlessly at JabWeMeet partner cafes.
+                  </p>
+                </div>
+
+                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">Values-First Matching</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Introductions aligned with your long-term goals, mutual life visions, and personality traits.
+                  </p>
+                </div>
+              </div>
+
+              {/* Bottom Large CTA Banner */}
+              <div className="relative overflow-hidden bg-gradient-to-r from-amber-500/15 via-[#1b283d] to-[#e06d53]/15 border border-amber-500/30 rounded-3xl p-8 sm:p-10 text-center space-y-5 shadow-2xl">
+                <div className="max-w-2xl mx-auto space-y-3">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-amber-300 text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Instant Certified Matchmaking Dispatch</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-serif">
+                    Ready to Meet Someone Special?
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Click below to broadcast your request across all active Relationship Managers. The first manager to claim will be assigned to guide you and curate your offline introductions.
+                  </p>
+                </div>
+
+                <div className="pt-2">
                   <button
-                    type="submit"
-                    disabled={introSending}
-                    className="w-full py-3 rounded-full bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/25 disabled:opacity-50"
+                    type="button"
+                    onClick={handleConnectWithRM}
+                    disabled={isConnecting || isPending}
+                    className="px-10 py-4 bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-2xl shadow-amber-500/40 transition inline-flex items-center justify-center gap-2.5 cursor-pointer"
                   >
-                    {introSending ? "Submitting request..." : "CONFIRM INTRODUCTION REQUEST"}
+                    {isConnecting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" /> Broadcasting Request...
+                      </>
+                    ) : (
+                      <>
+                        <HeartHandshake className="w-5 h-5" /> Connect with Relationship Manager
+                      </>
+                    )}
                   </button>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

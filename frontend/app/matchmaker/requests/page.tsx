@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 import {
   Heart,
   Search,
@@ -39,7 +40,10 @@ interface ClientRequest {
   notes: string;
   targetMatchmakerId: string | null;
   targetMatchmakerName: string | null;
-  status: "New" | "Approved" | "Rejected";
+  status: "New" | "Pending" | "Approved" | "Accepted" | "Rejected";
+  isClaimedByMe?: boolean;
+  isClaimedByOther?: boolean;
+  isClaimable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +107,64 @@ export default function RequestsPage() {
   useEffect(() => {
     fetchRequests();
   }, [statusFilter]);
+
+  // Real-time socket listener for RM broadcast requests and claiming updates
+  useEffect(() => {
+    const s = io("http://localhost:5001", { withCredentials: true });
+    s.on("new-rm-broadcast-request", (data: any) => {
+      fetchRequests();
+      showToast("⚡ New Client Introduction Request received! Review and claim now.", "info");
+    });
+    s.on("new-rm-request", () => {
+      fetchRequests();
+    });
+    s.on("rm-request-claimed", (data: any) => {
+      fetchRequests();
+      if (data?.claimedByManagerName) {
+        showToast(`🔒 A request was claimed by ${data.claimedByManagerName}.`, "info");
+      }
+    });
+    s.on("rm-request-accepted", () => {
+      fetchRequests();
+    });
+
+    // Also poll every 10 seconds to keep fresh
+    const interval = setInterval(() => {
+      fetchRequests();
+    }, 10000);
+
+    return () => {
+      s.disconnect();
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleClaimRequest = async (id: string) => {
+    setActionLoadingId(id);
+    try {
+      const res = await fetch(`/api/matchmaker/requests/${id}/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast("✓ Request accepted & claimed! Client assigned to your active roster.", "success");
+        await fetchRequests();
+      } else if (res.status === 409 || data.claimedByOther) {
+        showToast("⚠️ Too Late! This client request was already claimed by another Relationship Manager.", "error");
+        await fetchRequests();
+      } else {
+        showToast(data.message || "Failed to claim request", "error");
+      }
+    } catch (err) {
+      console.error("Error claiming request:", err);
+      showToast("Network error claiming request", "error");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -313,6 +375,18 @@ export default function RequestsPage() {
           </button>
 
           <button
+            onClick={() => setStatusFilter("Approved")}
+            className={`px-3.5 py-2 rounded-xl font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
+              statusFilter === "Approved"
+                ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/25"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Approved / Claimed ({counts.approved})</span>
+          </button>
+
+          <button
             onClick={() => setStatusFilter("Rejected")}
             className={`px-3.5 py-2 rounded-xl font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
               statusFilter === "Rejected"
@@ -459,7 +533,9 @@ export default function RequestsPage() {
                   <div className="flex sm:flex-col sm:items-end justify-between items-center gap-1.5 shrink-0">
                     <span
                       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                        req.status === "Approved"
+                        req.isClaimedByOther
+                          ? "bg-slate-100 text-slate-600 border border-slate-300"
+                          : req.isClaimedByMe || req.status === "Approved" || req.status === "Accepted"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : req.status === "Rejected"
                           ? "bg-rose-50 text-rose-600 border border-rose-200"
@@ -468,18 +544,22 @@ export default function RequestsPage() {
                     >
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          req.status === "Approved"
+                          req.isClaimedByOther
+                            ? "bg-slate-400"
+                            : req.isClaimedByMe || req.status === "Approved" || req.status === "Accepted"
                             ? "bg-emerald-500"
                             : req.status === "Rejected"
                             ? "bg-rose-500"
-                            : "bg-amber-500"
+                            : "bg-amber-500 animate-pulse"
                         }`}
                       />
-                      {req.status === "New"
-                        ? "Pending Review"
-                        : req.status === "Approved"
-                        ? "Approved & Assigned"
-                        : "Rejected"}
+                      {req.isClaimedByOther
+                        ? "Claimed by Another RM"
+                        : req.isClaimedByMe || req.status === "Approved" || req.status === "Accepted"
+                        ? "Assigned to You"
+                        : req.status === "Rejected"
+                        ? "Rejected"
+                        : "Pending Review"}
                     </span>
 
                     <span className="text-[11px] text-slate-400 flex items-center gap-1">
@@ -522,11 +602,13 @@ export default function RequestsPage() {
                   <div className="text-xs text-slate-500 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                     <span>
-                      {req.status === "Approved"
+                      {req.isClaimedByOther
+                        ? "This client request was already claimed by another Relationship Manager."
+                        : req.isClaimedByMe || req.status === "Approved" || req.status === "Accepted"
                         ? "Client is currently assigned to your active matchmaking roster."
                         : req.status === "Rejected"
                         ? "Request was declined."
-                        : "Approving will assign this client to your active portfolio."}
+                        : "Claiming will assign this client directly to your active matchmaking roster."}
                     </span>
                   </div>
 
@@ -542,42 +624,50 @@ export default function RequestsPage() {
                       <Trash2 className="w-4 h-4" />
                     </button>
 
-                    {/* Reject Button */}
-                    {req.status !== "Rejected" && (
-                      <button
-                        type="button"
-                        disabled={isLoadingThis}
-                        onClick={() => handleUpdateStatus(req.id, "Rejected")}
-                        className="px-4 py-2 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>Reject</span>
-                      </button>
+                    {/* Claimed by Other Badge */}
+                    {req.isClaimedByOther && (
+                      <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200 flex items-center gap-1.5">
+                        <span>🔒 Claimed by another RM (Too Late)</span>
+                      </span>
                     )}
 
-                    {/* Approve Button */}
-                    {req.status !== "Approved" && (
-                      <button
-                        type="button"
-                        disabled={isLoadingThis}
-                        onClick={() => handleUpdateStatus(req.id, "Approved")}
-                        className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 shadow-md shadow-emerald-600/20"
-                      >
-                        {isLoadingThis ? (
-                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        )}
-                        <span>Approve Request</span>
-                      </button>
-                    )}
-
-                    {/* If Already Approved */}
-                    {req.status === "Approved" && (
+                    {/* Active in My Portfolio */}
+                    {(req.isClaimedByMe || req.status === "Approved" || req.status === "Accepted") && !req.isClaimedByOther && (
                       <span className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Client Active</span>
+                        <span>✓ Claimed by You (Active Client)</span>
                       </span>
+                    )}
+
+                    {/* If Claimable / New / Pending */}
+                    {req.status !== "Approved" && req.status !== "Accepted" && !req.isClaimedByOther && (
+                      <>
+                        {req.status !== "Rejected" && (
+                          <button
+                            type="button"
+                            disabled={isLoadingThis}
+                            onClick={() => handleUpdateStatus(req.id, "Rejected")}
+                            className="px-4 py-2 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={isLoadingThis}
+                          onClick={() => handleClaimRequest(req.id)}
+                          className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 shadow-md shadow-emerald-600/20"
+                        >
+                          {isLoadingThis ? (
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          )}
+                          <span>Accept & Claim Client</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
