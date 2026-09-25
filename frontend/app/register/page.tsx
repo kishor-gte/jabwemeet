@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { HeartHandshake, User, ShieldCheck, CheckCircle2, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { HeartHandshake, User, ShieldCheck, CheckCircle2, ArrowRight, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 function RegisterContent() {
   const router = useRouter();

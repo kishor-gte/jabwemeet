@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,7 +45,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b111e] text-white flex flex-col items-center justify-center p-6 font-sans">
+    <div className="relative min-h-screen bg-[#0b111e] text-white flex flex-col items-center justify-center p-6 font-sans">
+      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white rounded-full transition text-sm font-semibold">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Home
+      </Link>
+
       <div className="w-full max-w-md bg-[#131d2e] border border-white/10 rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-6">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
