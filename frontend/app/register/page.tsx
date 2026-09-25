@@ -197,7 +197,7 @@ function RegisterContent() {
 
         {/* Role Selector Tabs */}
         {!success && (
-          <div className="grid grid-cols-5 gap-1 p-1 bg-black/30 rounded-2xl border border-white/10 mb-6 text-[11px] font-semibold">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-black/30 rounded-2xl border border-white/10 mb-6 text-[11px] font-semibold">
             <button
               type="button"
               onClick={() => setRole("USER")}
@@ -219,28 +219,6 @@ function RegisterContent() {
               }`}
             >
               Event Host
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("MATCHMAKER")}
-              className={`py-2 px-1 text-center rounded-xl transition ${
-                role === "MATCHMAKER"
-                  ? "bg-amber-600 text-white shadow-md"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Matchmaker
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("BREAKUP_BUDDY")}
-              className={`py-2 px-1 text-center rounded-xl transition ${
-                role === "BREAKUP_BUDDY"
-                  ? "bg-purple-600 text-white shadow-md"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Breakup Buddy
             </button>
             <button
               type="button"
