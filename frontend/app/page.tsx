@@ -480,8 +480,6 @@ export default function HomePage() {
                     <div className="absolute right-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
                       <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User / Member</button>
                       <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
-                      <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
-                      <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
                       <button onClick={() => openRegisterModalWithRole('CAFE')} className="block w-full text-left px-4 py-3 text-sm text-amber-300 hover:bg-white/10 transition">Cafe Partner</button>
                     </div>
                   )}
@@ -539,8 +537,6 @@ export default function HomePage() {
                 <div className="absolute left-0 mt-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
                   <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User / Member</button>
                   <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
-                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
-                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
                   <button onClick={() => openRegisterModalWithRole('CAFE')} className="block w-full text-left px-4 py-3 text-sm text-amber-300 hover:bg-white/10 transition">Cafe Partner</button>
                 </div>
               )}
@@ -1220,8 +1216,6 @@ export default function HomePage() {
                 <div className="absolute bottom-full left-0 mb-2 w-56 bg-[#131d2e] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden text-left">
                   <button onClick={() => openRegisterModalWithRole('USER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">User / Member</button>
                   <button onClick={() => openRegisterModalWithRole('HOST')} className="block w-full text-left px-4 py-3 text-sm text-rose-300 hover:bg-white/10 transition">Event Host / Manager</button>
-                  <button onClick={() => openRegisterModalWithRole('MATCHMAKER')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Relationship Manager</button>
-                  <button onClick={() => openRegisterModalWithRole('BREAKUP_BUDDY')} className="block w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition">Breakup Buddy</button>
                 </div>
               )}
             </div>
