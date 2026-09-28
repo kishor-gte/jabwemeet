@@ -585,14 +585,14 @@ router.get('/events', async (req, res) => {
 
     const query = `
       SELECT e.*, 
-             u."name" as "hostName", u."email" as "hostEmail",
+             u."name" as "hostName", u."email" as "hostEmail", u."role" as "hostRole", u."profileImage" as "hostImage",
              COUNT(er."id")::int as "registeredCount",
              COUNT(CASE WHEN er."checkedIn" = true THEN 1 END)::int as "checkedInCount"
       FROM "Event" e
       LEFT JOIN "User" u ON e."hostId" = u."id"
       LEFT JOIN "EventRegistration" er ON e."id" = er."eventId"
       WHERE ${whereClauses.join(' AND ')}
-      GROUP BY e."id", u."name", u."email"
+      GROUP BY e."id", u."name", u."email", u."role", u."profileImage"
       ORDER BY e."date" DESC
     `;
 
@@ -791,46 +791,24 @@ router.delete('/events/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Event not found' });
     }
 
-    await prisma.$executeRawUnsafe(`UPDATE "Event" SET "status" = 'ARCHIVED' WHERE "id" = $1`, id);
-
-    // Notify registered attendees about event cancellation/archive
-    try {
-      const attendees = await prisma.$queryRawUnsafe(`
-        SELECT u."email", u."name"
-        FROM "EventRegistration" er
-        JOIN "User" u ON er."userId" = u."id"
-        WHERE er."eventId" = $1 AND er."status" != 'CANCELLED'
-      `, id);
-
-      for (const att of attendees) {
-        if (att.email) {
-          sendEventCancelledOrUpdatedEmail({
-            attendeeEmail: att.email,
-            attendeeName: att.name,
-            eventTitle: existing.title,
-            eventDate: existing.date,
-            status: 'CANCELLED',
-            reason: 'Event has been archived/cancelled by platform administration.',
-          }).catch(e => {});
-        }
-      }
-    } catch (mailErr) {
-      console.warn('Cancel mail error:', mailErr.message);
-    }
+    // Delete associated registrations, bookings, and the event itself
+    await prisma.$executeRawUnsafe(`DELETE FROM "EventRegistration" WHERE "eventId" = $1`, id).catch(() => {});
+    await prisma.eventBooking.deleteMany({ where: { eventId: id } }).catch(() => {});
+    await prisma.event.delete({ where: { id } });
 
     await logAudit(req, {
-      action: 'EVENT_ARCHIVE',
+      action: 'EVENT_DELETE',
       targetType: 'EVENT',
       targetId: id,
-      before: { status: existing.status },
-      after: { status: 'ARCHIVED' },
-      reason: 'Administrative event archive',
+      before: { title: existing.title, date: existing.date, status: existing.status },
+      after: null,
+      reason: 'Administrative event deletion',
     });
 
-    return res.json({ success: true, message: 'Event archived successfully' });
+    return res.json({ success: true, message: 'Event deleted successfully' });
   } catch (error) {
-    console.error('Error archiving event:', error);
-    return res.status(500).json({ success: false, message: 'Failed to archive event' });
+    console.error('Error deleting event:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete event' });
   }
 });
 
