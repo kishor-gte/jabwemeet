@@ -273,19 +273,7 @@ export default function SchedulingPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Venue Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Starbucks, Central Park"
-                  value={formData.meetingVenue}
-                  onChange={e => setFormData({...formData, meetingVenue: e.target.value})}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">City / Location</label>
+                <label className="text-xs font-bold text-slate-700">General Location (Users will select a specific cafe here)</label>
                 <input
                   type="text"
                   required

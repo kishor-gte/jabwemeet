@@ -1355,5 +1355,63 @@ router.post('/chat/:contactId', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
 
+
+
+// CAFE FINDER ENDPOINTS
+router.get('/cafes', authenticateToken, async (req, res) => {
+  try {
+    const { location } = req.query;
+    let whereClause = {};
+    if (location) {
+      whereClause = {
+        OR: [
+          { city: { contains: location, mode: 'insensitive' } },
+          { address: { contains: location, mode: 'insensitive' } }
+        ]
+      };
+    }
+    const cafes = await prisma.cafeProfile.findMany({
+      where: whereClause,
+      include: { user: { select: { name: true, email: true } }, menuItems: true },
+      take: 20
+    });
+    res.json({ success: true, cafes });
+  } catch (error) {
+    console.error('Error fetching cafes:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch cafes' });
+  }
+});
+
+router.post('/connections/:id/book-cafe', authenticateToken, async (req, res) => {
+  try {
+    const { cafeId, cafeName, reservationDate, reservationTime, guests } = req.body;
+    
+    // 1. Update MatchSuggestion with meetingVenue
+    const suggestion = await prisma.matchSuggestion.update({
+      where: { id: req.params.id },
+      data: { meetingVenue: cafeName }
+    });
+
+    // 2. Create CafeReservation
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    await prisma.cafeReservation.create({
+      data: {
+        cafeId: cafeId,
+        customerName: user.name,
+        guests: guests || 2,
+        date: reservationDate || (suggestion.meetingDate ? suggestion.meetingDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+        time: reservationTime || '18:00',
+        status: 'Pending'
+      }
+    });
+
+    res.json({ success: true, message: 'Cafe booked successfully!', suggestion });
+  } catch (error) {
+    console.error('Error booking cafe:', error);
+    res.status(500).json({ success: false, message: 'Failed to book cafe' });
+  }
+});
+
+
+module.exports = router;

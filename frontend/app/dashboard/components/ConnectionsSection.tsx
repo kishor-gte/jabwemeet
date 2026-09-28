@@ -61,6 +61,59 @@ export default function ConnectionsSection({
   const [feedbackText, setFeedbackText] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
+  const [cafeFinderLocation, setCafeFinderLocation] = useState<{connId: string, location: string, date: string | null} | null>(null);
+  const [cafesList, setCafesList] = useState<any[]>([]);
+  const [loadingCafes, setLoadingCafes] = useState(false);
+  const [bookingCafe, setBookingCafe] = useState(false);
+
+  const handleFindNearestCafe = async (connId: string, location: string, date: string | null) => {
+    setCafeFinderLocation({ connId, location, date });
+    setLoadingCafes(true);
+    try {
+      const res = await fetch(`/api/auth/cafes?location=${encodeURIComponent(location)}`, { credentials: "include" });
+      const data = await res.json();
+      if (data.success) {
+        setCafesList(data.cafes);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCafes(false);
+    }
+  };
+
+  const handleBookCafe = async (cafeId: string, cafeName: string) => {
+    if (!cafeFinderLocation) return;
+    setBookingCafe(true);
+    try {
+      const res = await fetch(`/api/auth/connections/${cafeFinderLocation.connId}/book-cafe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          cafeId,
+          cafeName,
+          reservationDate: cafeFinderLocation.date ? new Date(cafeFinderLocation.date).toISOString().split('T')[0] : null,
+          reservationTime: "18:00",
+          guests: 2
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Cafe booked successfully!");
+        setCafeFinderLocation(null);
+        window.location.reload();
+      } else {
+        alert("Failed to book cafe: " + data.message);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error booking cafe.");
+    } finally {
+      setBookingCafe(false);
+    }
+  };
+
   useEffect(() => {
     fetch("/api/auth/dating-eligibility", { credentials: "include" })
       .then(res => res.json())
@@ -306,12 +359,19 @@ export default function ConnectionsSection({
                         {conn.meetingDate ? new Date(conn.meetingDate).toLocaleDateString() : ''} at {conn.meetingDate ? new Date(conn.meetingDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
                       </p>
                       {(conn.meetingLocation || conn.meetingVenue) && (
-                        <p className="text-[10px] text-white/70 mb-1 flex items-center justify-center gap-1">
-                          <MapPin className="w-3 h-3 text-rose-400" /> 
-                          {conn.meetingVenue && <span className="font-bold">{conn.meetingVenue}</span>}
-                          {conn.meetingVenue && conn.meetingLocation && <span>, </span>}
-                          {conn.meetingLocation && <span>{conn.meetingLocation}</span>}
-                        </p>
+                        <div className="flex flex-col items-center justify-center gap-1 mb-1">
+                          <p className="text-[10px] text-white/70 flex items-center justify-center gap-1">
+                            <MapPin className="w-3 h-3 text-rose-400" /> 
+                            {conn.meetingVenue && <span className="font-bold">{conn.meetingVenue}</span>}
+                            {conn.meetingVenue && conn.meetingLocation && <span>, </span>}
+                            {conn.meetingLocation && <span>{conn.meetingLocation}</span>}
+                          </p>
+                          {conn.meetingLocation && !conn.meetingVenue && (
+                             <button onClick={() => handleFindNearestCafe(conn.id, conn.meetingLocation!, conn.meetingDate)} className="mt-1 bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1 rounded-full text-[10px] transition border border-white/20 shadow-sm flex items-center gap-1">
+                               <MapPin className="w-3 h-3" /> Find nearest cafe
+                             </button>
+                          )}
+                        </div>
                       )}
                       <p className="text-[10px] text-rose-300 font-medium mb-3">
                         {conn.meetingMessage}
@@ -461,6 +521,51 @@ export default function ConnectionsSection({
                 >
                   {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cafeFinderLocation && (
+        <div className="fixed inset-0 z-[100] bg-[#0c1424]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#121b2b] border border-white/10 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative">
+            <button onClick={() => setCafeFinderLocation(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition z-10">
+              <X className="w-5 h-5" />
+            </button>
+            <div className="p-8">
+              <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20 shadow-inner">
+                <MapPin className="w-8 h-8" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-3">Cafes in {cafeFinderLocation.location}</h2>
+              <p className="text-slate-400 mb-8 max-w-lg leading-relaxed">
+                Select a cafe from our verified partners to book a table for your date.
+              </p>
+              
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                {loadingCafes ? (
+                  <div className="text-center py-10 text-slate-500">Finding cafes...</div>
+                ) : cafesList.length > 0 ? (
+                  cafesList.map(cafe => (
+                    <div key={cafe.id} className="p-4 rounded-2xl border border-white/10 bg-[#162136] hover:border-emerald-500/40 hover:bg-[#1a2741] transition group flex flex-col sm:flex-row items-center justify-between shadow-lg gap-4">
+                      <div>
+                        <h4 className="font-bold text-white text-lg">{cafe.cafeName}</h4>
+                        <p className="text-sm text-slate-400">{cafe.address || cafe.city}</p>
+                      </div>
+                      <button
+                        disabled={bookingCafe}
+                        onClick={() => handleBookCafe(cafe.id, cafe.cafeName)}
+                        className="w-full sm:w-auto px-6 py-2.5 bg-emerald-500/20 group-hover:bg-emerald-500 hover:bg-emerald-600 hover:text-white text-emerald-400 disabled:opacity-50 rounded-xl text-sm font-bold shadow-md transition"
+                      >
+                        {bookingCafe ? "Booking..." : "Book Table"}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-slate-400 text-sm">No registered cafes found in this area.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
