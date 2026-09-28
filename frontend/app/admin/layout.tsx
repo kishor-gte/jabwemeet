@@ -37,6 +37,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   MessageCircle,
+  Coffee,
 } from "lucide-react";
 import { AdminDialogProvider } from "@/components/admin/AdminDialogProvider";
 
@@ -57,6 +58,7 @@ const NAV_SECTIONS = [
       { label: "Relationship Managers", href: "/admin/relationship-managers", icon: HeartHandshake },
       { label: "User Management", href: "/admin/users", icon: Users },
       { label: "Event Control", href: "/admin/events", icon: Calendar },
+      { label: "Cafe Partner", href: "/admin/cafe-partner", icon: Coffee },
     ],
   },
   {
