@@ -1364,8 +1364,11 @@ router.get('/cafes', authenticateToken, async (req, res) => {
     const { location } = req.query;
     let whereClause = {};
     if (location) {
+      const mainLocation = location.split(',')[0].trim();
       whereClause = {
         OR: [
+          { city: { contains: mainLocation, mode: 'insensitive' } },
+          { address: { contains: mainLocation, mode: 'insensitive' } },
           { city: { contains: location, mode: 'insensitive' } },
           { address: { contains: location, mode: 'insensitive' } }
         ]

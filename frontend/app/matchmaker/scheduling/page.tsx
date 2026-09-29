@@ -255,6 +255,7 @@ export default function SchedulingPage() {
                   <input
                     type="date"
                     required
+                    min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]}
                     value={formData.meetingDate}
                     onChange={e => setFormData({...formData, meetingDate: e.target.value})}
                     className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
@@ -277,11 +278,30 @@ export default function SchedulingPage() {
                 <input
                   type="text"
                   required
+                  list="location-suggestions"
                   placeholder="e.g. Bangalore, Indiranagar"
                   value={formData.meetingLocation}
                   onChange={e => setFormData({...formData, meetingLocation: e.target.value})}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
                 />
+                <datalist id="location-suggestions">
+                  <option value="Indiranagar, Bangalore" />
+                  <option value="Koramangala, Bangalore" />
+                  <option value="Jayanagar, Bangalore" />
+                  <option value="JP Nagar, Bangalore" />
+                  <option value="Whitefield, Bangalore" />
+                  <option value="HSR Layout, Bangalore" />
+                  <option value="Malleswaram, Bangalore" />
+                  <option value="Bandra, Mumbai" />
+                  <option value="Andheri, Mumbai" />
+                  <option value="Colaba, Mumbai" />
+                  <option value="Connaught Place, Delhi" />
+                  <option value="Hauz Khas, Delhi" />
+                  <option value="Koregaon Park, Pune" />
+                  <option value="Jubilee Hills, Hyderabad" />
+                  <option value="Banjara Hills, Hyderabad" />
+                  <option value="Salt Lake, Kolkata" />
+                </datalist>
               </div>
 
               <div className="space-y-1.5">

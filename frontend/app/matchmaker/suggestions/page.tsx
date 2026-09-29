@@ -173,32 +173,42 @@ export default function SuggestionsPage() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Date & Time</label>
                 <input 
                   type="datetime-local" 
+                  min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16)}
                   value={meetingDate}
                   onChange={(e) => setMeetingDate(e.target.value)}
                   className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500" 
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Location / Area</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">General Location (Users will select cafe)</label>
                   <input 
                     type="text"
-                    placeholder="e.g. Indiranagar"
+                    list="location-suggestions"
+                    placeholder="e.g. Indiranagar, Bangalore"
                     value={meetingLocation}
                     onChange={(e) => setMeetingLocation(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500" 
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Place of Meet (Venue)</label>
-                  <input 
-                    type="text"
-                    placeholder="e.g. Starbucks"
-                    value={meetingVenue}
-                    onChange={(e) => setMeetingVenue(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-emerald-500" 
-                  />
+                  <datalist id="location-suggestions">
+                    <option value="Indiranagar, Bangalore" />
+                    <option value="Koramangala, Bangalore" />
+                    <option value="Jayanagar, Bangalore" />
+                    <option value="JP Nagar, Bangalore" />
+                    <option value="Whitefield, Bangalore" />
+                    <option value="HSR Layout, Bangalore" />
+                    <option value="Malleswaram, Bangalore" />
+                    <option value="Bandra, Mumbai" />
+                    <option value="Andheri, Mumbai" />
+                    <option value="Colaba, Mumbai" />
+                    <option value="Connaught Place, Delhi" />
+                    <option value="Hauz Khas, Delhi" />
+                    <option value="Koregaon Park, Pune" />
+                    <option value="Jubilee Hills, Hyderabad" />
+                    <option value="Banjara Hills, Hyderabad" />
+                    <option value="Salt Lake, Kolkata" />
+                  </datalist>
                 </div>
               </div>
               
