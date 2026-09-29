@@ -1361,7 +1361,7 @@ router.post('/chat/:contactId', authenticateToken, async (req, res) => {
 // CAFE FINDER ENDPOINTS
 router.get('/cafes', authenticateToken, async (req, res) => {
   try {
-    const { location } = req.query;
+    const { location, dateTime } = req.query;
     let whereClause = {};
     if (location) {
       const mainLocation = location.split(',')[0].trim();
@@ -1374,11 +1374,32 @@ router.get('/cafes', authenticateToken, async (req, res) => {
         ]
       };
     }
-    const cafes = await prisma.cafeProfile.findMany({
+    let cafes = await prisma.cafeProfile.findMany({
       where: whereClause,
       include: { user: { select: { name: true, email: true } }, menuItems: true },
       take: 20
     });
+
+    if (dateTime) {
+      const dateObj = new Date(dateTime);
+      if (!isNaN(dateObj.getTime())) {
+        const resDate = dateObj.toISOString().split('T')[0];
+        const resTime = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+        
+        for (let cafe of cafes) {
+          const reservations = await prisma.cafeReservation.findMany({
+            where: {
+              cafeId: cafe.id,
+              date: resDate,
+              time: resTime,
+              status: { not: 'Cancelled' }
+            }
+          });
+          cafe.isBooked = reservations.length > 0;
+        }
+      }
+    }
+
     res.json({ success: true, cafes });
   } catch (error) {
     console.error('Error fetching cafes:', error);

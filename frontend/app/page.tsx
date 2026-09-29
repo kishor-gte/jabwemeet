@@ -1271,8 +1271,8 @@ export default function HomePage() {
           <div>
             <h3 className="text-white font-semibold mb-3">Trust & Support</h3>
             <ul className="space-y-2 text-xs">
-              <li><button onClick={() => alert("Terms: Community respect and offline event safety.")} className="hover:text-white">Terms of Service</button></li>
-              <li><button onClick={() => alert("Privacy: We protect your verified identity.")} className="hover:text-white">Privacy Policy</button></li>
+              <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
               <li><button onClick={() => setShowSafetyModal(true)} className="hover:text-white">Safety Pledge</button></li>
             </ul>
           </div>

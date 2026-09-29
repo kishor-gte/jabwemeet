@@ -70,7 +70,7 @@ export default function ConnectionsSection({
     setCafeFinderLocation({ connId, location, date });
     setLoadingCafes(true);
     try {
-      const res = await fetch(`/api/auth/cafes?location=${encodeURIComponent(location)}`, { credentials: "include" });
+      const res = await fetch(`/api/auth/cafes?location=${encodeURIComponent(location)}&dateTime=${encodeURIComponent(date || '')}`, { credentials: "include" });
       const data = await res.json();
       if (data.success) {
         setCafesList(data.cafes);
@@ -86,6 +86,7 @@ export default function ConnectionsSection({
     if (!cafeFinderLocation) return;
     setBookingCafe(true);
     try {
+      const d = cafeFinderLocation.date ? new Date(cafeFinderLocation.date) : null;
       const res = await fetch(`/api/auth/connections/${cafeFinderLocation.connId}/book-cafe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,8 +94,8 @@ export default function ConnectionsSection({
         body: JSON.stringify({
           cafeId,
           cafeName,
-          reservationDate: cafeFinderLocation.date ? new Date(cafeFinderLocation.date).toISOString().split('T')[0] : null,
-          reservationTime: "18:00",
+          reservationDate: d ? d.toISOString().split('T')[0] : null,
+          reservationTime: d ? `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}` : "18:00",
           guests: 2
         })
       });
@@ -553,11 +554,11 @@ export default function ConnectionsSection({
                         <p className="text-sm text-slate-400">{cafe.address || cafe.city}</p>
                       </div>
                       <button
-                        disabled={bookingCafe}
+                        disabled={bookingCafe || cafe.isBooked}
                         onClick={() => handleBookCafe(cafe.id, cafe.cafeName)}
-                        className="w-full sm:w-auto px-6 py-2.5 bg-emerald-500/20 group-hover:bg-emerald-500 hover:bg-emerald-600 hover:text-white text-emerald-400 disabled:opacity-50 rounded-xl text-sm font-bold shadow-md transition"
+                        className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition ${cafe.isBooked ? 'bg-slate-500/20 text-slate-400 cursor-not-allowed' : 'bg-emerald-500/20 group-hover:bg-emerald-500 hover:bg-emerald-600 hover:text-white text-emerald-400 disabled:opacity-50'}`}
                       >
-                        {bookingCafe ? "Booking..." : "Book Table"}
+                        {cafe.isBooked ? "Fully Booked" : bookingCafe ? "Booking..." : "Book Table"}
                       </button>
                     </div>
                   ))

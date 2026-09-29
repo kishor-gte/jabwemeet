@@ -46,12 +46,17 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen bg-[#0b111e] text-white flex flex-col items-center justify-center p-6 font-sans">
-      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white rounded-full transition text-sm font-semibold">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Home
-      </Link>
+      
 
-      <div className="w-full max-w-md bg-[#131d2e] border border-white/10 rounded-2xl p-8 shadow-2xl">
+      
+      <div className="absolute top-6 left-6 sm:top-10 sm:left-10">
+        <button onClick={() => router.push("/")} className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white rounded-full transition text-sm font-semibold">
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+      </div>
+      <div className="w-full max-w-md bg-[#131d2e] border border-white/10 rounded-2xl p-8 shadow-2xl relative">
+        
         <div className="text-center mb-6">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-bold text-white">

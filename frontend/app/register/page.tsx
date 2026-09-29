@@ -57,6 +57,44 @@ function RegisterContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    // Validations
+    if (name.trim().length < 3) {
+      setError("Full Name must be at least 3 characters.");
+      return;
+    }
+    if (!/^[a-zA-Z\\s]+$/.test(name.trim())) {
+      setError("Full Name can only contain letters and spaces.");
+      return;
+    }
+    if (city && city.trim().length > 50) {
+      setError("City name is too long (maximum 50 characters).");
+      return;
+    }
+    
+    if (role === "USER" || role === "HOST" || role === "CAFE") {
+      if (dob) {
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          setError("You must be at least 18 years old.");
+          return;
+        }
+        if (age > 100) {
+          setError("Please enter a valid Date of Birth (age cannot exceed 100).");
+          return;
+        }
+      } else if (role === "USER") {
+        setError("Date of Birth is required.");
+        return;
+      }
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -277,7 +315,7 @@ function RegisterContent() {
             <button
               type="submit"
               disabled={loading || otp.length < 6}
-              className="w-full mt-4 py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50"
+              className="w-full mt-4 py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Verifying..." : "Verify OTP"}
             </button>
@@ -440,6 +478,8 @@ function RegisterContent() {
                       required
                       value={dob}
                       onChange={(e) => setDob(e.target.value)}
+                      max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
+                      min={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split("T")[0]}
                       className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#e06d53]"
                     />
                   </div>
@@ -450,7 +490,7 @@ function RegisterContent() {
                       type="text"
                       required
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      onChange={(e) => setCity(e.target.value)} maxLength={50}
                       placeholder="e.g. Bangalore"
                       className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
                     />
@@ -499,7 +539,7 @@ function RegisterContent() {
                   <input
                     type="text"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => setCity(e.target.value)} maxLength={50}
                     placeholder="e.g. Bangalore, Mumbai, Delhi"
                     className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
                   />
@@ -576,7 +616,7 @@ function RegisterContent() {
                   className="accent-[#e06d53]"
                   required
                 />
-                <span>I agree to the Terms & Conditions.</span>
+                <span>I agree to the <Link href="/terms" target="_blank" className="text-[#e06d53] hover:underline">Terms & Conditions</Link>.</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -586,14 +626,14 @@ function RegisterContent() {
                   className="accent-[#e06d53]"
                   required
                 />
-                <span>I agree to the Privacy Policy.</span>
+                <span>I agree to the <Link href="/privacy" target="_blank" className="text-[#e06d53] hover:underline">Privacy Policy</Link>.</span>
               </label>
             </div>
 
             <button
               type="submit"
               disabled={loading || !terms || !privacy}
-              className="w-full mt-3 py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50"
+              className="w-full mt-3 py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Creating account..." : role === "MATCHMAKER" ? "SUBMIT MATCHMAKER APPLICATION" : "CREATE MY ACCOUNT"}
             </button>
