@@ -69,9 +69,9 @@ router.get('/overview', async (req, res) => {
       openTicketsCount,
       pendingApprovalsCount,
     ] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count({ where: { role: { not: 'ADMIN' } } }),
       prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "User" WHERE "status" = 'ACTIVE'`),
-      prisma.user.count({ where: { isVerified: true } }),
+      prisma.user.count({ where: { isVerified: true, role: { not: 'ADMIN' } } }),
       prisma.event.count({ where: { date: { gte: new Date() } } }),
       prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "EventRegistration" WHERE "createdAt" >= CURRENT_DATE`),
       prisma.$queryRawUnsafe(`SELECT COALESCE(SUM("amount"), 0)::float as sum FROM "Payment" WHERE "status" = 'SUCCESS'`),
@@ -369,8 +369,12 @@ router.get('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findUnique({
-      where: { id },
+    let userIdStr = id;
+    if (id.startsWith('USR-')) {
+      userIdStr = id.replace('USR-', '').toLowerCase();
+    }
+    const user = await prisma.user.findFirst({
+      where: id.startsWith('USR-') ? { id: { endsWith: userIdStr } } : { id },
       include: {
         assignedManager: {
           select: { id: true, name: true, email: true, phone: true },
@@ -468,7 +472,9 @@ router.patch('/users/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status, isVerified, isApproved, staffRole, internalNotes, reason } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { id } });
+    let lookupId = id; if(id.startsWith('USR-')) lookupId = id.replace('USR-', '').toLowerCase();
+    const existingUser = await prisma.user.findFirst({ where: id.startsWith('USR-') ? { id: { endsWith: lookupId } } : { id } });
+    if (existingUser) id = existingUser.id;
     if (!existingUser) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -1208,8 +1214,12 @@ router.get('/buddy-sessions', async (req, res) => {
 async function getStaffMemberDetails(req, res) {
   try {
     const { id } = req.params;
-    const user = await prisma.user.findUnique({
-      where: { id },
+    let userIdStr = id;
+    if (id.startsWith('USR-')) {
+      userIdStr = id.replace('USR-', '').toLowerCase();
+    }
+    const user = await prisma.user.findFirst({
+      where: id.startsWith('USR-') ? { id: { endsWith: userIdStr } } : { id },
       select: {
         id: true,
         name: true,
@@ -3728,3 +3738,6 @@ router.post('/test-email', async (req, res) => {
 });
 
 module.exports = router;
+
+
+

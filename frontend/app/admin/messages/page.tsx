@@ -113,13 +113,13 @@ export default function AdminMessagesPage() {
             </button>
             <h2 className="font-bold text-lg text-white">RM Channel</h2>
             <div className="mt-4 relative">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input type="text" placeholder="Search RMs..." className="w-full pl-9 pr-4 py-2 bg-slate-800 border-none rounded-xl text-sm outline-none text-white focus:ring-2 focus:ring-rose-500/50" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {rms.length === 0 ? (
-              <p className="p-6 text-sm text-slate-500 text-center">No approved Relationship Managers found.</p>
+              <p className="p-6 text-sm text-slate-400 text-center">No approved Relationship Managers found.</p>
             ) : (
               rms.map(rm => (
                 <div 
@@ -168,7 +168,7 @@ export default function AdminMessagesPage() {
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {activeChat.length === 0 && (
-                <div className="text-center text-slate-500 text-sm py-10">
+                <div className="text-center text-slate-400 text-sm py-10">
                   No messages yet. Start a conversation with {selectedContact.name}.
                 </div>
               )}
@@ -188,7 +188,7 @@ export default function AdminMessagesPage() {
                   onChange={e => setMessage(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder={`Message ${selectedContact.name}...`} 
-                  className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none resize-none py-3 px-2 text-sm outline-none text-slate-200 custom-scrollbar placeholder:text-slate-500"
+                  className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none resize-none py-3 px-2 text-sm outline-none text-slate-200 custom-scrollbar placeholder:text-slate-400"
                   rows={1}
                 />
                 <button 
@@ -202,7 +202,7 @@ export default function AdminMessagesPage() {
             </div>
           </div>
         ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center bg-[#0b1120] flex-col text-slate-500">
+          <div className="hidden md:flex flex-1 items-center justify-center bg-[#0b1120] flex-col text-slate-400">
             <HeartHandshake className="w-16 h-16 mb-4 opacity-20" />
             <p>Select a Relationship Manager to start chatting.</p>
           </div>
@@ -223,13 +223,13 @@ export default function AdminMessagesPage() {
             </button>
             <h2 className="font-bold text-lg text-white">BB Channel</h2>
             <div className="mt-4 relative">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input type="text" placeholder="Search Buddies..." className="w-full pl-9 pr-4 py-2 bg-slate-800 border-none rounded-xl text-sm outline-none text-white focus:ring-2 focus:ring-purple-500/50" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {bbs.length === 0 ? (
-              <p className="p-6 text-sm text-slate-500 text-center">No approved Breakup Buddies found.</p>
+              <p className="p-6 text-sm text-slate-400 text-center">No approved Breakup Buddies found.</p>
             ) : (
               bbs.map(bb => (
                 <div 
@@ -278,7 +278,7 @@ export default function AdminMessagesPage() {
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {activeChat.length === 0 && (
-                <div className="text-center text-slate-500 text-sm py-10">
+                <div className="text-center text-slate-400 text-sm py-10">
                   No messages yet. Start a conversation with {selectedContact.displayName || selectedContact.name}.
                 </div>
               )}
@@ -298,7 +298,7 @@ export default function AdminMessagesPage() {
                   onChange={e => setMessage(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder={`Message ${selectedContact.displayName || selectedContact.name}...`} 
-                  className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none resize-none py-3 px-2 text-sm outline-none text-slate-200 custom-scrollbar placeholder:text-slate-500"
+                  className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none resize-none py-3 px-2 text-sm outline-none text-slate-200 custom-scrollbar placeholder:text-slate-400"
                   rows={1}
                 />
                 <button 
@@ -312,7 +312,7 @@ export default function AdminMessagesPage() {
             </div>
           </div>
         ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center bg-[#0b1120] flex-col text-slate-500">
+          <div className="hidden md:flex flex-1 items-center justify-center bg-[#0b1120] flex-col text-slate-400">
             <Heart className="w-16 h-16 mb-4 opacity-20" />
             <p>Select a Breakup Buddy to start chatting.</p>
           </div>
@@ -324,8 +324,8 @@ export default function AdminMessagesPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Admin Communications Center</h1>
-        <p className="text-slate-500 mt-1">Select a department to communicate with.</p>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Admin Communications Center</h1>
+        <p className="text-slate-400 mt-1">Select a department to communicate with.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -336,8 +336,8 @@ export default function AdminMessagesPage() {
           <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
             <HeartHandshake className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Relationship Managers</h2>
-          <p className="text-slate-500 text-sm">
+          <h2 className="text-xl font-bold text-white mb-2">Relationship Managers</h2>
+          <p className="text-slate-400 text-sm">
             Message the matchmakers. Broadcast updates, coordinate dates, or assist with client issues.
           </p>
         </button>
@@ -349,8 +349,8 @@ export default function AdminMessagesPage() {
           <div className="w-12 h-12 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
             <Heart className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Breakup Buddies</h2>
-          <p className="text-slate-500 text-sm">
+          <h2 className="text-xl font-bold text-white mb-2">Breakup Buddies</h2>
+          <p className="text-slate-400 text-sm">
             Message the support buddies. Assist with urgent session issues or general support.
           </p>
         </button>
@@ -358,3 +358,4 @@ export default function AdminMessagesPage() {
     </div>
   );
 }
+

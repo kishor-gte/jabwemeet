@@ -71,7 +71,28 @@ function RegisterContent() {
       setError("City name is too long (maximum 50 characters).");
       return;
     }
+
+    if (!/^(?:\+91|0)?[6-9]\d{9}$/.test(phone.trim().replace(/\s+/g, ''))) {
+      setError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
     
+    const pwScore = [
+      /[A-Z]/.test(password),
+      /[a-z]/.test(password),
+      /[0-9]/.test(password),
+      /[!@#$%^&*(),.?":{}|<>\_\-+=\[\]\\/]/.test(password)
+    ].filter(Boolean).length;
+
+    if (pwScore < 2) {
+      setError("Password is too weak. Please include a mix of uppercase, lowercase, numbers, and special characters.");
+      return;
+    }
     if (role === "USER" || role === "HOST" || role === "CAFE") {
       if (dob) {
         const birthDate = new Date(dob);
@@ -122,12 +143,25 @@ function RegisterContent() {
         if (city.trim()) formData.append("city", city.trim());
 
         const gov = document.getElementById("reg_govIdProof") as HTMLInputElement;
-        if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
         const addr = document.getElementById("reg_addressProof") as HTMLInputElement;
-        if (addr?.files?.[0]) formData.append("addressProof", addr.files[0]);
         const edu = document.getElementById("reg_eduCertificate") as HTMLInputElement;
-        if (edu?.files?.[0]) formData.append("eduCertificate", edu.files[0]);
         const work = document.getElementById("reg_workExperience") as HTMLInputElement;
+
+        const maxSizeBytes = 5 * 1024 * 1024;
+        if (
+          (gov?.files?.[0] && gov.files[0].size > maxSizeBytes) ||
+          (addr?.files?.[0] && addr.files[0].size > maxSizeBytes) ||
+          (edu?.files?.[0] && edu.files[0].size > maxSizeBytes) ||
+          (work?.files?.[0] && work.files[0].size > maxSizeBytes)
+        ) {
+          setError("Document file size cannot exceed 5MB.");
+          setLoading(false);
+          return;
+        }
+
+        if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
+        if (addr?.files?.[0]) formData.append("addressProof", addr.files[0]);
+        if (edu?.files?.[0]) formData.append("eduCertificate", edu.files[0]);
         if (work?.files?.[0]) formData.append("workExperience", work.files[0]);
 
         reqBody = formData;
@@ -218,8 +252,16 @@ function RegisterContent() {
   }
 
   return (
-    <div className="h-screen overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-[#0b111e] text-white flex flex-col items-center justify-start p-6 font-sans">
-      <div className="w-full max-w-lg bg-[#131d2e] border border-white/10 rounded-3xl p-8 shadow-2xl my-8 shrink-0">
+    <div className="relative min-h-screen bg-[#0b111e] text-white flex flex-col items-center justify-center p-6 font-sans">
+      
+      <div className="absolute top-6 left-6 sm:top-10 sm:left-10 z-10">
+        <button onClick={() => router.push("/")} className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white rounded-full transition text-sm font-semibold">
+          <ArrowLeft className="w-5 h-5" />
+          Back
+        </button>
+      </div>
+
+      <div className="w-full max-w-lg bg-[#131d2e] border border-white/10 rounded-3xl p-8 shadow-2xl my-8 shrink-0 relative">
         <div className="text-center mb-6">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-bold text-white shadow-md">
@@ -252,7 +294,7 @@ function RegisterContent() {
               onClick={() => setRole("HOST")}
               className={`py-2 px-1 text-center rounded-xl transition ${
                 role === "HOST"
-                  ? "bg-rose-600 text-white shadow-md"
+                  ? "bg-[#e06d53] text-white shadow-md"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -263,7 +305,7 @@ function RegisterContent() {
               onClick={() => setRole("CAFE")}
               className={`py-2 px-1 text-center rounded-xl transition ${
                 role === "CAFE"
-                  ? "bg-sky-600 text-white shadow-md"
+                  ? "bg-[#e06d53] text-white shadow-md"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -480,7 +522,7 @@ function RegisterContent() {
                       onChange={(e) => setDob(e.target.value)}
                       max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
                       min={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split("T")[0]}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#e06d53]"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#e06d53] [color-scheme:dark]"
                     />
                   </div>
 

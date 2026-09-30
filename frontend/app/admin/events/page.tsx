@@ -269,13 +269,7 @@ export default function AdminEventsPage() {
           </p>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold shadow-lg shadow-red-500/20 transition self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Event</span>
-        </button>
+        
       </div>
 
       {/* FILTERS */}
@@ -776,3 +770,4 @@ export default function AdminEventsPage() {
     </div>
   );
 }
+
