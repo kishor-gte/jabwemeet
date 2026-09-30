@@ -244,12 +244,12 @@ export default function AdminUsersPage() {
                         </div>
                         <div>
                           <a
-                            href={`/admin/users/${u.id}`}
+                            href={`/admin/users/USR-${u.id.slice(-6).toUpperCase()}`}
                             className="font-bold text-white hover:text-red-400 transition flex items-center gap-1.5"
                           >
                             <span>{u.name}</span>
                           </a>
-                          <span className="text-[10px] text-slate-500 block">ID: {u.id.substring(0, 10)}...</span>
+                          <span className="text-[10px] text-slate-500 block">ID: {"USR-" + u.id.slice(-6).toUpperCase()}</span>
                         </div>
                       </div>
                     </td>
@@ -286,7 +286,9 @@ export default function AdminUsersPage() {
                     </td>
 
                     <td className="px-4 py-4">
-                      {u.isVerified ? (
+                      {u.role === "ADMIN" ? (
+                        <span className="text-slate-500 text-[10px] font-semibold">N/A</span>
+                      ) : u.isVerified ? (
                         <span className="inline-flex items-center gap-1 text-emerald-400 text-xs font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Verified</span>
@@ -322,14 +324,14 @@ export default function AdminUsersPage() {
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <a
-                          href={`/admin/users/${u.id}`}
+                          href={`/admin/users/USR-${u.id.slice(-6).toUpperCase()}`}
                           className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition"
                           title="View 360° Profile"
                         >
                           <Eye className="w-4 h-4" />
                         </a>
 
-                        {!u.isVerified && (
+                        {!u.isVerified && u.role !== "ADMIN" && (
                           <button
                             onClick={() =>
                               setConfirmDialog({
@@ -457,3 +459,5 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+
+

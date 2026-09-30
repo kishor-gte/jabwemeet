@@ -267,7 +267,7 @@ router.post('/register', upload.fields([
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
 
         role: normalizedRole,
-        isVerified: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+        isVerified: false,
         isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
 
         idType: idType ? String(idType).trim() : null,
@@ -1439,3 +1439,4 @@ router.post('/connections/:id/book-cafe', authenticateToken, async (req, res) =>
 
 
 module.exports = router;
+

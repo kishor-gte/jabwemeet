@@ -740,15 +740,7 @@ function DashboardContent() {
         </div>
 
         <div className="flex items-center gap-2">
-          {user.role === "ADMIN" && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold shadow-md shadow-red-500/25 border border-red-400/30 transition group"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Admin</span>
-            </Link>
-          )}
+          
           <span className="text-xs font-semibold text-slate-300 hidden sm:inline truncate max-w-[120px]">
             {user.name}
           </span>
@@ -1145,3 +1137,4 @@ export default function DashboardPage() {
     </Suspense>
   );
 }
+

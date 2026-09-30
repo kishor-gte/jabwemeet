@@ -60,6 +60,14 @@ export default function AdminUserProfilePage() {
   }, [userId]);
 
   async function handleSaveStatus() {
+    if (!internalNotes || internalNotes.trim().length < 10) {
+      alert({
+        title: "Validation Error",
+        message: "Staff internal notes are required and must be at least 10 characters.",
+        type: "danger"
+      });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/users/${userId}/status`, {
@@ -142,7 +150,7 @@ export default function AdminUserProfilePage() {
               {user.status || "ACTIVE"}
             </span>
           </h2>
-          <span className="text-xs text-slate-400">ID: {user.id}</span>
+          <span className="text-xs text-slate-400">ID: {"USR-" + user.id.slice(-6).toUpperCase()}</span>
         </div>
       </div>
 
@@ -454,3 +462,5 @@ export default function AdminUserProfilePage() {
     </div>
   );
 }
+
+
