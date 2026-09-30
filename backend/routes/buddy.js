@@ -203,33 +203,83 @@ router.get('/reviews', async (req, res) => {
   }
 });
 
-router.post('/reviews', async (req, res) => {
+router.post('/reviews', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user?.userId || req.body.userId;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
+    const userId = req.user.userId;
     const { buddyId, rating, comment } = req.body;
     if (!buddyId || !rating) {
       return res.status(400).json({ success: false, message: 'Buddy ID and rating are required' });
     }
-    const numRating = parseInt(rating, 10);
-    const review = await prisma.buddyReview.create({
-      data: {
-        userId,
-        buddyId,
-        rating: Math.min(5, Math.max(1, numRating)),
-        comment: comment ? String(comment).trim() : null,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        buddy: { select: { id: true, name: true, displayName: true } },
-      },
+
+    if (userId === buddyId) {
+      return res.status(400).json({ success: false, message: 'You cannot review yourself' });
+    }
+
+    const buddy = await prisma.user.findUnique({
+      where: { id: buddyId },
+      select: { id: true, name: true, displayName: true }
     });
+
+    if (!buddy) {
+      return res.status(404).json({ success: false, message: 'Breakup buddy not found' });
+    }
+
+    // Verify interaction
+    const hasRequest = await prisma.buddyRequest.findFirst({
+      where: { userId, buddyId }
+    });
+    const hasSession = await prisma.buddySession.findFirst({
+      where: { userId, buddyId }
+    });
+
+    if (!hasRequest && !hasSession && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only review a Breakup Buddy after booking a session or initiating a consultation with them.'
+      });
+    }
+
+    const numRating = parseInt(rating, 10);
+    const parsedRating = Math.min(5, Math.max(1, isNaN(numRating) ? 5 : numRating));
+    const cleanComment = comment ? String(comment).trim().substring(0, 1000) : null;
+
+    // Check if user already reviewed this buddy
+    const existingReview = await prisma.buddyReview.findFirst({
+      where: { userId, buddyId }
+    });
+
+    let review;
+    if (existingReview) {
+      review = await prisma.buddyReview.update({
+        where: { id: existingReview.id },
+        data: {
+          rating: parsedRating,
+          comment: cleanComment,
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          buddy: { select: { id: true, name: true, displayName: true } },
+        }
+      });
+    } else {
+      review = await prisma.buddyReview.create({
+        data: {
+          userId,
+          buddyId,
+          rating: parsedRating,
+          comment: cleanComment,
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          buddy: { select: { id: true, name: true, displayName: true } },
+        },
+      });
+    }
+
     res.status(201).json({ success: true, review });
   } catch (error) {
     console.error('Error in POST /api/buddy/reviews:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Failed to submit review' });
   }
 });
 

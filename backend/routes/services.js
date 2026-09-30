@@ -12,8 +12,8 @@ const {
 const router = express.Router();
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "Ltg6uo9vI8TiFMVfj2cGm4I8",
+  key_id: process.env.RAZORPAY_KEY_ID || "",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
 });
 
 // 1. GET /api/services/relationship-managers (or /api/relationship-managers)
@@ -29,8 +29,6 @@ router.get("/relationship-managers", async (req, res) => {
         id: true,
         name: true,
         displayName: true,
-        email: true,
-        phone: true,
         city: true,
         gender: true,
         profileImage: true,
@@ -82,8 +80,6 @@ router.get("/breakup-buddies", async (req, res) => {
         id: true,
         name: true,
         displayName: true,
-        email: true,
-        phone: true,
         city: true,
         gender: true,
         profilePhoto: true,
@@ -112,7 +108,7 @@ router.get("/breakup-buddies", async (req, res) => {
     console.error("Error fetching approved breakup buddies:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch approved breakup buddies.", error: error.message, stack: error.stack,
+      message: "Failed to fetch approved breakup buddies.",
     });
   }
 });
@@ -613,8 +609,14 @@ router.post("/buddy-away/:requestId", authenticateToken, async (req, res) => {
   }
 });
 
-// 7c. POST /api/services/buddy-subscribe/:requestId — Upgrade to Hourly Subscription
+// 7c. POST /api/services/buddy-subscribe/:requestId — Administrative manual grant/override
 router.post("/buddy-subscribe/:requestId", authenticateToken, async (req, res) => {
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({
+      success: false,
+      message: "Direct manual subscription is restricted to Platform Administrators. To purchase a pass, please use the secure payment gateway."
+    });
+  }
   try {
     const { requestId } = req.params;
     const { packageId, durationHours, durationMinutes, durationSeconds } = req.body || {};
@@ -745,6 +747,10 @@ router.post("/buddy-review", authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: "Buddy ID and rating are required." });
     }
 
+    if (userId === buddyId) {
+      return res.status(400).json({ success: false, message: "You cannot review yourself." });
+    }
+
     const buddy = await prisma.user.findUnique({
       where: { id: buddyId },
       select: { id: true, name: true, displayName: true, email: true }
@@ -754,21 +760,53 @@ router.post("/buddy-review", authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "Breakup buddy not found." });
     }
 
+    // Verify user has actually had a session or request with this buddy
+    const hasRequest = await prisma.buddyRequest.findFirst({
+      where: { userId, buddyId }
+    });
+    const hasSession = await prisma.buddySession.findFirst({
+      where: { userId, buddyId }
+    });
+
+    if (!hasRequest && !hasSession && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: "You can only review a Breakup Buddy after booking a session or initiating a consultation with them."
+      });
+    }
+
     const reviewer = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true }
     });
 
     const parsedRating = Math.max(1, Math.min(5, parseInt(rating, 10) || 5));
+    const cleanComment = comment ? String(comment).trim().substring(0, 1000) : null;
 
-    const review = await prisma.buddyReview.create({
-      data: {
-        userId,
-        buddyId,
-        rating: parsedRating,
-        comment: comment ? comment.trim() : null,
-      }
+    // Check if user already reviewed this buddy; if so, update their existing review
+    const existingReview = await prisma.buddyReview.findFirst({
+      where: { userId, buddyId }
     });
+
+    let review;
+    if (existingReview) {
+      review = await prisma.buddyReview.update({
+        where: { id: existingReview.id },
+        data: {
+          rating: parsedRating,
+          comment: cleanComment,
+        }
+      });
+    } else {
+      review = await prisma.buddyReview.create({
+        data: {
+          userId,
+          buddyId,
+          rating: parsedRating,
+          comment: cleanComment,
+        }
+      });
+    }
 
     // Trigger New Review Email to the Breakup Buddy
     if (buddy.email) {
@@ -778,7 +816,7 @@ router.post("/buddy-review", authenticateToken, async (req, res) => {
           buddyName: buddy.displayName || buddy.name,
           userName: reviewer?.name || "A Member",
           rating: parsedRating,
-          comment: comment ? comment.trim() : "",
+          comment: cleanComment || "",
         });
       } catch (mailErr) {
         console.warn("Mail dispatch error on review:", mailErr.message);
@@ -831,15 +869,18 @@ router.post("/buddy-chat/:requestId", authenticateToken, async (req, res) => {
       if (!isOnline) {
         const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
         if (receiver && receiver.email) {
-          const { sendMail } = require('../services/emailService');
-          const subject = `📬 New Buddy Message from ${req.user.name || 'someone'}`;
+          const { sendMail, escapeHtml } = require('../services/emailService');
+          const safeSenderName = escapeHtml(req.user.name || 'someone');
+          const safeReceiverName = escapeHtml(receiver.name || 'there');
+          const safeSnippet = escapeHtml(text.substring(0, 50) + (text.length > 50 ? '...' : ''));
+          const subject = `📬 New Buddy Message from ${safeSenderName}`;
           const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
               <h2 style="color: #FF4081;">💌 You've got a new message!</h2>
-              <p>Hi ${receiver.name},</p>
+              <p>Hi ${safeReceiverName},</p>
               <p>You have an unread message waiting for you on JabWeMeet from your Buddy session.</p>
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF4081;">
-                <p><em>"${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"</em></p>
+                <p><em>"${safeSnippet}"</em></p>
               </div>
               <p>Since you weren't active, we thought we'd let you know. Log in now to reply and keep the conversation going! ✨</p>
               <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?tab=messages" style="display: inline-block; padding: 10px 20px; background-color: #FF4081; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Go to Messages 🚀</a>
@@ -1039,80 +1080,6 @@ router.get("/content", async (req, res) => {
   }
 });
 
-// 14. POST /api/services/buddy-review
-// Submit a real member review for a Breakup Buddy
-router.post("/buddy-review", async (req, res) => {
-  try {
-    let userId = null;
-
-    // Check auth token if available
-    let token = null;
-    if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
-    } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
-      token = req.headers.authorization.split(" ")[1];
-    }
-
-    if (token) {
-      try {
-        const jwt = require("jsonwebtoken");
-        const JWT_SECRET = process.env.JWT_SECRET || "jabweemeet_secret_key_prod_2026_super_secure_random";
-        const decoded = jwt.verify(token, JWT_SECRET);
-        userId = decoded.userId;
-      } catch (err) {
-        // Token invalid/expired
-      }
-    }
-
-    if (!userId && req.body.userId) {
-      userId = req.body.userId;
-    }
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Please log in to submit a review." });
-    }
-
-    const { buddyId, rating, comment } = req.body;
-    if (!buddyId || !rating) {
-      return res.status(400).json({ success: false, message: "Buddy ID and rating (1-5) are required." });
-    }
-
-    const numRating = parseInt(rating, 10);
-    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
-      return res.status(400).json({ success: false, message: "Rating must be a number between 1 and 5." });
-    }
-
-    const targetBuddy = await prisma.user.findUnique({
-      where: { id: buddyId },
-      select: { id: true, name: true, displayName: true }
-    });
-    if (!targetBuddy) {
-      return res.status(404).json({ success: false, message: "Breakup buddy not found." });
-    }
-
-    const review = await prisma.buddyReview.create({
-      data: {
-        userId,
-        buddyId,
-        rating: numRating,
-        comment: comment ? String(comment).trim() : null,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        buddy: { select: { id: true, name: true, displayName: true } },
-      },
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Thank you! Your review has been submitted successfully.",
-      review,
-    });
-  } catch (error) {
-    console.error("Error submitting buddy review:", error);
-    return res.status(500).json({ success: false, message: "Failed to submit review", error: error.message });
-  }
-});
 
 
 // --- BREAKUP BUDDY USER PACKAGES & LIMITS ---
@@ -1200,59 +1167,12 @@ router.get("/packages/breakup-buddy", async (req, res) => {
 });
 
 // 15. POST /api/services/packages/breakup-buddy/buy
-// Simulate purchasing a Breakup Buddy package
+// Deprecated mock endpoint - direct simulated purchase is blocked
 router.post("/packages/breakup-buddy/buy", authenticateToken, async (req, res) => {
-  try {
-    const { packageId } = req.body;
-    if (!packageId) return res.status(400).json({ success: false, message: "Package ID required." });
-
-    const packages = await prisma.$queryRawUnsafe(`
-      SELECT * FROM "ServicePackage" WHERE "id" = $1 LIMIT 1
-    `, packageId);
-
-    const pkg = packages[0];
-    if (!pkg) return res.status(404).json({ success: false, message: "Package not found." });
-
-    // Calculate expiry based on durationHours and durationMinutes (or durationDays)
-    let expiresAt = new Date();
-    let totalMs = 0;
-    if ((pkg.durationHours && pkg.durationHours > 0) || (pkg.durationMinutes && pkg.durationMinutes > 0)) {
-      totalMs = (((pkg.durationHours || 0) * 3600) + ((pkg.durationMinutes || 0) * 60)) * 1000;
-    } else if (pkg.durationDays && pkg.durationDays > 0) {
-      totalMs = pkg.durationDays * 24 * 60 * 60 * 1000;
-    } else {
-      totalMs = 1 * 60 * 60 * 1000; // 1 hour default
-    }
-    expiresAt.setTime(expiresAt.getTime() + totalMs);
-
-    await prisma.user.update({
-      where: { id: req.user.userId },
-      data: {
-        bbPackageId: pkg.id,
-        bbPackageStatus: "ACTIVE",
-        bbSessionsRemaining: 0,
-        bbCallMinutesRemaining: 999999, // Unlimited during active duration
-        bbChatMinutesRemaining: 999999, // Unlimited during active duration
-        bbPackageExpiresAt: expiresAt
-      }
-    });
-
-    // Record Payment transaction for Admin Earnings tracking (5% commission)
-    try {
-      const payId = `PAY-BB-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-      await prisma.$executeRawUnsafe(`
-        INSERT INTO "Payment" ("id", "userId", "amount", "type", "currency", "status", "gateway", "referenceId", "description", "createdAt")
-        VALUES ($1, $2, $3, 'BREAKUP_BUDDY_PACKAGE', 'INR', 'SUCCESS', 'Direct', $4, $5, NOW())
-      `, payId, req.user.userId, Number(pkg.price) || 0, pkg.id, `Breakup Buddy Package - ${pkg.name}`);
-    } catch (payErr) {
-      console.warn("Payment record error:", payErr.message);
-    }
-
-    return res.json({ success: true, message: "Package purchased successfully!" });
-  } catch (error) {
-    console.error("Error buying Breakup Buddy package:", error);
-    return res.status(500).json({ success: false, message: "Failed to buy package." });
-  }
+  return res.status(403).json({
+    success: false,
+    message: "Direct simulated purchase is disabled. Please purchase packages through the official payment gateway via /packages/create-razorpay-order."
+  });
 });
 
 // 16. POST /api/services/packages/create-razorpay-order
@@ -1309,7 +1229,7 @@ router.post("/packages/create-razorpay-order", authenticateToken, async (req, re
       currency: order.currency,
       package: pkg,
       buddy: request.buddy,
-      keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h"
+      keyId: process.env.RAZORPAY_KEY_ID || ""
     });
   } catch (error) {
     console.error("Error creating Razorpay order:", error);
@@ -1333,13 +1253,50 @@ router.post("/packages/verify-razorpay-payment", authenticateToken, async (req, 
     }
 
     // Verify signature
-    const secret = process.env.RAZORPAY_KEY_SECRET || "Ltg6uo9vI8TiFMVfj2cGm4I8";
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret) {
+      return res.status(500).json({ success: false, message: "Payment configuration error" });
+    }
     const hmac = crypto.createHmac("sha256", secret);
     hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const generatedSignature = hmac.digest("hex");
 
-    if (generatedSignature !== razorpay_signature) {
+    let isSignatureValid = false;
+    try {
+      const generatedBuf = Buffer.from(generatedSignature, "utf-8");
+      const signatureBuf = Buffer.from(razorpay_signature, "utf-8");
+      if (generatedBuf.length === signatureBuf.length) {
+        isSignatureValid = crypto.timingSafeEqual(generatedBuf, signatureBuf);
+      }
+    } catch (e) {
+      isSignatureValid = false;
+    }
+
+    if (!isSignatureValid) {
       return res.status(400).json({ success: false, message: "Payment verification failed: Invalid Signature" });
+    }
+
+    // Check for replay attacks - ensure razorpay_payment_id has not already been processed
+    const duplicatePayment = await prisma.$queryRawUnsafe(`
+      SELECT id FROM "Payment" WHERE "referenceId" = $1 LIMIT 1
+    `, razorpay_payment_id);
+
+    if (duplicatePayment && duplicatePayment.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "This payment has already been verified and processed."
+      });
+    }
+
+    // Verify request ownership
+    const targetRequest = await prisma.buddyRequest.findUnique({
+      where: { id: requestId }
+    });
+    if (!targetRequest) {
+      return res.status(404).json({ success: false, message: "Buddy connection request not found" });
+    }
+    if (targetRequest.userId !== req.user.userId && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: "Unauthorized: You are not the client for this request." });
     }
 
     // Fetch package to determine hours, minutes and price
@@ -1500,7 +1457,7 @@ router.post("/packages/verify-razorpay-payment", authenticateToken, async (req, 
     });
   } catch (error) {
     console.error("Error verifying Razorpay payment:", error);
-    return res.status(500).json({ success: false, message: error.message || "Payment verification failed" });
+    return res.status(500).json({ success: false, message: "Payment verification failed" });
   }
 });
 

@@ -1,5 +1,5 @@
 const prisma = require('../db');
-const { sendMail } = require('./emailService');
+const { sendMail, escapeHtml } = require('./emailService');
 
 // In-memory cache to prevent duplicate automated 24-hour reminder emails
 // Map of eventId -> timestamp of last sent reminder
@@ -113,7 +113,16 @@ async function sendEvent24hReminder({ eventId, targetUserId = null, triggeredByH
         ticketCodeMap[attendee.id] ||
         `TKT-${event.id.slice(-4).toUpperCase()}-${attendee.id.slice(-4).toUpperCase()}`;
 
-      const emailSubject = `⏰ Reminder: Your Event "${event.title}" is Tomorrow! [Code: ${ticketCode}]`;
+      const safeTitle = escapeHtml(event.title || 'Event');
+      const safeHostName = escapeHtml(hostName || 'Your Event Host');
+      const safeAttendeeName = escapeHtml(attendee.name || 'Friend');
+      const safeLocation = escapeHtml(event.location || '');
+      const safeCity = escapeHtml(event.city || '');
+      const safeTicketCode = escapeHtml(ticketCode || '');
+      const safeFormattedDate = escapeHtml(formattedDate);
+      const safeHostPhone = escapeHtml(hostPhone || '');
+
+      const emailSubject = `⏰ Reminder: Your Event "${safeTitle}" is Tomorrow! [Code: ${safeTicketCode}]`;
 
       const emailHtml = `
         <!DOCTYPE html>
@@ -140,10 +149,10 @@ async function sendEvent24hReminder({ eventId, targetUserId = null, triggeredByH
               <!-- CONTENT -->
               <div style="padding:36px 28px; line-height:1.65; font-size:14px; color:#cbd5e1;">
                 <h2 style="color:#ffffff; margin:0 0 10px 0; font-size:22px; font-weight:800;">
-                  Get Ready, ${attendee.name || 'Friend'}! 🎉
+                  Get Ready, ${safeAttendeeName}! 🎉
                 </h2>
                 <p style="margin:0 0 20px 0; color:#94a3b8; font-size:14px;">
-                  This is your 24-hour reminder that your upcoming event <strong style="color:#e06d53;">"${event.title}"</strong> hosted by <strong style="color:#ffffff;">${hostName}</strong> takes place <strong>TOMORROW</strong>!
+                  This is your 24-hour reminder that your upcoming event <strong style="color:#e06d53;">"${safeTitle}"</strong> hosted by <strong style="color:#ffffff;">${safeHostName}</strong> takes place <strong>TOMORROW</strong>!
                 </p>
 
                 <!-- EVENT CARD -->
@@ -154,22 +163,22 @@ async function sendEvent24hReminder({ eventId, targetUserId = null, triggeredByH
                   
                   <div style="margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
                     <span style="color:#94a3b8; font-size:12px; display:block;">🎉 Event Name:</span>
-                    <strong style="color:#ffffff; font-size:15px;">${event.title}</strong>
+                    <strong style="color:#ffffff; font-size:15px;">${safeTitle}</strong>
                   </div>
 
                   <div style="margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
                     <span style="color:#94a3b8; font-size:12px; display:block;">👤 Event Host:</span>
-                    <strong style="color:#fbbf24; font-size:14px;">${hostName}</strong>
+                    <strong style="color:#fbbf24; font-size:14px;">${safeHostName}</strong>
                   </div>
 
                   <div style="margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
                     <span style="color:#94a3b8; font-size:12px; display:block;">📅 Date & Time:</span>
-                    <strong style="color:#38bdf8; font-size:14px;">📅 ${formattedDate}</strong>
+                    <strong style="color:#38bdf8; font-size:14px;">📅 ${safeFormattedDate}</strong>
                   </div>
 
                   <div style="margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
                     <span style="color:#94a3b8; font-size:12px; display:block;">📍 Location / Venue:</span>
-                    <span style="color:#e2e8f0; font-size:14px; font-weight:600;">${event.location}, ${event.city}</span>
+                    <span style="color:#e2e8f0; font-size:14px; font-weight:600;">${safeLocation}, ${safeCity}</span>
                   </div>
 
                   <div style="margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:8px;">
@@ -180,7 +189,7 @@ async function sendEvent24hReminder({ eventId, targetUserId = null, triggeredByH
                   <div style="background:#0b1120; border-radius:12px; padding:14px 18px; margin-top:14px; text-align:center;">
                     <div style="color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Official Ticket Pass Code</div>
                     <div style="font-family:monospace; font-size:22px; font-weight:900; color:#34d399; letter-spacing:3px;">
-                      ${ticketCode}
+                      ${safeTicketCode}
                     </div>
                   </div>
                 </div>
@@ -201,14 +210,14 @@ async function sendEvent24hReminder({ eventId, targetUserId = null, triggeredByH
                 <!-- HOST PERSONAL NOTE -->
                 <div style="background:rgba(224,109,83,0.1); border-left:4px solid #e06d53; border-radius:12px; padding:16px; margin:22px 0;">
                   <p style="margin:0; color:#fca5a5; font-size:13px; font-style:italic; line-height:1.6;">
-                    "Hi ${attendee.name}! I am looking forward to hosting you tomorrow at ${event.title}. We have a wonderful session prepared for everyone. See you tomorrow!"
+                    "Hi ${safeAttendeeName}! I am looking forward to hosting you tomorrow at ${safeTitle}. We have a wonderful session prepared for everyone. See you tomorrow!"
                   </p>
                   <p style="margin:8px 0 0 0; color:#ffffff; font-size:13px; font-weight:700;">
-                    — ${hostName} (Event Host)
+                    — ${safeHostName} (Event Host)
                   </p>
-                  ${hostPhone ? `
+                  ${safeHostPhone ? `
                     <p style="margin:4px 0 0 0; color:#94a3b8; font-size:12px;">
-                      📞 Host Contact: <a href="tel:${hostPhone}" style="color:#38bdf8; text-decoration:none;">${hostPhone}</a>
+                      📞 Host Contact: <a href="tel:${safeHostPhone}" style="color:#38bdf8; text-decoration:none;">${safeHostPhone}</a>
                     </p>
                   ` : ''}
                 </div>
@@ -223,7 +232,7 @@ async function sendEvent24hReminder({ eventId, targetUserId = null, triggeredByH
 
               <!-- FOOTER -->
               <div style="background:#0a101d; padding:24px 20px; text-align:center; font-size:12px; color:#64748b; border-top:1px solid rgba(255,255,255,0.05);">
-                <p style="margin:0 0 6px 0;">Sent on behalf of <strong>${hostName}</strong> via <strong>JabWeMeet</strong>.</p>
+                <p style="margin:0 0 6px 0;">Sent on behalf of <strong>${safeHostName}</strong> via <strong>JabWeMeet</strong>.</p>
                 <p style="margin:0; font-size:11px; color:#475569;">Real People • Real Places • Real Connections</p>
               </div>
 

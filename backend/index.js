@@ -1,9 +1,10 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 require('./ensure-deps');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const path = require('path');
 
 const authRouter = require('./routes/auth');
 const eventsRouter = require('./routes/events');
@@ -12,6 +13,10 @@ const matchmakerRouter = require('./routes/matchmaker');
 const servicesRouter = require('./routes/services');
 const { initAdminDb } = require('./db/adminInit');
 const { startEventReminderCron } = require('./services/eventReminderService');
+const prisma = require('./db');
+const { authenticateToken } = require('./middleware/auth');
+
+const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -25,6 +30,16 @@ startEventReminderCron();
 // Trust proxy for rate limiting behind reverse proxies (like Next.js rewrites)
 app.set('trust proxy', 1);
 
+// HTTP Security Headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    contentSecurityPolicy: false,
+    xFrameOptions: { action: "sameorigin" },
+  })
+);
+
 // CORS configuration supporting credentials (cookies)
 const allowedOrigins = [
   'http://localhost:3000',
@@ -33,8 +48,22 @@ const allowedOrigins = [
   'http://127.0.0.1:5001',
 ];
 
-if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
+if (process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL.split(',').forEach(url => {
+    const trimmed = url.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
+if (process.env.ALLOWED_ORIGINS) {
+  process.env.ALLOWED_ORIGINS.split(',').forEach(url => {
+    const trimmed = url.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
 }
 
 app.use(
@@ -43,15 +72,14 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true); 
+      return callback(new Error('Blocked by CORS policy: Origin not allowed'));
     },
     credentials: true,
   })
 );
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
 app.use(cookieParser());
 
 app.use((req, res, next) => {
@@ -62,9 +90,61 @@ app.use((req, res, next) => {
 const publicDir = path.join(__dirname, '..', 'frontend', 'public');
 app.use(express.static(publicDir));
 
-// Serve uploaded documents
+// Serve uploaded documents safely with restrictive security headers and KYC authorization
 const uploadsDir = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', async (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "default-src 'none'");
+
+  const filename = path.basename(req.path);
+  const isKycDoc = /^(govIdProof|addressProof|eduCertificate|workExperience)-/i.test(filename);
+
+  if (!isKycDoc) {
+    return next();
+  }
+
+  // Enforce authentication and ownership on all KYC and identity documents
+  return authenticateToken(req, res, async () => {
+    try {
+      // Platform admins have full clearance for verification audits
+      if (req.user.role === 'ADMIN') {
+        return next();
+      }
+
+      // Check if document belongs to the requesting user
+      const owner = await prisma.user.findFirst({
+        where: {
+          id: req.user.userId,
+          OR: [
+            { govIdProof: filename },
+            { addressProof: filename },
+            { eduCertificate: filename },
+            { workExperience: filename },
+          ],
+        },
+        select: { id: true },
+      });
+
+      if (!owner) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You do not have permission to view this confidential document.',
+        });
+      }
+
+      return next();
+    } catch (err) {
+      console.error('Error validating KYC document access:', err);
+      return res.status(500).json({ success: false, message: 'Authorization check failed' });
+    }
+  });
+}, express.static(uploadsDir, {
+  setHeaders: (res, filePath) => {
+    if (!filePath.match(/\.(jpg|jpeg|png|webp|pdf)$/i)) {
+      res.setHeader('Content-Disposition', 'attachment');
+    }
+  }
+}));
 
 // API Routes
 
@@ -139,7 +219,6 @@ app.use((err, req, res, next) => {
 
 const http = require('http');
 const { Server } = require('socket.io');
-const prisma = require('./db'); // Database
 
 const server = http.createServer(app);
 
@@ -151,26 +230,85 @@ const io = new Server(server, {
 });
 app.set('io', io);
 
+const jwt = require('jsonwebtoken');
+
+// Enforce JWT authentication on all WebSocket connections
+io.use((socket, next) => {
+  let token = null;
+
+  // 1. Check HTTP-only cookie in handshake headers
+  const cookieHeader = socket.handshake.headers.cookie;
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const parts = cookie.trim().split('=');
+      if (parts.length >= 2) {
+        acc[parts[0]] = decodeURIComponent(parts.slice(1).join('='));
+      }
+      return acc;
+    }, {});
+    if (cookies.token) {
+      token = cookies.token;
+    }
+  }
+
+  // 2. Check auth handshake object or authorization header
+  if (!token && socket.handshake.auth && socket.handshake.auth.token) {
+    token = socket.handshake.auth.token;
+  } else if (!token && socket.handshake.headers.authorization && socket.handshake.headers.authorization.startsWith('Bearer ')) {
+    token = socket.handshake.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return next(new Error('Authentication required for WebSocket connection'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = decoded;
+    return next();
+  } catch (err) {
+    return next(new Error('Invalid or expired WebSocket authentication token'));
+  }
+});
+
 // Track call intervals and metadata to update DB
 const activeCalls = new Map(); // requestId -> { interval, callLogId, startTime }
 
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
+  console.log(`Socket authenticated & connected: ${socket.id} (user: ${socket.user?.userId || 'unknown'})`);
 
   socket.on('join-buddy-room', (buddyId) => {
-    socket.join(`buddy-${buddyId}`);
-    socket.join(`user-${buddyId}`);
+    // Only allow joining own buddy room or if admin
+    const targetId = socket.user.role === 'ADMIN' ? buddyId : socket.user.userId;
+    socket.join(`buddy-${targetId}`);
+    socket.join(`user-${targetId}`);
   });
 
   socket.on('join-user-room', (userId) => {
-    socket.join(`user-${userId}`);
+    // Only allow joining own user room or if admin
+    const targetId = socket.user.role === 'ADMIN' ? userId : socket.user.userId;
+    socket.join(`user-${targetId}`);
   });
 
-  socket.on('join-request-room', (requestId) => {
-    socket.join(`request-${requestId}`);
+  socket.on('join-request-room', async (requestId) => {
+    try {
+      const request = await prisma.buddyRequest.findUnique({
+        where: { id: requestId },
+        select: { userId: true, buddyId: true }
+      });
+      if (!request) return;
+      const isParticipant = request.userId === socket.user.userId || request.buddyId === socket.user.userId || socket.user.role === 'ADMIN';
+      if (isParticipant) {
+        socket.join(`request-${requestId}`);
+      } else {
+        console.warn(`[Socket Security] Unauthorized attempt to join request-${requestId} by user ${socket.user.userId}`);
+      }
+    } catch (e) {
+      console.error('Error joining request room:', e);
+    }
   });
 
-  socket.on('initiate-call', async ({ requestId, callerId, buddyId, targetUserId, callerName, callerRole }) => {
+  socket.on('initiate-call', async ({ requestId, targetUserId, callerName, callerRole }) => {
     try {
       const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
       if (!request || request.voiceCallSeconds >= request.voiceCallLimitSeconds) {
@@ -178,9 +316,16 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const isUserCaller = callerRole ? callerRole === 'USER' : true;
-      const actualCallerId = callerId || (isUserCaller ? request.userId : request.buddyId);
-      const actualReceiverId = targetUserId || (isUserCaller ? request.buddyId : request.userId);
+      // Verify that caller is an authorized participant
+      const isUserCaller = request.userId === socket.user.userId;
+      const isBuddyCaller = request.buddyId === socket.user.userId;
+      if (!isUserCaller && !isBuddyCaller && socket.user.role !== 'ADMIN') {
+        socket.emit('call-rejected', { reason: 'unauthorized' });
+        return;
+      }
+
+      const actualCallerId = socket.user.userId;
+      const actualReceiverId = isUserCaller ? request.buddyId : request.userId;
 
       // Create CallLog in DB, defaulting to MISSED until accepted
       const callLog = await prisma.callLog.create({
@@ -364,16 +509,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  // WebRTC Signaling
+  // WebRTC Signaling (Restricted to verified room participants)
   socket.on('webrtc-offer', ({ requestId, offer }) => {
+    if (!requestId || !socket.rooms.has(`request-${requestId}`)) return;
     socket.to(`request-${requestId}`).emit('webrtc-offer', offer);
   });
 
   socket.on('webrtc-answer', ({ requestId, answer }) => {
+    if (!requestId || !socket.rooms.has(`request-${requestId}`)) return;
     socket.to(`request-${requestId}`).emit('webrtc-answer', answer);
   });
 
   socket.on('ice-candidate', ({ requestId, candidate }) => {
+    if (!requestId || !socket.rooms.has(`request-${requestId}`)) return;
     socket.to(`request-${requestId}`).emit('ice-candidate', candidate);
   });
 

@@ -1,33 +1,25 @@
-let transporter;
+const { sendQueuedMail } = require('../services/emailQueue');
 
-try {
-  const nodemailer = require('nodemailer');
-  transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.MAIL_PORT || '587', 10),
-    secure: process.env.MAIL_PORT == '465',
-    auth: {
-      user: process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com',
-      pass: process.env.MAIL_PASSWORD || 'bhzoxxwajawaqmps',
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
-} catch (err) {
-  console.warn('⚠️ [JabWeMeet Mailer] "nodemailer" not installed or failed to load. Outgoing emails will be logged instead of failing.');
-  transporter = {
-    sendMail: async (options) => {
-      console.log(`[JabWeMeet Mailer Sim] To: ${options.to} | Subject: ${options.subject}`);
-      return { messageId: 'simulated-' + Date.now() };
-    },
-  };
-}
+const transporter = {
+  sendMail: async (options) => {
+    return sendQueuedMail(options);
+  },
+};
 
-const FROM_HEADER = `"JabWeMeet Official" <${process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com'}>`;
+const FROM_HEADER = `"JabWeMeet Official" <${process.env.MAIL_USERNAME || 'noreply@jabweemeet.com'}>`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const DASHBOARD_URL = `${FRONTEND_URL}/breakup-buddy/dashboard`;
-const ADMIN_EMAIL = process.env.ADMIN_ALERT_EMAIL || process.env.MAIL_USERNAME || 'yogithamgowdayogitha@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_ALERT_EMAIL || process.env.MAIL_USERNAME || 'admin@jabweemeet.com';
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /**
  * Base email wrapper with JabWeMeet luxury dark branding
@@ -1580,6 +1572,7 @@ async function sendRegistrationSuccessEmail({ userEmail, userName, role }) {
 }
 
 module.exports = {
+  escapeHtml,
   sendRegistrationOTP,
   sendRegistrationSuccessEmail,
   sendPasswordResetEmail,
@@ -1729,11 +1722,12 @@ async function sendStaffStatusEmail({ email, name, roleName, status, reason }) {
 
 
 async function sendPasswordResetEmail({ userEmail, userName, resetToken }) {
-  const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+  const safeName = escapeHtml(userName || 'User');
+  const resetLink = `${FRONTEND_URL}/reset-password?token=${encodeURIComponent(resetToken)}`;
   const htmlBody = `
     <div style='font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;'>
       <h2 style='color: #e06d53; text-align: center;'>Password Reset Request</h2>
-      <p>Hi <b>${userName || 'User'}</b>,</p>
+      <p>Hi <b>${safeName}</b>,</p>
       <p>We received a request to reset your JabWeMeet password. If you didn't make this request, you can safely ignore this email.</p>
       <p>Click the button below to set a new password:</p>
       <div style='text-align: center; margin: 30px 0;'>
@@ -1747,7 +1741,7 @@ async function sendPasswordResetEmail({ userEmail, userName, resetToken }) {
   `;
   try {
     await transporter.sendMail({
-      from: '"JabWeMeet Notifications" <yogithamgowdayogitha@gmail.com>',
+      from: FROM_HEADER,
       to: userEmail,
       subject: 'Reset your JabWeMeet password',
       html: htmlBody,
