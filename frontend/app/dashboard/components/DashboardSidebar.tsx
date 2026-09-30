@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { io } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socketUrl";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 import {
   LayoutDashboard,
@@ -75,7 +76,7 @@ export default function DashboardSidebar({
 
   useEffect(() => {
     if (!user || !user.id || user.id === "guest") return;
-    const s = io("http://localhost:5001", { withCredentials: true });
+    const s = io(getSocketUrl(), { withCredentials: true });
     s.on("connect", () => {
       s.emit("join-user-room", user.id);
     });

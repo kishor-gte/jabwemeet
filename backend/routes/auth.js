@@ -17,17 +17,52 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext) || !ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    return cb(new Error('Invalid file type. Only JPG, PNG, WEBP images and PDF documents are allowed.'));
+  }
+  cb(null, true);
+};
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const cleanExt = ALLOWED_EXTENSIONS.includes(ext) ? ext : '.bin';
+    const cleanFieldName = file.fieldname.replace(/[^a-zA-Z0-9_-]/g, '');
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, cleanFieldName + '-' + uniqueSuffix + cleanExt);
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+    files: 5,
+  }
+});
+
+const handleUpload = (req, res, next) => {
+  upload.fields([
+    { name: 'govIdProof', maxCount: 1 },
+    { name: 'addressProof', maxCount: 1 },
+    { name: 'eduCertificate', maxCount: 1 },
+    { name: 'workExperience', maxCount: 1 }
+  ])(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || 'File upload failed' });
+    }
+    next();
+  });
+};
 
 // Rate limiting for login (5 failed attempts per 15 minutes)
 const loginLimiter = rateLimit({
@@ -37,6 +72,60 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+});
+
+// Rate limiting for user registration (10 accounts per hour per IP)
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many registration attempts from this IP. Please try again after an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting for email availability checks (30 checks per 15 minutes per IP)
+const checkEmailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many email checks from this IP. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting for password reset requests (5 requests per 15 minutes per IP)
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many password reset requests. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting for OTP verification (10 attempts per 15 minutes per IP)
+const verifyOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many OTP verification attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting for Date Feedback submission (15 per 15 minutes per IP)
+const dateFeedbackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: { success: false, message: 'Too many feedback submissions. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting for Generic Chat messages (30 messages per 5 minutes per IP)
+const chatLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many chat messages sent. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Helper: Calculate age from Date
@@ -80,7 +169,7 @@ function getCookieOptions() {
 }
 
 // 1. GET /api/auth/check-email
-router.get('/check-email', async (req, res) => {
+router.get('/check-email', checkEmailLimiter, async (req, res) => {
   try {
     const { email } = req.query;
 
@@ -117,12 +206,7 @@ router.get('/check-email', async (req, res) => {
 });
 
 // 2. POST /api/auth/register
-router.post('/register', upload.fields([
-  { name: 'govIdProof', maxCount: 1 },
-  { name: 'addressProof', maxCount: 1 },
-  { name: 'eduCertificate', maxCount: 1 },
-  { name: 'workExperience', maxCount: 1 }
-]), async (req, res) => {
+router.post('/register', registerLimiter, handleUpload, async (req, res) => {
   try {
     const {
       name,
@@ -267,7 +351,7 @@ router.post('/register', upload.fields([
         relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
 
         role: normalizedRole,
-        isVerified: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+        isVerified: false,
         isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
 
         idType: idType ? String(idType).trim() : null,
@@ -295,6 +379,16 @@ router.post('/register', upload.fields([
     // We now send OTP instead.
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     global.registrationOtpStore = global.registrationOtpStore || new Map();
+    const now = Date.now();
+    for (const [key, record] of global.registrationOtpStore.entries()) {
+      if (!record || record.expiresAt < now) {
+        global.registrationOtpStore.delete(key);
+      }
+    }
+    if (global.registrationOtpStore.size > 1000) {
+      const oldestKey = global.registrationOtpStore.keys().next().value;
+      if (oldestKey) global.registrationOtpStore.delete(oldestKey);
+    }
     global.registrationOtpStore.set(cleanEmail, { otp, userId: newUser.id, role: newUser.role, expiresAt: Date.now() + 10 * 60 * 1000 });
 
     const { sendRegistrationOTP } = require('../utils/mailer');
@@ -324,16 +418,8 @@ router.post('/register', upload.fields([
   }
 });
 
-router.get('/debug-otp', (req, res) => {
-  global.registrationOtpStore = global.registrationOtpStore || new Map();
-  res.json({
-    keys: Array.from(global.registrationOtpStore.keys()),
-    entries: Array.from(global.registrationOtpStore.entries())
-  });
-});
-
 // 2.5. POST /api/auth/verify-registration-otp
-router.post('/verify-registration-otp', async (req, res) => {
+router.post('/verify-registration-otp', verifyOtpLimiter, async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) {
@@ -343,12 +429,6 @@ router.post('/verify-registration-otp', async (req, res) => {
     
     global.registrationOtpStore = global.registrationOtpStore || new Map();
     const stored = global.registrationOtpStore.get(cleanEmail);
-    
-    console.log("OTP Verification Attempt:", {
-      incomingEmail: cleanEmail,
-      incomingOtp: otp,
-      storedData: stored
-    });
 
     if (!stored || stored.otp !== otp) {
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
@@ -648,7 +728,7 @@ router.post('/logout', (req, res) => {
 });
 
 // 6. POST /api/auth/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email || typeof email !== 'string') {
@@ -693,8 +773,7 @@ router.post('/forgot-password', async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Password reset link prepared successfully.',
-      resetToken, // Returned in dev for easy verification without email server
+      message: 'If an account exists with this email, instructions have been sent to your email.',
     });
   } catch (error) {
     console.error('Error in forgot-password:', error);
@@ -703,7 +782,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // 7. POST /api/auth/reset-password
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', forgotPasswordLimiter, async (req, res) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
 
@@ -751,6 +830,62 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Error in reset-password:', error);
     return res.status(500).json({ success: false, message: 'Failed to reset password.' });
+  }
+});
+
+// 7b. POST /api/auth/change-password (Authenticated password change)
+router.post('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required.' });
+    }
+
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'New passwords do not match.' });
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/]/.test(newPassword);
+    if (newPassword.length < 8 || !hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters and contain uppercase, lowercase, number, and special character.',
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, password: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password.' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ success: false, message: 'New password cannot be the same as current password.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: passwordHash },
+    });
+
+    return res.json({ success: true, message: 'Password changed successfully.' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    return res.status(500).json({ success: false, message: 'Failed to change password.' });
   }
 });
 
@@ -832,21 +967,24 @@ router.put('/connections/:id', authenticateToken, async (req, res) => {
       const oppositeUserId = connection.clientId === userId ? connection.suggestedProfileId : connection.clientId;
       const currentUser = await prisma.user.findUnique({ where: { id: userId } });
       const oppositeUser = await prisma.user.findUnique({ where: { id: oppositeUserId } });
-      const { sendMail } = require('../services/emailService');
+      const { sendMail, escapeHtml } = require('../services/emailService');
 
       if (oppositeUser && oppositeUser.email && currentUser) {
         let subject = '';
         let messageText = '';
         let messageHtml = '';
 
+        const safeOppositeName = escapeHtml(oppositeUser.name || 'Member');
+        const safeCurrentName = escapeHtml(currentUser.name || 'Member');
+
         if (action === 'Approve') {
           subject = 'Connection Request Accepted - JabWeMeet';
           messageText = `Hello ${oppositeUser.name},\n\nGreat news! ${currentUser.name} has accepted your connection request.\nLog into your dashboard to check it out.\n\nBest Regards,\nJabWeMeet Team`;
-          messageHtml = `<p>Hello <strong>${oppositeUser.name}</strong>,</p><p>Great news! <strong>${currentUser.name}</strong> has accepted your connection request.</p><p>Log into your dashboard to check it out.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
+          messageHtml = `<p>Hello <strong>${safeOppositeName}</strong>,</p><p>Great news! <strong>${safeCurrentName}</strong> has accepted your connection request.</p><p>Log into your dashboard to check it out.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
         } else if (action === 'Reject') {
           subject = 'Connection Request Passed - JabWeMeet';
           messageText = `Hello ${oppositeUser.name},\n\n${currentUser.name} has passed on your connection request. Don't worry, there are plenty of other matches!\n\nBest Regards,\nJabWeMeet Team`;
-          messageHtml = `<p>Hello <strong>${oppositeUser.name}</strong>,</p><p><strong>${currentUser.name}</strong> has passed on your connection request. Don't worry, there are plenty of other matches!</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
+          messageHtml = `<p>Hello <strong>${safeOppositeName}</strong>,</p><p><strong>${safeCurrentName}</strong> has passed on your connection request. Don't worry, there are plenty of other matches!</p><br><p>Best Regards,<br>JabWeMeet Team</p>`;
         }
 
         if (subject) {
@@ -929,15 +1067,18 @@ router.post('/connections/:id/messages', authenticateToken, async (req, res) => 
       if (!isOnline) {
         const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
         if (receiver && receiver.email) {
-          const { sendMail } = require('../services/emailService');
-          const subject = `📬 New Message from ${message.sender.name || 'someone'}`;
+          const { sendMail, escapeHtml } = require('../services/emailService');
+          const safeSenderName = escapeHtml(message.sender.name || 'someone');
+          const safeReceiverName = escapeHtml(receiver.name || 'there');
+          const safeSnippet = escapeHtml(content.substring(0, 50) + (content.length > 50 ? '...' : ''));
+          const subject = `📬 New Message from ${safeSenderName}`;
           const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
               <h2 style="color: #FF4081;">💌 You've got a new message!</h2>
-              <p>Hi ${receiver.name},</p>
+              <p>Hi ${safeReceiverName},</p>
               <p>You have an unread message waiting for you on JabWeMeet.</p>
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF4081;">
-                <p><em>"${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"</em></p>
+                <p><em>"${safeSnippet}"</em></p>
               </div>
               <p>Since you weren't active, we thought we'd let you know. Log in now to reply and keep the conversation going! ✨</p>
               <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?tab=messages" style="display: inline-block; padding: 10px 20px; background-color: #FF4081; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Go to Messages 🚀</a>
@@ -1011,30 +1152,6 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
       }
     });
 
-    // Create table if it doesn't exist (to avoid crashes)
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "ServicePackage" (
-        "id" TEXT PRIMARY KEY,
-        "name" TEXT,
-        "description" TEXT,
-        "price" DOUBLE PRECISION,
-        "type" TEXT,
-        "sessionLimit" INTEGER DEFAULT 1
-      );
-    `);
-
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Payment" (
-        "id" TEXT PRIMARY KEY,
-        "userId" TEXT,
-        "amount" DOUBLE PRECISION,
-        "type" TEXT,
-        "status" TEXT,
-        "gateway" TEXT,
-        "createdAt" TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
     let packages = await prisma.$queryRawUnsafe(`
       SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
     `);
@@ -1043,6 +1160,7 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
       await prisma.$executeRawUnsafe(`
         INSERT INTO "ServicePackage" ("id", "name", "description", "price", "type", "sessionLimit")
         VALUES ('PKG-DATE-1', 'Premium Dating Pass', 'Unlock 1 additional curated date', 999.0, 'DATING', 1)
+        ON CONFLICT ("id") DO NOTHING;
       `);
       packages = await prisma.$queryRawUnsafe(`
         SELECT * FROM "ServicePackage" WHERE "type" = 'DATING' ORDER BY "price" ASC
@@ -1063,8 +1181,8 @@ router.get('/dating-eligibility', authenticateToken, async (req, res) => {
       packages
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    console.error('Error fetching dating eligibility:', err);
+    res.status(500).json({ success: false, message: 'Unable to check dating eligibility' });
   }
 });
 
@@ -1073,26 +1191,38 @@ const Razorpay = require('razorpay');
 // Helper to get Razorpay instance
 function getRazorpayInstance() {
   return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RIlD5bEKRjyn3h',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'Ltg6uo9vI8TiFMVfj2cGm4I8',
+    key_id: process.env.RAZORPAY_KEY_ID || '',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || '',
   });
 }
 
-// 1. Create Razorpay Order for Dating Package
+// 1. Create Razorpay Order for Dating Package (Price validated against DB)
 router.post('/payments/create-razorpay-order', authenticateToken, async (req, res) => {
   try {
-    const { packageId, amount } = req.body;
-    if (!packageId || !amount) {
-      return res.status(400).json({ success: false, message: 'Missing package details' });
+    const { packageId } = req.body;
+    if (!packageId) {
+      return res.status(400).json({ success: false, message: 'Package ID is required' });
     }
 
-    const amountInPaise = Math.round(parseFloat(amount) * 100);
+    // Authoritative lookup from database to prevent price tampering
+    const pkgs = await prisma.$queryRawUnsafe(
+      `SELECT * FROM "ServicePackage" WHERE "id" = $1 AND "type" = 'DATING' LIMIT 1`,
+      packageId
+    );
+    const selectedPackage = pkgs && pkgs.length > 0 ? pkgs[0] : null;
+
+    if (!selectedPackage || selectedPackage.price <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid or unavailable dating package' });
+    }
+
+    const packagePrice = parseFloat(selectedPackage.price);
+    const amountInPaise = Math.round(packagePrice * 100);
     const options = {
       amount: amountInPaise,
       currency: "INR",
       receipt: `rcpt_pkg_${Date.now().toString().slice(-6)}`,
       notes: {
-        packageId,
+        packageId: selectedPackage.id,
         userId: req.user.userId
       },
     };
@@ -1105,7 +1235,7 @@ router.post('/payments/create-razorpay-order', authenticateToken, async (req, re
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_RIlD5bEKRjyn3h'
+      keyId: process.env.RAZORPAY_KEY_ID || ''
     });
   } catch (error) {
     console.error("Error creating order:", error);
@@ -1117,31 +1247,58 @@ router.post('/payments/create-razorpay-order', authenticateToken, async (req, re
 router.post('/payments/verify-razorpay-payment', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, packageId, amount } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, packageId } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Missing payment parameters" });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !packageId) {
+      return res.status(400).json({ success: false, message: "Missing required payment verification parameters" });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET || 'Ltg6uo9vI8TiFMVfj2cGm4I8';
+    // Verify package existence and authoritative price
+    const pkgs = await prisma.$queryRawUnsafe(
+      `SELECT * FROM "ServicePackage" WHERE "id" = $1 AND "type" = 'DATING' LIMIT 1`,
+      packageId
+    );
+    const selectedPackage = pkgs && pkgs.length > 0 ? pkgs[0] : null;
+
+    if (!selectedPackage) {
+      return res.status(400).json({ success: false, message: "Invalid package reference" });
+    }
+
+    const verifiedAmount = parseFloat(selectedPackage.price);
+
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret) {
+      return res.status(500).json({ success: false, message: "Payment configuration error" });
+    }
     const hmac = crypto.createHmac("sha256", secret);
     hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const generatedSignature = hmac.digest("hex");
 
-    if (generatedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Invalid Signature" });
+    let isSignatureValid = false;
+    try {
+      const generatedBuf = Buffer.from(generatedSignature, "utf-8");
+      const signatureBuf = Buffer.from(razorpay_signature, "utf-8");
+      if (generatedBuf.length === signatureBuf.length) {
+        isSignatureValid = crypto.timingSafeEqual(generatedBuf, signatureBuf);
+      }
+    } catch (e) {
+      isSignatureValid = false;
     }
 
-    // Process actual DB update
+    if (!isSignatureValid) {
+      return res.status(400).json({ success: false, message: "Invalid payment signature" });
+    }
+
+    // Process actual DB update with verified package price (never trust client-supplied amount)
     const paymentId = 'PAY-' + razorpay_payment_id.substring(0, 7).toUpperCase();
     await prisma.$executeRawUnsafe(`
       INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
       VALUES ($1, $2, $3, 'DATING_PACKAGE', 'SUCCESS', 'RAZORPAY', NOW())
-    `, paymentId, userId, parseFloat(amount));
+    `, paymentId, userId, verifiedAmount);
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user && user.assignedManagerId) {
-      const rmEarning = parseFloat(amount) * 0.90;
+      const rmEarning = verifiedAmount * 0.90;
       await prisma.$executeRawUnsafe(`
         INSERT INTO "Payment" ("id", "userId", "amount", "type", "status", "gateway", "createdAt")
         VALUES ($1, $2, $3, 'RM_EARNING_DATING', 'SUCCESS', 'INTERNAL', NOW())
@@ -1150,7 +1307,7 @@ router.post('/payments/verify-razorpay-payment', authenticateToken, async (req, 
 
     res.json({ success: true, paymentId });
   } catch (err) {
-    console.error(err);
+    console.error('Error verifying payment:', err);
     res.status(500).json({ success: false, message: "Payment verification failed" });
   }
 });
@@ -1169,14 +1326,35 @@ router.get('/payments', authenticateToken, async (req, res) => {
 });
 
 // Submit Date Feedback
-router.post('/connections/:id/feedback', authenticateToken, async (req, res) => {
+router.post('/connections/:id/feedback', authenticateToken, dateFeedbackLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { id: matchId } = req.params;
     const { rating, feedback } = req.body;
 
+    if (!rating || !feedback || typeof feedback !== 'string' || feedback.trim().length === 0) {
+      return res.status(400).json({ success: false, message: 'Rating (1-5) and feedback text are required' });
+    }
+
+    const numRating = parseInt(rating, 10);
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating must be an integer between 1 and 5' });
+    }
+
+    const trimmedFeedback = feedback.trim().substring(0, 1500);
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Verify user is actually a participant in this connection
+    const connection = await prisma.matchSuggestion.findUnique({ where: { id: matchId } });
+    if (!connection) {
+      return res.status(404).json({ success: false, message: 'Match connection not found' });
+    }
+
+    if (connection.clientId !== userId && connection.suggestedProfileId !== userId && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Unauthorized: You are not a participant in this connection' });
+    }
 
     // AI Sentiment Analysis
     let sentiment = 'NEUTRAL';
@@ -1185,66 +1363,47 @@ router.post('/connections/:id/feedback', authenticateToken, async (req, res) => 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Analyze the sentiment of this post-date feedback. Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL.\n\nFeedback: "${feedback}"\nRating: ${rating}/5`
+        contents: `Analyze the sentiment of this post-date feedback. Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL.\n\nFeedback: "${trimmedFeedback}"\nRating: ${numRating}/5`
       });
       const result = response.text.trim().toUpperCase();
       if (result.includes('NEGATIVE')) sentiment = 'NEGATIVE';
       else if (result.includes('POSITIVE')) sentiment = 'POSITIVE';
       else if (result.includes('NEUTRAL')) sentiment = 'NEUTRAL';
-      else if (rating <= 2) sentiment = 'NEGATIVE';
+      else if (numRating <= 2) sentiment = 'NEGATIVE';
     } catch (aiErr) {
-      console.error('AI Sentiment Analysis failed:', aiErr);
-      if (rating <= 2) sentiment = 'NEGATIVE';
+      console.error('AI Sentiment Analysis failed:', aiErr.message);
+      if (numRating <= 2) sentiment = 'NEGATIVE';
     }
 
-    // Create table if not exists (with sentiment and isPublished)
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "DateFeedback" (
-        "id" TEXT NOT NULL,
-        "matchId" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
-        "gender" TEXT,
-        "rating" INTEGER NOT NULL,
-        "feedback" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "sentiment" TEXT DEFAULT 'NEUTRAL',
-        "isPublished" BOOLEAN DEFAULT FALSE,
-        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
-      );
-    `);
+    // Check if feedback already exists for this user and connection
+    const existingFeedback = await prisma.$queryRawUnsafe(`
+      SELECT id FROM "DateFeedback" WHERE "matchId" = $1 AND "userId" = $2 LIMIT 1
+    `, matchId, userId);
 
-    const feedbackId = 'FB-' + Math.random().toString(36).substring(2, 9).toUpperCase();
-    await prisma.$executeRawUnsafe(`
-      INSERT INTO "DateFeedback" ("id", "matchId", "userId", "gender", "rating", "feedback", "sentiment")
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, feedbackId, matchId, userId, user.gender || 'Unknown', parseInt(rating), feedback, sentiment);
+    if (existingFeedback && existingFeedback.length > 0) {
+      await prisma.$executeRawUnsafe(`
+        UPDATE "DateFeedback" 
+        SET "rating" = $1, "feedback" = $2, "sentiment" = $3, "createdAt" = CURRENT_TIMESTAMP
+        WHERE "id" = $4
+      `, numRating, trimmedFeedback, sentiment, existingFeedback[0].id);
+    } else {
+      const feedbackId = 'FB-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "DateFeedback" ("id", "matchId", "userId", "gender", "rating", "feedback", "sentiment")
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, feedbackId, matchId, userId, user.gender || 'Unknown', numRating, trimmedFeedback, sentiment);
+    }
     
     res.json({ success: true, sentiment });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message, stack: err.stack });
+    console.error('Error submitting date feedback:', err);
+    res.status(500).json({ success: false, message: 'Failed to submit date feedback' });
   }
 });
 
 // Get Public Feedbacks (Testimonials)
 router.get('/public/feedbacks', async (req, res) => {
   try {
-    // Ensure table exists to prevent crash on fresh db
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "DateFeedback" (
-        "id" TEXT NOT NULL,
-        "matchId" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
-        "gender" TEXT,
-        "rating" INTEGER NOT NULL,
-        "feedback" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "sentiment" TEXT DEFAULT 'NEUTRAL',
-        "isPublished" BOOLEAN DEFAULT FALSE,
-        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
-      );
-    `);
-
     const feedbacks = await prisma.$queryRawUnsafe(`
       SELECT f.*, u."name" as "userName", u."profileImage" as "userImage"
       FROM "DateFeedback" f
@@ -1256,12 +1415,12 @@ router.get('/public/feedbacks', async (req, res) => {
     res.json({ success: true, feedbacks });
   } catch (err) {
     console.error('Error fetching public feedbacks:', err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: 'Failed to fetch testimonials' });
   }
 });
 
-// Generic Chat API (Admin <-> Staff)
-router.get('/chat/:contactId', authenticateToken, async (req, res) => {
+// Generic Chat API (Admin <-> Staff / Users)
+router.get('/chat/:contactId', authenticateToken, chatLimiter, async (req, res) => {
   try {
     let { contactId } = req.params;
     const userId = req.user.userId;
@@ -1270,6 +1429,15 @@ router.get('/chat/:contactId', authenticateToken, async (req, res) => {
       const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
       if (!adminUser) return res.json({ success: true, messages: [] });
       contactId = adminUser.id;
+    } else if (req.user.role !== 'ADMIN') {
+      // Non-admins can only chat with administrators
+      const targetUser = await prisma.user.findUnique({
+        where: { id: contactId },
+        select: { role: true }
+      });
+      if (!targetUser || targetUser.role !== 'ADMIN') {
+        return res.status(403).json({ success: false, message: 'You are only authorized to communicate with administrators.' });
+      }
     }
 
     let conversation = await prisma.conversation.findFirst({
@@ -1308,7 +1476,7 @@ router.get('/chat/:contactId', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/chat/:contactId', authenticateToken, async (req, res) => {
+router.post('/chat/:contactId', authenticateToken, chatLimiter, async (req, res) => {
   try {
     let { contactId } = req.params;
     const userId = req.user.userId;
@@ -1318,9 +1486,28 @@ router.post('/chat/:contactId', authenticateToken, async (req, res) => {
       const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
       if (!adminUser) return res.status(404).json({ success: false, message: 'Admin not found' });
       contactId = adminUser.id;
+    } else if (req.user.role !== 'ADMIN') {
+      // Non-admins can only chat with administrators
+      const targetUser = await prisma.user.findUnique({
+        where: { id: contactId },
+        select: { role: true }
+      });
+      if (!targetUser || targetUser.role !== 'ADMIN') {
+        return res.status(403).json({ success: false, message: 'You are only authorized to communicate with administrators.' });
+      }
     }
 
-    if (!text) return res.status(400).json({ success: false, message: 'Text is required' });
+    if (typeof text !== 'string') {
+      return res.status(400).json({ success: false, message: 'Text is required' });
+    }
+
+    const sanitizedText = text.trim();
+    if (!sanitizedText) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty' });
+    }
+    if (sanitizedText.length > 1000) {
+      return res.status(400).json({ success: false, message: 'Message cannot exceed 1000 characters' });
+    }
 
     let conversation = await prisma.conversation.findFirst({
       where: {
@@ -1344,7 +1531,7 @@ router.post('/chat/:contactId', authenticateToken, async (req, res) => {
       data: {
         conversationId: conversation.id,
         senderId: userId,
-        content: text
+        content: sanitizedText
       }
     });
 
@@ -1410,25 +1597,45 @@ router.get('/cafes', authenticateToken, async (req, res) => {
 router.post('/connections/:id/book-cafe', authenticateToken, async (req, res) => {
   try {
     const { cafeId, cafeName, reservationDate, reservationTime, guests } = req.body;
-    
-    // 1. Update MatchSuggestion with meetingVenue
-    const suggestion = await prisma.matchSuggestion.update({
-      where: { id: req.params.id },
-      data: { meetingVenue: cafeName }
+    const { id } = req.params;
+
+    // Verify connection exists and user is a participant
+    const existingSuggestion = await prisma.matchSuggestion.findUnique({
+      where: { id }
     });
 
-    // 2. Create CafeReservation
-    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-    await prisma.cafeReservation.create({
-      data: {
-        cafeId: cafeId,
-        customerName: user.name,
-        guests: guests || 2,
-        date: reservationDate || (suggestion.meetingDate ? suggestion.meetingDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
-        time: reservationTime || '18:00',
-        status: 'Pending'
-      }
+    if (!existingSuggestion) {
+      return res.status(404).json({ success: false, message: 'Connection not found' });
+    }
+
+    if (existingSuggestion.clientId !== req.user.userId && existingSuggestion.suggestedProfileId !== req.user.userId && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Unauthorized: You are not a participant in this connection' });
+    }
+
+    if (!cafeName || typeof cafeName !== 'string') {
+      return res.status(400).json({ success: false, message: 'Valid cafe name is required' });
+    }
+
+    // 1. Update MatchSuggestion with meetingVenue
+    const suggestion = await prisma.matchSuggestion.update({
+      where: { id },
+      data: { meetingVenue: cafeName.trim() }
     });
+
+    // 2. Create CafeReservation if cafeId provided
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (cafeId) {
+      await prisma.cafeReservation.create({
+        data: {
+          cafeId: String(cafeId),
+          customerName: user?.name || 'JabWeMeet Member',
+          guests: Math.max(1, Math.min(10, parseInt(guests, 10) || 2)),
+          date: reservationDate || (suggestion.meetingDate ? suggestion.meetingDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          time: reservationTime || '18:00',
+          status: 'Pending'
+        }
+      });
+    }
 
     res.json({ success: true, message: 'Cafe booked successfully!', suggestion });
   } catch (error) {
@@ -1439,3 +1646,4 @@ router.post('/connections/:id/book-cafe', authenticateToken, async (req, res) =>
 
 
 module.exports = router;
+

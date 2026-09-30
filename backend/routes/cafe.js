@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const prisma = require('../db');
 const router = express.Router();
@@ -6,6 +6,15 @@ const router = express.Router();
 const isCafe = (req, res, next) => {
   if (req.user && req.user.role === 'CAFE') next();
   else res.status(403).json({ error: 'Access denied' });
+};
+
+const handleCafeError = (res, error, defaultMsg = 'An unexpected error occurred') => {
+  console.error('Cafe route error:', error);
+  const isDev = process.env.NODE_ENV !== 'production';
+  return res.status(500).json({ 
+    success: false, 
+    error: isDev ? (error.message || defaultMsg) : defaultMsg 
+  });
 };
 
 router.use(authenticateToken, isCafe);
@@ -56,7 +65,7 @@ router.get('/profile', async (req, res) => {
       }
     }
     res.json({ success: true, data: { ...profile, email: user ? user.email : "" } });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.put('/profile', async (req, res) => {
@@ -67,7 +76,7 @@ router.put('/profile', async (req, res) => {
       data: allowedData
     });
     res.json({ success: true, data: profile });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // MENU
@@ -76,29 +85,39 @@ router.get('/menu', async (req, res) => {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
     const items = await prisma.menuItem.findMany({ where: { cafeId }, orderBy: { createdAt: 'desc' } });
     res.json({ success: true, data: items });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.post('/menu', async (req, res) => {
   try {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
-    const item = await prisma.menuItem.create({ data: { cafeId, ...req.body } });
+    const { id, cafeId: _, createdAt, updatedAt, ...allowedData } = req.body;
+    const item = await prisma.menuItem.create({ data: { cafeId, ...allowedData } });
     res.json({ success: true, data: item });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.put('/menu/:id', async (req, res) => {
   try {
-    const item = await prisma.menuItem.update({ where: { id: req.params.id }, data: req.body });
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.menuItem.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Menu item not found or unauthorized' });
+
+    const { id, cafeId: _, createdAt, updatedAt, ...allowedData } = req.body;
+    const item = await prisma.menuItem.update({ where: { id: req.params.id }, data: allowedData });
     res.json({ success: true, data: item });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.delete('/menu/:id', async (req, res) => {
   try {
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.menuItem.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Menu item not found or unauthorized' });
+
     await prisma.menuItem.delete({ where: { id: req.params.id } });
     res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 
@@ -120,17 +139,21 @@ router.get('/reservations', async (req, res) => {
       orderBy: { createdAt: 'desc' } 
     });
     res.json({ success: true, data: reservations });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.put('/reservations/:id/status', async (req, res) => {
   try {
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.cafeReservation.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Reservation not found or unauthorized' });
+
     const reservation = await prisma.cafeReservation.update({ 
       where: { id: req.params.id }, 
       data: { status: req.body.status } 
     });
     res.json({ success: true, data: reservation });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 
@@ -149,17 +172,21 @@ router.get('/orders', async (req, res) => {
       orderBy: { createdAt: 'desc' } 
     });
     res.json({ success: true, data: orders });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.put('/orders/:id/status', async (req, res) => {
   try {
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.cafeOrder.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Order not found or unauthorized' });
+
     const order = await prisma.cafeOrder.update({ 
       where: { id: req.params.id }, 
       data: { status: req.body.status } 
     });
     res.json({ success: true, data: order });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // STAFF
@@ -171,22 +198,27 @@ router.get('/staff', async (req, res) => {
       orderBy: { name: 'asc' } 
     });
     res.json({ success: true, data: staff });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.post('/staff', async (req, res) => {
   try {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
-    const staff = await prisma.cafeStaff.create({ data: { cafeId, ...req.body } });
+    const { id, cafeId: _, ...allowedData } = req.body;
+    const staff = await prisma.cafeStaff.create({ data: { cafeId, ...allowedData } });
     res.json({ success: true, data: staff });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.delete('/staff/:id', async (req, res) => {
   try {
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.cafeStaff.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Staff member not found or unauthorized' });
+
     await prisma.cafeStaff.delete({ where: { id: req.params.id } });
     res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 
@@ -196,22 +228,27 @@ router.get('/offers', async (req, res) => {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
     const offers = await prisma.cafeOffer.findMany({ where: { cafeId }, orderBy: { createdAt: 'desc' } });
     res.json({ success: true, data: offers });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.post('/offers', async (req, res) => {
   try {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
-    const offer = await prisma.cafeOffer.create({ data: { cafeId, ...req.body } });
+    const { id, cafeId: _, createdAt, ...allowedData } = req.body;
+    const offer = await prisma.cafeOffer.create({ data: { cafeId, ...allowedData } });
     res.json({ success: true, data: offer });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.delete('/offers/:id', async (req, res) => {
   try {
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.cafeOffer.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Offer not found or unauthorized' });
+
     await prisma.cafeOffer.delete({ where: { id: req.params.id } });
     res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // CUSTOMERS
@@ -220,7 +257,7 @@ router.get('/customers', async (req, res) => {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
     const customers = await prisma.cafeCustomer.findMany({ where: { cafeId }, orderBy: { lastVisit: 'desc' } });
     res.json({ success: true, data: customers });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // REVIEWS
@@ -229,17 +266,21 @@ router.get('/reviews', async (req, res) => {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
     const reviews = await prisma.cafeReview.findMany({ where: { cafeId }, orderBy: { createdAt: 'desc' } });
     res.json({ success: true, data: reviews });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 router.post('/reviews/:id/reply', async (req, res) => {
   try {
+    const cafeId = await getCafeId(req.user.userId, req.user.name);
+    const existing = await prisma.cafeReview.findFirst({ where: { id: req.params.id, cafeId } });
+    if (!existing) return res.status(404).json({ success: false, error: 'Review not found or unauthorized' });
+
     const review = await prisma.cafeReview.update({ 
       where: { id: req.params.id }, 
       data: { reply: req.body.reply, isReplied: true } 
     });
     res.json({ success: true, data: review });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // PAYMENTS (TRANSACTIONS)
@@ -248,7 +289,7 @@ router.get('/payments', async (req, res) => {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
     const transactions = await prisma.cafeTransaction.findMany({ where: { cafeId }, orderBy: { createdAt: 'desc' } });
     res.json({ success: true, data: transactions });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // NOTIFICATIONS
@@ -257,7 +298,7 @@ router.get('/notifications', async (req, res) => {
     const cafeId = await getCafeId(req.user.userId, req.user.name);
     const notifications = await prisma.cafeNotification.findMany({ where: { cafeId }, orderBy: { createdAt: 'desc' } });
     res.json({ success: true, data: notifications });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 // DASHBOARD STATS (MOCK/DYNAMIC BLEND)
@@ -275,7 +316,7 @@ router.get('/stats', async (req, res) => {
         customers: { value: 0, change: "+0%" }
       }
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { handleCafeError(res, e); }
 });
 
 module.exports = router;

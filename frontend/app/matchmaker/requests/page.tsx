@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socketUrl";
 import {
   Heart,
   Search,
@@ -110,7 +111,7 @@ export default function RequestsPage() {
 
   // Real-time socket listener for RM broadcast requests and claiming updates
   useEffect(() => {
-    const s = io("http://localhost:5001", { withCredentials: true });
+    const s = io(getSocketUrl(), { withCredentials: true });
     s.on("new-rm-broadcast-request", (data: any) => {
       fetchRequests();
       showToast("⚡ New Client Introduction Request received! Review and claim now.", "info");

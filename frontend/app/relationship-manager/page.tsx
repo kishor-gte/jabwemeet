@@ -29,6 +29,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { io } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socketUrl";
 import DashboardSidebar from "../dashboard/components/DashboardSidebar";
 
 
@@ -106,7 +107,7 @@ export default function RelationshipManagerPage() {
   // Real-time socket listener for RM request acceptance
   useEffect(() => {
     if (!currentUser) return;
-    const s = io("http://localhost:5001", { withCredentials: true });
+    const s = io(getSocketUrl(), { withCredentials: true });
     s.on("connect", () => {
       s.emit("join-user-room", currentUser.id);
     });

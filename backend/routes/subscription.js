@@ -12,8 +12,8 @@ function getRazorpayConfig() {
     const m = String(v).match(/\$\{[^:]+:(.+)\}/);
     return (m ? m[1] : String(v)).replace(/['"]/g, '').trim();
   };
-  const key_id = parseVal(process.env.RAZORPAY_KEY_ID || process.env['razorpay.key.id'] || 'rzp_test_RIlD5bEKRjyn3h');
-  const key_secret = parseVal(process.env.RAZORPAY_KEY_SECRET || process.env['razorpay.key.secret'] || 'Ltg6uo9vI8TiFMVfj2cGm4I8');
+  const key_id = parseVal(process.env.RAZORPAY_KEY_ID || process.env['razorpay.key.id'] || '');
+  const key_secret = parseVal(process.env.RAZORPAY_KEY_SECRET || process.env['razorpay.key.secret'] || '');
   return { key_id, key_secret };
 }
 
@@ -168,12 +168,8 @@ router.post('/create-order', async (req, res) => {
     try {
       order = await razorpay.orders.create(options);
     } catch (e) {
-      console.warn("Razorpay API order notice, falling back to mock order for dev:", e.message);
-      order = {
-        id: `order_mock_${Date.now()}`,
-        amount,
-        currency: 'INR',
-      };
+      console.error("Razorpay order creation failed:", e.message);
+      return res.status(502).json({ success: false, message: 'Payment gateway order creation failed. Please try again later.' });
     }
 
     // Save payment intent
@@ -239,19 +235,27 @@ router.post('/verify-payment', async (req, res) => {
       ? (selectedPackage.durationDays || 30)
       : (PLANS[plan] ? PLANS[plan].days : 30);
 
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Missing required payment verification parameters.' });
+    }
+
     let isSignatureValid = false;
-    if (razorpay_order_id.startsWith('order_mock_') || razorpay_signature === 'mock_signature') {
-      isSignatureValid = true;
-    } else if (razorpayConfig.key_secret) {
+    if (razorpayConfig.key_secret) {
       const body = razorpay_order_id + '|' + razorpay_payment_id;
       const expectedSignature = crypto
         .createHmac('sha256', razorpayConfig.key_secret)
         .update(body.toString())
         .digest('hex');
 
-      isSignatureValid = expectedSignature === razorpay_signature;
-    } else {
-      isSignatureValid = true;
+      try {
+        const expectedBuf = Buffer.from(expectedSignature, 'utf-8');
+        const signatureBuf = Buffer.from(razorpay_signature, 'utf-8');
+        if (expectedBuf.length === signatureBuf.length) {
+          isSignatureValid = crypto.timingSafeEqual(expectedBuf, signatureBuf);
+        }
+      } catch (timingErr) {
+        isSignatureValid = false;
+      }
     }
 
     if (!isSignatureValid) {
@@ -262,6 +266,25 @@ router.post('/verify-payment', async (req, res) => {
         });
       }
       return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
+
+    // Check if this payment intent was already completed
+    if (existingPayment && existingPayment.status === 'PAID') {
+      return res.status(400).json({
+        success: false,
+        message: 'This payment order has already been verified and processed.',
+      });
+    }
+
+    // Check if razorpay_payment_id was already redeemed
+    const duplicatePayment = await prisma.hostPayment.findFirst({
+      where: { razorpayPaymentId: razorpay_payment_id, status: 'PAID' },
+    });
+    if (duplicatePayment) {
+      return res.status(400).json({
+        success: false,
+        message: 'This payment transaction ID has already been redeemed.',
+      });
     }
 
     // Update payment record

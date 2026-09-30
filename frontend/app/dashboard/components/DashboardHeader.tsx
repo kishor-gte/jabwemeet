@@ -131,15 +131,7 @@ export default function DashboardHeader({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {user.role === "ADMIN" && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-sm font-bold shadow-lg shadow-red-500/30 border border-red-400/30 transition transform hover:-translate-y-0.5 active:translate-y-0 group"
-            >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-              <span>Back to Admin Panel</span>
-            </Link>
-          )}
+          
 
           <button
             onClick={onExploreExperiences}
@@ -161,3 +153,4 @@ export default function DashboardHeader({
     </div>
   );
 }
+

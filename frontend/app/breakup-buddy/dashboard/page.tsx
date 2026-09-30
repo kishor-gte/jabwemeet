@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import BuddyMessagesTab from "./BuddyMessagesTab";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 import { io, Socket } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socketUrl";
 
 export default function BreakupBuddyDashboardPage() {
   const router = useRouter();
@@ -349,7 +350,7 @@ export default function BreakupBuddyDashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    const s = io("http://localhost:5001", { withCredentials: true });
+    const s = io(getSocketUrl(), { withCredentials: true });
     setSocket(s);
 
     s.on("connect", () => {

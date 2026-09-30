@@ -7,6 +7,7 @@ const { sendMail } = require('../services/emailService');
 const { sendEvent24hReminder } = require('../services/eventReminderService');
 
 const router = express.Router();
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 function getRazorpayConfig() {
   const parseVal = (v) => {
@@ -14,8 +15,8 @@ function getRazorpayConfig() {
     const m = String(v).match(/\$\{[^:]+:(.+)\}/);
     return (m ? m[1] : String(v)).replace(/['"]/g, '').trim();
   };
-  const key_id = parseVal(process.env.RAZORPAY_KEY_ID || process.env['razorpay.key.id'] || 'rzp_test_RIlD5bEKRjyn3h');
-  const key_secret = parseVal(process.env.RAZORPAY_KEY_SECRET || process.env['razorpay.key.secret'] || 'Ltg6uo9vI8TiFMVfj2cGm4I8');
+  const key_id = parseVal(process.env.RAZORPAY_KEY_ID || process.env['razorpay.key.id'] || '');
+  const key_secret = parseVal(process.env.RAZORPAY_KEY_SECRET || process.env['razorpay.key.secret'] || '');
   return { key_id, key_secret };
 }
 
@@ -240,7 +241,7 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
                 </p>
 
                 <div style="text-align: center; margin: 30px 0 15px 0;">
-                  <a href="http://localhost:3000/events" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
+                  <a href="${FRONTEND_URL}/events" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
                     Explore & Book Tickets 👉
                   </a>
                 </div>
@@ -488,19 +489,28 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    // Verify signature
+    // Verify signature strictly
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Missing required payment verification parameters.' });
+    }
+
     let isSignatureValid = false;
-    if (!razorpay_order_id || razorpay_order_id.startsWith('order_mock_') || razorpay_signature === 'mock_signature') {
-      isSignatureValid = true;
-    } else if (razorpayConfig.key_secret) {
+    if (razorpayConfig.key_secret) {
       const body = razorpay_order_id + '|' + razorpay_payment_id;
       const expectedSignature = crypto
         .createHmac('sha256', razorpayConfig.key_secret)
         .update(body.toString())
         .digest('hex');
-      isSignatureValid = expectedSignature === razorpay_signature;
-    } else {
-      isSignatureValid = true;
+
+      try {
+        const expectedBuf = Buffer.from(expectedSignature, 'utf-8');
+        const signatureBuf = Buffer.from(razorpay_signature, 'utf-8');
+        if (expectedBuf.length === signatureBuf.length) {
+          isSignatureValid = crypto.timingSafeEqual(expectedBuf, signatureBuf);
+        }
+      } catch (timingErr) {
+        isSignatureValid = false;
+      }
     }
 
     if (!isSignatureValid) {
@@ -632,7 +642,7 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
               </p>
 
               <div style="text-align: center; margin: 30px 0 15px 0;">
-                <a href="http://localhost:3000/dashboard?tab=events" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+                <a href="${FRONTEND_URL}/dashboard?tab=events" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
                   View My Bookings & Events 👉
                 </a>
               </div>
@@ -686,7 +696,7 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
               </div>
 
               <div style="text-align: center; margin: 30px 0 15px 0;">
-                <a href="http://localhost:3000/host/dashboard" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
+                <a href="${FRONTEND_URL}/host/dashboard" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
                   View Host Dashboard 👉
                 </a>
               </div>
@@ -731,74 +741,92 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please select at least 1 ticket.' });
     }
 
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        host: {
-          select: { id: true, name: true, email: true, phone: true },
-        },
-        bookings: {
-          where: { status: { not: 'CANCELLED' } },
-        },
-      },
-    });
+    let booking;
+    try {
+      booking = await prisma.$transaction(async (tx) => {
+        const currentEvent = await tx.event.findUnique({
+          where: { id },
+          include: {
+            host: {
+              select: { id: true, name: true, email: true, phone: true },
+            },
+            bookings: {
+              where: { status: { not: 'CANCELLED' } },
+            },
+          },
+        });
 
-    if (!event) {
-      return res.status(404).json({ success: false, message: 'Event not found.' });
-    }
+        if (!currentEvent) {
+          const err = new Error('Event not found.');
+          err.statusCode = 404;
+          throw err;
+        }
 
-    if (event.price && event.price > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'This is a ticketed event. Please proceed through payment checkout to reserve tickets.',
+        if (currentEvent.price && currentEvent.price > 0) {
+          const err = new Error('This is a ticketed event. Please proceed through payment checkout to reserve tickets.');
+          err.statusCode = 400;
+          throw err;
+        }
+
+        const totalBooked = currentEvent.bookings.reduce((acc, b) => acc + (b.spots || 1), 0);
+        const max = currentEvent.maxAttendees || 50;
+        const available = Math.max(0, max - totalBooked);
+
+        if (spots > available) {
+          const err = new Error(available === 0 ? 'This event is completely sold out.' : `Only ${available} spots remaining for this event.`);
+          err.statusCode = 400;
+          throw err;
+        }
+
+        const existing = await tx.eventBooking.findUnique({
+          where: { eventId_userId: { eventId: id, userId } },
+        });
+
+        const finalSpots = (existing && existing.status !== 'CANCELLED')
+          ? (existing.spots + spots)
+          : spots;
+
+        return await tx.eventBooking.upsert({
+          where: {
+            eventId_userId: {
+              eventId: id,
+              userId,
+            },
+          },
+          update: {
+            status: 'CONFIRMED',
+            spots: finalSpots,
+            totalAmount: 0,
+          },
+          create: {
+            eventId: id,
+            userId,
+            spots: finalSpots,
+            totalAmount: 0,
+            status: 'CONFIRMED',
+          },
+          include: {
+            event: {
+              include: {
+                host: {
+                  select: { id: true, name: true, email: true, phone: true },
+                },
+              },
+            },
+            user: {
+              select: { id: true, name: true, email: true, phone: true, city: true },
+            },
+          },
+        });
       });
+    } catch (txErr) {
+      if (txErr.statusCode) {
+        return res.status(txErr.statusCode).json({ success: false, message: txErr.message });
+      }
+      throw txErr;
     }
 
-    const totalBooked = event.bookings.reduce((acc, b) => acc + (b.spots || 1), 0);
-    const max = event.maxAttendees || 50;
-    const available = Math.max(0, max - totalBooked);
-
-    if (spots > available) {
-      return res.status(400).json({
-        success: false,
-        message: available === 0 ? 'This event is completely sold out.' : `Only ${available} spots remaining for this event.`,
-      });
-    }
-
-    const existing = await prisma.eventBooking.findUnique({
-      where: { eventId_userId: { eventId: id, userId } },
-    });
-
-    const finalSpots = (existing && existing.status !== 'CANCELLED')
-      ? (existing.spots + spots)
-      : spots;
-
-    const booking = await prisma.eventBooking.upsert({
-      where: {
-        eventId_userId: {
-          eventId: id,
-          userId,
-        },
-      },
-      update: {
-        status: 'CONFIRMED',
-        spots: finalSpots,
-        totalAmount: 0,
-      },
-      create: {
-        eventId: id,
-        userId,
-        spots: finalSpots,
-        totalAmount: 0,
-        status: 'CONFIRMED',
-      },
-      include: {
-        event: true,
-        user: {
-          select: { id: true, name: true, email: true, phone: true, city: true },
-        },
-      },
-    });
+    const event = booking.event;
 
     // Create EventRegistration in admin table
     const ticketCode = `TKT-${event.id.slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -869,7 +897,7 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
               </p>
 
               <div style="text-align: center; margin: 30px 0 15px 0;">
-                <a href="http://localhost:3000/dashboard?tab=events" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+                <a href="${FRONTEND_URL}/dashboard?tab=events" style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
                   View My Bookings & Events 👉
                 </a>
               </div>
@@ -923,7 +951,7 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
               </div>
 
               <div style="text-align: center; margin: 30px 0 15px 0;">
-                <a href="http://localhost:3000/host/dashboard" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
+                <a href="${FRONTEND_URL}/host/dashboard" style="background-color: #e06d53; color: white; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 30px; display: inline-block;">
                   View Host Dashboard 👉
                 </a>
               </div>

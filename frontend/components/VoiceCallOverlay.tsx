@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Phone, PhoneOff, Mic, MicOff, Clock, Lock } from "lucide-react";
+import { getSocketUrl } from "@/lib/socketUrl";
 
 interface VoiceCallOverlayProps {
   requestId: string;
@@ -75,7 +76,7 @@ export default function VoiceCallOverlay({
     };
     fetchLimits();
 
-    const s = io("http://localhost:5001", { withCredentials: true });
+    const s = io(getSocketUrl(), { withCredentials: true });
     setSocket(s);
 
     s.on("connect", () => {
@@ -325,29 +326,100 @@ export default function VoiceCallOverlay({
     onClose();
   };
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && (window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePayment = async (pkg: any) => {
     setPaymentStatus("processing");
     try {
-      const res = await fetch(`/api/services/buddy-subscribe/${requestId}`, {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        alert("Failed to load Razorpay payment gateway.");
+        setPaymentStatus("idle");
+        return;
+      }
+
+      const orderRes = await fetch("/api/services/packages/create-razorpay-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: pkg.id, durationHours: pkg.durationHours }),
-        credentials: "include"
+        credentials: "include",
+        body: JSON.stringify({
+          packageId: pkg.id,
+          requestId: requestId,
+        }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setPaymentStatus("success");
-        setTimeout(() => {
-          setShowSubscription(false);
-          setPaymentStatus("idle");
-          onClose();
-        }, 1500);
-      } else {
-        alert(data.message || "Failed to process payment");
+
+      const orderData = await orderRes.json();
+      if (!orderData.success) {
+        alert(orderData.message || "Failed to create payment order.");
         setPaymentStatus("idle");
+        return;
       }
+
+      const options = {
+        key: orderData.keyId || "rzp_test_RIlD5bEKRjyn3h",
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "JabWeMeet",
+        description: pkg.name,
+        order_id: orderData.orderId,
+        theme: {
+          color: "#e06d53",
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch("/api/services/packages/verify-razorpay-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                requestId: requestId,
+                packageId: pkg.id,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setPaymentStatus("success");
+              setTimeout(() => {
+                setShowSubscription(false);
+                setPaymentStatus("idle");
+                onClose();
+              }, 1500);
+            } else {
+              alert(verifyData.message || "Payment verification failed.");
+              setPaymentStatus("idle");
+            }
+          } catch (e) {
+            alert("Error verifying payment.");
+            setPaymentStatus("idle");
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setPaymentStatus("idle");
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (e) {
-      alert("Error activating subscription");
+      alert("Error initiating payment");
       setPaymentStatus("idle");
     }
   };

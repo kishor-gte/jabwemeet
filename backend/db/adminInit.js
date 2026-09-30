@@ -279,6 +279,25 @@ async function initAdminDb() {
       CREATE INDEX IF NOT EXISTS "idx_audit_target" ON "AuditLog"("targetType", "targetId");
     `);
 
+    // 14b. DateFeedback table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "DateFeedback" (
+        "id" TEXT PRIMARY KEY,
+        "matchId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "gender" TEXT,
+        "rating" INTEGER NOT NULL,
+        "feedback" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "sentiment" TEXT DEFAULT 'NEUTRAL',
+        "isPublished" BOOLEAN DEFAULT FALSE
+      );
+      ALTER TABLE "DateFeedback" ADD COLUMN IF NOT EXISTS "sentiment" TEXT DEFAULT 'NEUTRAL';
+      ALTER TABLE "DateFeedback" ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN DEFAULT FALSE;
+      CREATE INDEX IF NOT EXISTS "idx_date_feedback_match" ON "DateFeedback"("matchId");
+      CREATE INDEX IF NOT EXISTS "idx_date_feedback_user" ON "DateFeedback"("userId");
+    `);
+
     // 15. Seed default service packages if table is empty
     const packageCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "ServicePackage"`);
     if (packageCount[0].count === 0) {

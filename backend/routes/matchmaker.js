@@ -1,8 +1,18 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const prisma = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Rate limiter for AI compatibility queries (20 requests per 15 minutes)
+const aiCompatibilityLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many AI compatibility requests. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Apply auth middleware to all matchmaker routes
 router.use(authenticateToken);
@@ -586,7 +596,8 @@ router.patch('/requests/:id', async (req, res) => {
     // Send email to user
     try {
       if (existing.client && existing.client.email) {
-        const { sendMail } = require('../services/emailService');
+        const { sendMail, escapeHtml } = require('../services/emailService');
+        const safeClientName = escapeHtml(existing.client.name || 'Member');
         if (status === 'Approved') {
           await sendMail(
             existing.client.email,
@@ -594,7 +605,7 @@ router.patch('/requests/:id', async (req, res) => {
             `Hello ${existing.client.name},\n\nWOW! Great news! Your relationship manager has accepted your matchmaking request.\nGo check your dashboard to see your new matches and start your journey!\n\nCheers,\nJabWeMeet Team`,
             `<div style="font-family: sans-serif; text-align: center; color: #333;">
                <h1 style="color: #e11d48;">🎉 WOW! Great news! 🎉</h1>
-               <p style="font-size: 18px;">Hello <strong>${existing.client.name}</strong>,</p>
+               <p style="font-size: 18px;">Hello <strong>${safeClientName}</strong>,</p>
                <p style="font-size: 16px;">Your relationship manager has <strong>accepted</strong> your matchmaking request.</p>
                <p style="font-size: 16px;">Go and check your dashboard right away to see what's waiting for you and start your beautiful journey!</p>
                <br><p>Cheers,<br>JabWeMeet Team</p>
@@ -605,7 +616,7 @@ router.patch('/requests/:id', async (req, res) => {
             existing.client.email,
             'Update on your Matchmaking Request',
             `Hello ${existing.client.name},\n\nWe wanted to let you know that your relationship manager has unfortunately passed on your matchmaking request at this time.\n\nWarm Regards,\nJabWeMeet Team`,
-            `<p>Hello <strong>${existing.client.name}</strong>,</p><p>We wanted to let you know that your relationship manager has unfortunately passed on your matchmaking request at this time.</p><br><p>Warm Regards,<br>JabWeMeet Team</p>`
+            `<p>Hello <strong>${safeClientName}</strong>,</p><p>We wanted to let you know that your relationship manager has unfortunately passed on your matchmaking request at this time.</p><br><p>Warm Regards,<br>JabWeMeet Team</p>`
           );
         }
       }
@@ -662,7 +673,7 @@ router.delete('/requests/:id', async (req, res) => {
 
 // GET /api/matchmaker/clients/:id/compatibility
 // Check AI compatibility with other active users
-router.get('/clients/:id/compatibility', async (req, res) => {
+router.get('/clients/:id/compatibility', aiCompatibilityLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const client = await prisma.user.findUnique({
@@ -884,14 +895,16 @@ router.post('/suggestions', async (req, res) => {
         const client1 = await prisma.user.findUnique({ where: { id: clientId } });
         const client2 = await prisma.user.findUnique({ where: { id: suggestedProfileId } });
         
-        const { sendMail } = require('../services/emailService');
+        const { sendMail, escapeHtml } = require('../services/emailService');
+        const safeClient1 = escapeHtml(client1?.name || 'Member');
+        const safeClient2 = escapeHtml(client2?.name || 'Member');
         
         if (client1 && client1.email && client2) {
           sendMail(
             client1.email,
             'New Connection Request - JabWeMeet',
             `Hello ${client1.name},\n\nYou have a new connection request from ${client2.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
-            `<p>Hello <strong>${client1.name}</strong>,</p><p>You have a new connection request from <strong>${client2.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
+            `<p>Hello <strong>${safeClient1}</strong>,</p><p>You have a new connection request from <strong>${safeClient2}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
           ).catch((e) => console.warn('Email dispatch warning for client 1:', e.message));
         }
         if (client2 && client2.email && client1) {
@@ -899,7 +912,7 @@ router.post('/suggestions', async (req, res) => {
             client2.email,
             'New Connection Request - JabWeMeet',
             `Hello ${client2.name},\n\nYou have a new connection request from ${client1.name}. Please go and check your dashboard to view the request.\n\nBest Regards,\nJabWeMeet Team`,
-            `<p>Hello <strong>${client2.name}</strong>,</p><p>You have a new connection request from <strong>${client1.name}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
+            `<p>Hello <strong>${safeClient2}</strong>,</p><p>You have a new connection request from <strong>${safeClient1}</strong>. Please go and check your dashboard to view the request.</p><br><p>Best Regards,<br>JabWeMeet Team</p>`
           ).catch((e) => console.warn('Email dispatch warning for client 2:', e.message));
         }
       } catch (mailError) {
@@ -926,7 +939,7 @@ router.post('/suggestions', async (req, res) => {
 // Get all suggestions created by the matchmaker
 router.get('/connections', async (req, res) => {
   try {
-    const matchmakerId = req.query.matchmakerId || req.user?.userId;
+    const matchmakerId = (req.user.role === 'ADMIN' && req.query.matchmakerId) ? req.query.matchmakerId : req.user.userId;
     if (!matchmakerId) {
       return res.status(400).json({ success: false, message: 'matchmakerId required' });
     }
@@ -953,14 +966,34 @@ router.put('/connections/:id/date', async (req, res) => {
     const { id } = req.params;
     const { meetingDate, meetingMessage, meetingLocation, meetingVenue } = req.body;
 
+    if (!meetingDate) {
+      return res.status(400).json({ success: false, message: 'Meeting date is required' });
+    }
+
+    const existingConnection = await prisma.matchSuggestion.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        suggestedProfile: true
+      }
+    });
+
+    if (!existingConnection) {
+      return res.status(404).json({ success: false, message: 'Connection not found' });
+    }
+
+    if (req.user.role !== 'ADMIN' && existingConnection.matchmakerId !== req.user.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to set date for this connection' });
+    }
+
     const connection = await prisma.matchSuggestion.update({
       where: { id },
       data: {
         status: 'DateFixed',
         meetingDate: new Date(meetingDate),
-        meetingLocation,
-        meetingVenue,
-        meetingMessage: meetingMessage || 'Your first date is on us! Try it for free!'
+        meetingLocation: meetingLocation ? String(meetingLocation).trim() : null,
+        meetingVenue: meetingVenue ? String(meetingVenue).trim() : null,
+        meetingMessage: meetingMessage ? String(meetingMessage).trim() : 'Your first date is on us! Try it for free!'
       },
       include: {
         client: true,
@@ -969,25 +1002,33 @@ router.put('/connections/:id/date', async (req, res) => {
     });
 
     try {
-      const { sendMail } = require('../services/emailService');
+      const { sendMail, escapeHtml } = require('../services/emailService');
       const dateStr = new Date(meetingDate).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
+      const safeLocation = escapeHtml(meetingLocation || '');
+      const safeVenue = escapeHtml(meetingVenue || '');
+      const safeMessage = escapeHtml(meetingMessage || 'Your first date is on us! Try it for free!');
+      const safeDateStr = escapeHtml(dateStr);
       
-      const emailHtml = (userName, partnerName) => `
+      const emailHtml = (userName, partnerName) => {
+        const safeUser = escapeHtml(userName || 'Member');
+        const safePartner = escapeHtml(partnerName || 'your match');
+        return `
         <div style="font-family: sans-serif; text-align: center; color: #333;">
           <h1 style="color: #e11d48;">💖 It's a Date! 💖</h1>
-          <p style="font-size: 18px;">Hello <strong>${userName}</strong>,</p>
-          <p style="font-size: 16px;">Wow! Your relationship manager has fixed a wonderful date for you and <strong>${partnerName}</strong>!</p>
+          <p style="font-size: 18px;">Hello <strong>${safeUser}</strong>,</p>
+          <p style="font-size: 16px;">Wow! Your relationship manager has fixed a wonderful date for you and <strong>${safePartner}</strong>!</p>
           <div style="background-color: #ffe4e6; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px; text-align: left;">
-            <p><strong>📅 Date & Time:</strong> ${dateStr}</p>
-            <p><strong>📍 Location:</strong> ${meetingLocation}</p>
-            <p><strong>🏛️ Venue:</strong> ${meetingVenue}</p>
-            <p><strong>💌 Message:</strong> ${meetingMessage || 'Your first date is on us! Try it for free!'}</p>
+            <p><strong>📅 Date & Time:</strong> ${safeDateStr}</p>
+            <p><strong>📍 Location:</strong> ${safeLocation}</p>
+            <p><strong>🏛️ Venue:</strong> ${safeVenue}</p>
+            <p><strong>💌 Message:</strong> ${safeMessage}</p>
           </div>
           <p style="font-size: 18px; font-weight: bold; color: #e11d48;">Enjoy your date with your partner!</p>
           <br>
           <p>Best regards,<br>JabWeMeet Matchmaking Team</p>
         </div>
       `;
+      };
 
       const emailText = (userName, partnerName) => `Hello ${userName},\n\nWow! Your relationship manager has fixed a wonderful date for you and ${partnerName}!\n\nDate & Time: ${dateStr}\nLocation: ${meetingLocation}\nVenue: ${meetingVenue}\nMessage: ${meetingMessage || 'Your first date is on us! Try it for free!'}\n\nEnjoy your date with your partner!\n\nBest regards,\nJabWeMeet Matchmaking Team`;
 
@@ -1022,10 +1063,7 @@ router.put('/connections/:id/date', async (req, res) => {
 // Fetch RM Earnings
 router.get('/earnings', async (req, res) => {
   try {
-    const { matchmakerId } = req.query;
-    if (!matchmakerId) {
-      return res.status(400).json({ success: false, message: 'matchmakerId required' });
-    }
+    const matchmakerId = (req.user.role === 'ADMIN' && req.query.matchmakerId) ? req.query.matchmakerId : req.user.userId;
 
     const earnings = await prisma.$queryRawUnsafe(`
       SELECT * FROM "Payment" 
@@ -1043,25 +1081,7 @@ router.get('/earnings', async (req, res) => {
 // Fetch Feedbacks for RM's matches
 router.get('/feedbacks', async (req, res) => {
   try {
-    const { matchmakerId } = req.query;
-    if (!matchmakerId) {
-      return res.status(400).json({ success: false, message: 'matchmakerId required' });
-    }
-
-    // Ensure table exists just in case
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "DateFeedback" (
-        "id" TEXT NOT NULL,
-        "matchId" TEXT NOT NULL,
-        "userId" TEXT NOT NULL,
-        "gender" TEXT,
-        "rating" INTEGER NOT NULL,
-        "feedback" TEXT NOT NULL,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "sentiment" TEXT DEFAULT 'NEUTRAL',
-        CONSTRAINT "DateFeedback_pkey" PRIMARY KEY ("id")
-      );
-    `);
+    const matchmakerId = (req.user.role === 'ADMIN' && req.query.matchmakerId) ? req.query.matchmakerId : req.user.userId;
 
     // Fetch feedbacks where the match belongs to this RM
     const feedbacks = await prisma.$queryRawUnsafe(`
@@ -1084,6 +1104,22 @@ router.get('/feedbacks', async (req, res) => {
 router.delete('/feedbacks/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const fbRecords = await prisma.$queryRawUnsafe(`
+      SELECT f.id, m."matchmakerId"
+      FROM "DateFeedback" f
+      JOIN "MatchSuggestion" m ON f."matchId" = m."id"
+      WHERE f."id" = $1
+    `, id);
+
+    if (!fbRecords || fbRecords.length === 0) {
+      return res.status(404).json({ success: false, message: 'Feedback not found' });
+    }
+
+    if (req.user.role !== 'ADMIN' && fbRecords[0].matchmakerId !== req.user.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Cannot delete feedback for matches managed by another matchmaker' });
+    }
+
     await prisma.$executeRawUnsafe(`DELETE FROM "DateFeedback" WHERE "id" = $1`, id);
     res.json({ success: true });
   } catch (error) {
@@ -1097,15 +1133,25 @@ router.patch('/feedbacks/:id/publish', async (req, res) => {
   try {
     const { id } = req.params;
     const { isPublished } = req.body;
-    
-    // Create column if it doesn't exist
-    await prisma.$executeRawUnsafe(`
-      ALTER TABLE "DateFeedback" ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN DEFAULT FALSE
-    `);
+
+    const fbRecords = await prisma.$queryRawUnsafe(`
+      SELECT f.id, m."matchmakerId"
+      FROM "DateFeedback" f
+      JOIN "MatchSuggestion" m ON f."matchId" = m."id"
+      WHERE f."id" = $1
+    `, id);
+
+    if (!fbRecords || fbRecords.length === 0) {
+      return res.status(404).json({ success: false, message: 'Feedback not found' });
+    }
+
+    if (req.user.role !== 'ADMIN' && fbRecords[0].matchmakerId !== req.user.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Cannot publish feedback for matches managed by another matchmaker' });
+    }
 
     await prisma.$executeRawUnsafe(`
       UPDATE "DateFeedback" SET "isPublished" = $1 WHERE "id" = $2
-    `, isPublished, id);
+    `, Boolean(isPublished), id);
     
     res.json({ success: true });
   } catch (error) {

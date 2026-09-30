@@ -1,28 +1,4 @@
-let transporter;
-
-try {
-  const nodemailer = require('nodemailer');
-  transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.MAIL_PORT) || 587,
-    secure: process.env.MAIL_PORT == 465,
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 50,
-    auth: {
-      user: process.env.MAIL_USERNAME,
-      pass: process.env.MAIL_PASSWORD,
-    },
-  });
-} catch (err) {
-  console.warn('⚠️ [JabWeMeet EmailService] "nodemailer" not installed or failed to load. Outgoing emails will be logged instead of failing.');
-  transporter = {
-    sendMail: async (options) => {
-      console.log(`[JabWeMeet EmailService Sim] To: ${options.to} | Subject: ${options.subject}`);
-      return { messageId: 'simulated-' + Date.now() };
-    },
-  };
-}
+const { sendQueuedMail, enqueueEmail, transporter } = require('./emailQueue');
 
 const sendMail = async (to, subject, text, html, fromName, replyTo) => {
   try {
@@ -48,8 +24,8 @@ const sendMail = async (to, subject, text, html, fromName, replyTo) => {
       mailOptions.replyTo = replyTo.trim();
     }
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`📬 [Email Sent] to: ${recipient} | Subject: "${subject}" | ID: ${info.messageId}`);
+    const info = await sendQueuedMail(mailOptions);
+    console.log(`📬 [Email Queued] to: ${recipient} | Subject: "${subject}"`);
     return info;
   } catch (error) {
     console.error(`❌ [Email Error] to: ${to} | Reason:`, error.message || error);
@@ -57,4 +33,14 @@ const sendMail = async (to, subject, text, html, fromName, replyTo) => {
   }
 };
 
-module.exports = { sendMail };
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+module.exports = { sendMail, escapeHtml };
