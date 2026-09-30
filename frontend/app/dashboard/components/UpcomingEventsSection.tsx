@@ -71,6 +71,7 @@ export default function UpcomingEventsSection({
     if (isNaN(d.getTime())) return "Upcoming";
     const now = new Date();
     const diffMs = d.getTime() - now.getTime();
+    if (diffMs < 0) return "Ended";
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     if (diffDays <= 0) return "Today";
     if (diffDays === 1) return "Tomorrow";
@@ -222,6 +223,7 @@ export default function UpcomingEventsSection({
             // Real booking count from backend
             const bookedCount = evt.confirmedBookings ?? 0;
             const spotsRemaining = Math.max(0, capacity - bookedCount);
+            const isPast = !isNaN(eventDate.getTime()) && eventDate.getTime() < new Date().getTime();
 
             return (
               <div
@@ -306,7 +308,9 @@ export default function UpcomingEventsSection({
                           Spot Confirmed
                         </span>
                       ) : (
-                        <span className="text-xs font-medium text-slate-300">Open for RSVP</span>
+                        <span className="text-xs font-medium text-slate-300">
+                          {isPast ? "Event Ended" : "Open for RSVP"}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -322,7 +326,7 @@ export default function UpcomingEventsSection({
                           <Ticket className="w-3.5 h-3.5 text-emerald-400" />
                           <span>View Ticket Pass ({evt.bookedSpots || 1})</span>
                         </button>
-                        {spotsRemaining > 0 && (
+                        {spotsRemaining > 0 && !isPast && (
                           <button
                             onClick={() => {
                               setSelectedSpots(1);
@@ -344,18 +348,18 @@ export default function UpcomingEventsSection({
                           View Details
                         </button>
                         <button
-                          disabled={spotsRemaining === 0}
+                          disabled={spotsRemaining === 0 || isPast}
                           onClick={() => {
                             setSelectedSpots(1);
                             setBookingModalEvent(evt);
                           }}
                           className={`px-3 py-2 rounded-xl text-white text-xs font-bold shadow-md transition cursor-pointer ${
-                            spotsRemaining === 0
+                            isPast || spotsRemaining === 0
                               ? "bg-slate-700 opacity-50 cursor-not-allowed"
                               : "bg-[#e06d53] hover:bg-[#c95940] shadow-[#e06d53]/25"
                           }`}
                         >
-                          {spotsRemaining === 0 ? "Sold Out" : "Book Tickets"}
+                          {isPast ? "Event Ended" : spotsRemaining === 0 ? "Sold Out" : "Book Tickets"}
                         </button>
                       </div>
                     )}
