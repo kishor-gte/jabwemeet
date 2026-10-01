@@ -55,6 +55,18 @@ function RegisterContent() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState("");
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -224,6 +236,9 @@ function RegisterContent() {
         if (data.requiresOtp) {
           setOtpSent(true);
           setRegisteredEmail(data.email);
+          if (data.devOtp) setDevOtp(data.devOtp);
+          setResendCooldown(60);
+          setError("");
         } else if (data.pendingApproval) {
           setPendingApproval(true);
           setSuccess(true);
@@ -242,6 +257,33 @@ function RegisterContent() {
       setError("We couldn't connect to JabWeMeet right now. Please try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    if (resendCooldown > 0 || resendLoading) return;
+    setResendLoading(true);
+    setResendSuccess("");
+    setError("");
+
+    try {
+      const res = await fetch("/api/auth/resend-registration-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResendSuccess(data.message || "A new OTP code has been sent to your email.");
+        if (data.devOtp) setDevOtp(data.devOtp);
+        setResendCooldown(60);
+      } else {
+        setError(data.message || "Failed to resend OTP. Please try again.");
+      }
+    } catch (err) {
+      setError("Failed to resend OTP. Please check your connection.");
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -264,11 +306,11 @@ function RegisterContent() {
         }
         setSuccess(true);
         setOtpSent(false);
-        const target = "/login";
+        const target = data.redirectUrl || (data.pendingApproval ? "/login" : "/dashboard");
         setRedirectTarget(target);
         setTimeout(() => {
           router.push(target);
-        }, 2000);
+        }, 1500);
       } else {
         setError(data.message || "OTP verification failed.");
       }
@@ -370,25 +412,74 @@ function RegisterContent() {
         {otpSent ? (
           <form onSubmit={handleOtpSubmit} className="space-y-4 text-xs text-center py-6">
             <h2 className="text-xl font-bold mb-2">Verify Your Email 🔐</h2>
-            <p className="text-slate-300 mb-4">We've sent a 6-digit OTP to <strong className="text-white">{registeredEmail}</strong>.</p>
+            <p className="text-slate-300 mb-2">
+              We've sent a 6-digit OTP code to <strong className="text-white">{registeredEmail}</strong>.
+            </p>
+            <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 mb-3 text-left">
+              📬 <strong>Check your Spam or Junk folder</strong> if you don't see it in your primary inbox within 30 seconds.
+            </p>
+
+            {devOtp && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-emerald-300 text-xs flex items-center justify-between">
+                <span>🧪 Testing Code: <strong className="text-white tracking-widest text-sm font-mono">{devOtp}</strong></span>
+                <button
+                  type="button"
+                  onClick={() => setOtp(devOtp)}
+                  className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 rounded-lg text-[10px] font-bold uppercase transition"
+                >
+                  Fill Code
+                </button>
+              </div>
+            )}
+
+            {resendSuccess && (
+              <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs">
+                {resendSuccess}
+              </div>
+            )}
+
             <div>
               <input
                 type="text"
                 required
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="Enter 6-digit OTP"
                 maxLength={6}
-                className="w-full text-center tracking-widest text-lg px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
+                className="w-full text-center tracking-widest text-2xl font-mono px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
               />
             </div>
+
             <button
               type="submit"
               disabled={loading || otp.length < 6}
-              className="w-full mt-4 py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-4 py-3.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-bold text-xs tracking-wider uppercase transition shadow-lg shadow-[#e06d53]/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Verifying..." : "Verify OTP"}
+              {loading ? "Verifying..." : "Verify OTP & Complete Registration"}
             </button>
+
+            <div className="pt-4 flex items-center justify-between border-t border-white/10 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpSent(false);
+                  setOtp("");
+                  setError("");
+                }}
+                className="text-slate-400 hover:text-white transition"
+              >
+                ← Edit Details
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0 || resendLoading}
+                className="text-[#e06d53] hover:underline font-semibold disabled:text-slate-500 disabled:no-underline transition"
+              >
+                {resendLoading ? "Resending..." : resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : "Resend OTP"}
+              </button>
+            </div>
           </form>
         ) : success ? (
           <div className="text-center py-6 space-y-4">

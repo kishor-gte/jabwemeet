@@ -12,9 +12,6 @@ try {
       host: process.env.MAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.MAIL_PORT, 10) || 587,
       secure: process.env.MAIL_PORT == '465',
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
       auth: {
         user: process.env.MAIL_USERNAME,
         pass: process.env.MAIL_PASSWORD,

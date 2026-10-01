@@ -1530,22 +1530,45 @@ async function sendTestEmail({ toEmail, email, subject, previewNote }) {
 
 /** Registration OTP */
 async function sendRegistrationOTP({ userEmail, userName, otp }) {
-  if (!userEmail) return;
+  if (!userEmail) return { success: false, message: 'No recipient email specified' };
   try {
+    const fromAddress = process.env.MAIL_USERNAME || 'noreply@jabweemeet.com';
+    const fromHeader = `"JabWeMeet Official" <${fromAddress}>`;
+
     const html = wrapTemplate({
       title: 'Your Registration OTP - JabWeMeet',
-      badge: { text: '🔐 Verification', type: 'badge-info' },
+      badge: { text: '🔐 Verification Code', type: 'badge-info' },
       contentHtml: `
         <h2 style="color:#ffffff; margin-top:0;">Hello ${userName || 'Member'},</h2>
         <p>Thank you for registering on JabWeMeet. Please use the following One-Time Password (OTP) to complete your registration:</p>
-        <div class="card" style="text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #ec4899;">
+        <div class="card" style="text-align: center; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #ec4899; padding: 22px; background: #162238; border-radius: 16px; border: 1px solid rgba(236,72,153,0.35);">
           ${otp}
         </div>
-        <p style="font-size: 12px; color: #94a3b8;">This OTP is valid for 10 minutes.</p>
+        <p style="font-size: 13px; color: #94a3b8; margin-top: 14px;">
+          This OTP is valid for <strong>10 minutes</strong>. If you did not request this verification, please ignore this email.
+        </p>
       `,
     });
-    await transporter.sendMail({ from: FROM_HEADER, to: userEmail, subject: 'Your JabWeMeet Registration OTP', html });
-  } catch (err) {}
+
+    const text = `Hello ${userName || 'Member'},\n\nYour JabWeMeet verification OTP is: ${otp}\n\nThis OTP is valid for 10 minutes.\n\nBest regards,\nJabWeMeet Technologies`;
+
+    const mailOptions = {
+      from: fromHeader,
+      to: userEmail.trim(),
+      replyTo: fromAddress,
+      subject: `${otp} is your JabWeMeet verification code`,
+      text,
+      html,
+    };
+
+    console.log(`📤 [Dispatching OTP Email] to: ${userEmail} (Code: ${otp})`);
+    const info = await sendQueuedMail(mailOptions, true);
+    console.log(`✅ [OTP Email Sent Successfully] to: ${userEmail}`);
+    return { success: true, info };
+  } catch (err) {
+    console.error(`❌ [Failed Sending OTP Email] to ${userEmail}:`, err.message || err);
+    return { success: false, error: err.message };
+  }
 }
 
 /** Registration Success */

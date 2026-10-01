@@ -252,18 +252,18 @@ export default function HomePage() {
 
           {/* Center Nav Links */}
           <div className="hidden lg:flex items-center gap-8 text-xs font-bold uppercase tracking-wider text-slate-600">
-            <a href="/" className="text-[#7E2248] font-extrabold border-b-2 border-[#7E2248] pb-1">
+            <Link href="/" className="text-[#7E2248] font-extrabold border-b-2 border-[#7E2248] pb-1">
               HOME
-            </a>
-            <a href="/experiences" className="hover:text-[#7E2248] transition">
+            </Link>
+            <Link href="/experiences" className="hover:text-[#7E2248] transition">
               EXPERIENCES
-            </a>
+            </Link>
             <a href="#how-it-works" className="hover:text-[#7E2248] transition">
               OUR STORIES
             </a>
-            <a href="/cafes" className="hover:text-[#7E2248] transition">
+            <Link href="/cafes" className="hover:text-[#7E2248] transition">
               CAFES
-            </a>
+            </Link>
             <a href="#about" className="hover:text-[#7E2248] transition">
               ABOUT
             </a>

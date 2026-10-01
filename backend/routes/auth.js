@@ -307,9 +307,9 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
     // Duplicate email check
     const existingEmail = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true },
+      select: { id: true, isVerified: true, role: true },
     });
-    if (existingEmail) {
+    if (existingEmail && existingEmail.isVerified) {
       return res.status(409).json({
         success: false,
         message: 'An account with this email already exists. Please login instead.',
@@ -319,9 +319,9 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
     // Duplicate phone check
     const existingPhone = await prisma.user.findUnique({
       where: { phone: cleanPhone },
-      select: { id: true },
+      select: { id: true, isVerified: true },
     });
-    if (existingPhone) {
+    if (existingPhone && existingPhone.isVerified && (!existingEmail || existingPhone.id !== existingEmail.id)) {
       return res.status(409).json({
         success: false,
         message: 'An account with this mobile number already exists. Please login instead.',
@@ -338,46 +338,81 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
     const eduCertificate = req.files?.eduCertificate ? req.files.eduCertificate[0].filename : null;
     const workExperience = req.files?.workExperience ? req.files.workExperience[0].filename : null;
 
-    // Create user in PostgreSQL database
-    const newUser = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: cleanEmail,
-        phone: cleanPhone,
-        password: passwordHash,
-        dateOfBirth: dob,
-        city: validCity,
-        gender: gender ? String(gender).trim() : null,
-        relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
+    // Create or update unverified user in PostgreSQL database
+    let userRecord;
+    if (existingEmail && !existingEmail.isVerified) {
+      userRecord = await prisma.user.update({
+        where: { id: existingEmail.id },
+        data: {
+          name: name.trim(),
+          phone: cleanPhone,
+          password: passwordHash,
+          dateOfBirth: dob,
+          city: validCity,
+          gender: gender ? String(gender).trim() : null,
+          relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
+          role: normalizedRole,
+          isVerified: false,
+          identityVerified: false,
+          isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+          idType: idType ? String(idType).trim() : null,
+          idDocument: idDocument ? String(idDocument).trim() : null,
+          profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
+          govIdProof: govIdProof || undefined,
+          addressProof: addressProof || undefined,
+          eduCertificate: eduCertificate || undefined,
+          workExperience: workExperience || undefined,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          city: true,
+          gender: true,
+          relationshipIntent: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+    } else {
+      userRecord = await prisma.user.create({
+        data: {
+          name: name.trim(),
+          email: cleanEmail,
+          phone: cleanPhone,
+          password: passwordHash,
+          dateOfBirth: dob,
+          city: validCity,
+          gender: gender ? String(gender).trim() : null,
+          relationshipIntent: relationshipIntent ? String(relationshipIntent).trim() : null,
+          role: normalizedRole,
+          isVerified: false,
+          identityVerified: false,
+          isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+          idType: idType ? String(idType).trim() : null,
+          idDocument: idDocument ? String(idDocument).trim() : null,
+          profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
+          govIdProof,
+          addressProof,
+          eduCertificate,
+          workExperience,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          city: true,
+          gender: true,
+          relationshipIntent: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+    }
 
-        role: normalizedRole,
-        isVerified: false,
-        identityVerified: false,
-        isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
-
-        idType: idType ? String(idType).trim() : null,
-        idDocument: idDocument ? String(idDocument).trim() : null,
-        profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
-        govIdProof,
-        addressProof,
-        eduCertificate,
-        workExperience,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        city: true,
-        gender: true,
-        relationshipIntent: true,
-        role: true,
-        createdAt: true,
-      },
-    });
-
-    // Create JWT token for immediate login (removed per requirement)
-    // We now send OTP instead.
+    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     global.registrationOtpStore = global.registrationOtpStore || new Map();
     const now = Date.now();
@@ -390,17 +425,26 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
       const oldestKey = global.registrationOtpStore.keys().next().value;
       if (oldestKey) global.registrationOtpStore.delete(oldestKey);
     }
-    global.registrationOtpStore.set(cleanEmail, { otp, userId: newUser.id, role: newUser.role, expiresAt: Date.now() + 10 * 60 * 1000 });
+    global.registrationOtpStore.set(cleanEmail, {
+      otp,
+      userId: userRecord.id,
+      role: userRecord.role,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
 
+    console.log(`🔐 [Registration OTP for ${cleanEmail}]: ${otp}`);
     const { sendRegistrationOTP } = require('../utils/mailer');
-    await sendRegistrationOTP({ userEmail: cleanEmail, userName: newUser.name, otp });
+    sendRegistrationOTP({ userEmail: cleanEmail, userName: userRecord.name, otp }).catch((err) => {
+      console.error(`Error sending registration OTP email to ${cleanEmail}:`, err);
+    });
 
     return res.status(200).json({
       success: true,
       requiresOtp: true,
-      message: 'OTP sent to your email. Please verify to complete registration.',
+      message: 'OTP sent to your email. Please check your Inbox and Spam folder to complete registration.',
       email: cleanEmail,
-      role: newUser.role,
+      role: userRecord.role,
+      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (error) {
     console.error('Error during registration:', error);
@@ -431,39 +475,95 @@ router.post('/verify-registration-otp', verifyOtpLimiter, async (req, res) => {
     global.registrationOtpStore = global.registrationOtpStore || new Map();
     const stored = global.registrationOtpStore.get(cleanEmail);
 
-    if (!stored || stored.otp !== otp) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+    if (!stored || stored.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please try again or click Resend OTP.' });
     }
     
     if (Date.now() > stored.expiresAt) {
       global.registrationOtpStore.delete(cleanEmail);
-      return res.status(400).json({ success: false, message: 'OTP has expired. Please register again.' });
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please click Resend OTP.' });
     }
 
     // OTP is valid
     global.registrationOtpStore.delete(cleanEmail);
 
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
-    
-    // We can set some verified flag here if we want, but for now it's fine.
+    const user = await prisma.user.update({
+      where: { email: cleanEmail },
+      data: { isVerified: true },
+    });
     
     const { sendRegistrationSuccessEmail } = require('../utils/mailer');
-    await sendRegistrationSuccessEmail({ userEmail: cleanEmail, userName: user.name, role: user.role });
+    sendRegistrationSuccessEmail({ userEmail: cleanEmail, userName: user.name, role: user.role }).catch(() => {});
 
     const pendingApproval = (user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST' || user.role === 'CAFE');
 
+    // Auto-login Member (USER) immediately upon OTP verification
+    if (!pendingApproval) {
+      const token = jwt.sign(
+        { userId: user.id, role: user.role, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      res.cookie('token', token, getCookieOptions());
+    }
+
     return res.status(200).json({
       success: true,
-      message: 'Registration successful! 🎉',
+      message: 'Registration and email verification successful! 🎉',
       pendingApproval,
-      redirectUrl: '/login'
+      redirectUrl: pendingApproval ? '/login' : '/dashboard'
     });
   } catch (error) {
     console.error('Error in verify-registration-otp:', error);
     return res.status(500).json({ success: false, message: 'Server error during verification.' });
+  }
+});
+
+// 2.6. POST /api/auth/resend-registration-otp
+router.post('/resend-registration-otp', registerLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required.' });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+      select: { id: true, name: true, role: true, isVerified: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No registration found with this email.' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ success: false, message: 'This account is already verified. Please log in.' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    global.registrationOtpStore = global.registrationOtpStore || new Map();
+    global.registrationOtpStore.set(cleanEmail, {
+      otp,
+      userId: user.id,
+      role: user.role,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
+
+    console.log(`🔐 [Resent OTP for ${cleanEmail}]: ${otp}`);
+    const { sendRegistrationOTP } = require('../utils/mailer');
+    sendRegistrationOTP({ userEmail: cleanEmail, userName: user.name, otp }).catch((err) => {
+      console.error(`Error resending registration OTP email to ${cleanEmail}:`, err);
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `A new OTP has been sent to ${cleanEmail}. Please check your Inbox and Spam folder.`,
+      email: cleanEmail,
+      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
+    });
+  } catch (error) {
+    console.error('Error in resend-registration-otp:', error);
+    return res.status(500).json({ success: false, message: 'Failed to resend OTP. Please try again.' });
   }
 });
 
