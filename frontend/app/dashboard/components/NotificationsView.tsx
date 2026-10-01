@@ -141,47 +141,47 @@ export default function NotificationsView({
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-slate-300 text-xs font-semibold mb-2 border border-white/10">
-            <Bell className="w-3.5 h-3.5 text-amber-400" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#7E2248] text-xs font-semibold mb-2 border border-rose-200">
+            <Bell className="w-3.5 h-3.5 text-[#7E2248]" />
             Alerts & Broadcasts
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 tracking-tight">
             Notification Center
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             Real-time platform announcements, RSVP confirmations, and service updates.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 bg-[#131d2e] p-1 rounded-xl border border-white/10 text-xs">
+        <div className="flex flex-wrap items-center gap-1 bg-white p-1 rounded-full border border-rose-100 shadow-xs text-xs">
           <button
             onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-              filter === "all" ? "bg-[#e06d53] text-white" : "text-slate-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full font-semibold transition ${
+              filter === "all" ? "bg-[#7E2248] text-white shadow-xs" : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50"
             }`}
           >
             All ({notifications.length})
           </button>
           <button
             onClick={() => setFilter("announcements")}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-              filter === "announcements" ? "bg-[#e06d53] text-white" : "text-slate-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full font-semibold transition ${
+              filter === "announcements" ? "bg-[#7E2248] text-white shadow-xs" : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50"
             }`}
           >
             Announcements ({notifications.filter((n) => n.type === "announcements").length})
           </button>
           <button
             onClick={() => setFilter("events")}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-              filter === "events" ? "bg-[#e06d53] text-white" : "text-slate-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full font-semibold transition ${
+              filter === "events" ? "bg-[#7E2248] text-white shadow-xs" : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50"
             }`}
           >
             Events ({notifications.filter((n) => n.type === "events").length})
           </button>
           <button
             onClick={() => setFilter("services")}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-              filter === "services" ? "bg-[#e06d53] text-white" : "text-slate-400 hover:text-white"
+            className={`px-3.5 py-1.5 rounded-full font-semibold transition ${
+              filter === "services" ? "bg-[#7E2248] text-white shadow-xs" : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50"
             }`}
           >
             Services ({notifications.filter((n) => n.type === "services").length})
@@ -191,7 +191,7 @@ export default function NotificationsView({
 
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-[#131d2e] border border-white/10 text-center text-slate-400 text-sm">
+          <div className="p-10 rounded-3xl bg-white border border-rose-100 text-center text-slate-500 text-sm shadow-xs">
             No notifications found in this category.
           </div>
         ) : (
@@ -201,19 +201,19 @@ export default function NotificationsView({
             return (
               <div
                 key={item.id}
-                className={`p-5 rounded-2xl bg-[#131d2e] border transition flex items-start gap-4 shadow ${
+                className={`p-5 rounded-3xl border transition flex items-start gap-4 shadow-xs hover:shadow-md ${
                   isAnnouncement
-                    ? "border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-[#131d2e] to-[#131d2e] hover:border-amber-500/50"
-                    : "border-white/10 hover:border-white/20"
+                    ? "border-amber-200 bg-gradient-to-r from-amber-50/70 via-white to-white hover:border-amber-300"
+                    : "bg-white border-rose-100 hover:border-rose-200"
                 }`}
               >
-                <div className={`p-2.5 rounded-xl border ${item.color} shrink-0 mt-0.5`}>
+                <div className={`p-2.5 rounded-2xl border ${item.color} shrink-0 mt-0.5 shadow-2xs`}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-white">{item.title}</h4>
+                      <h4 className="text-sm font-serif font-bold text-slate-900">{item.title}</h4>
                       {item.badge && (
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.badgeColor}`}
@@ -224,7 +224,7 @@ export default function NotificationsView({
                     </div>
                     <span className="text-[11px] text-slate-400 shrink-0">{item.time}</span>
                   </div>
-                  <p className="text-xs text-slate-200 mt-1.5 leading-relaxed whitespace-pre-line">
+                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed whitespace-pre-line">
                     {item.detail}
                   </p>
                   <div className="flex items-center gap-3 mt-3 text-[11px] text-slate-400">

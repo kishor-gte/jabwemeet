@@ -459,14 +459,14 @@ export default function ProfileView({
     <div className="space-y-8 max-w-5xl pb-24">
       {/* Header */}
       <div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-slate-300 text-xs font-semibold mb-2 border border-white/10">
-          <User className="w-3.5 h-3.5 text-[#e06d53]" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#7E2248] text-xs font-semibold mb-2 border border-rose-200">
+          <User className="w-3.5 h-3.5 text-[#7E2248]" />
           Account Management
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 tracking-tight">
           Member Profile & Matching Preferences
         </h2>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+        <p className="text-xs sm:text-sm text-slate-600 mt-1">
           Personalize your offline event seating, peer recommendations, and Relationship Manager matchmaking criteria.
         </p>
       </div>
@@ -480,15 +480,15 @@ export default function ProfileView({
 
       {/* Alerts */}
       {savedMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-lg">
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
             <span>{savedMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setSavedMessage("")}
-            className="text-emerald-400 hover:text-white text-xs ml-4"
+            className="text-emerald-700 hover:text-emerald-900 text-xs ml-4 cursor-pointer"
           >
             Dismiss
           </button>
@@ -496,15 +496,15 @@ export default function ProfileView({
       )}
 
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center justify-between shadow-lg">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-5 h-5 shrink-0" />
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
           <button
             type="button"
             onClick={() => setErrorMessage("")}
-            className="text-rose-400 hover:text-white text-xs ml-4"
+            className="text-rose-700 hover:text-rose-900 text-xs ml-4 cursor-pointer"
           >
             Dismiss
           </button>
@@ -521,10 +521,10 @@ export default function ProfileView({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold transition whitespace-nowrap ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-semibold transition whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? "bg-[#e06d53] text-white shadow-lg shadow-[#e06d53]/25"
-                  : "bg-[#131d2e] text-slate-400 hover:text-white border border-white/5 hover:border-white/10"
+                  ? "bg-[#7E2248] text-white shadow-md shadow-[#7E2248]/20"
+                  : "bg-white text-slate-600 hover:text-[#7E2248] border border-rose-100 hover:border-rose-200 shadow-xs"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -636,16 +636,16 @@ export default function ProfileView({
 
       {/* Floating / Sticky Save Bar */}
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-8 z-40 max-w-xl">
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-[#0f1726]/95 backdrop-blur-md border border-white/15 shadow-2xl flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+        <div className="p-3.5 sm:p-4 rounded-full bg-white/95 backdrop-blur-md border border-rose-200 shadow-2xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 pl-2">
             {isDirty ? (
-              <span className="flex items-center gap-2 text-xs font-semibold text-amber-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="flex items-center gap-2 text-xs font-semibold text-amber-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
                 <span>Unsaved changes</span>
               </span>
             ) : (
-              <span className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>All changes saved</span>
               </span>
             )}
@@ -656,7 +656,7 @@ export default function ProfileView({
               <button
                 type="button"
                 onClick={handleDiscard}
-                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium border border-white/10 transition flex items-center gap-1.5"
+                className="px-4 py-2 rounded-full bg-rose-50 hover:bg-rose-100 text-[#7E2248] text-xs font-medium border border-rose-200 transition flex items-center gap-1.5 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Discard</span>
@@ -667,7 +667,7 @@ export default function ProfileView({
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="px-5 py-2 rounded-xl bg-[#e06d53] hover:bg-[#c95940] disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-[#e06d53]/25 transition flex items-center gap-2"
+              className="px-6 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition flex items-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
             >
               {isSaving ? (
                 <>

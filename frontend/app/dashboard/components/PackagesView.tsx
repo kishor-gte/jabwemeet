@@ -215,7 +215,7 @@ export default function PackagesView({ user }: { user: any }) {
           contact: user?.phone || "",
         },
         theme: {
-          color: "#e06d53",
+          color: "#7E2248",
         },
       };
 
@@ -235,25 +235,25 @@ export default function PackagesView({ user }: { user: any }) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-          <Package className="w-6 h-6 text-[#e06d53]" />
+        <h2 className="text-2xl font-serif font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          <Package className="w-6 h-6 text-[#7E2248]" />
           Breakup Buddy Packages & Session Quotas
         </h2>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+        <p className="text-xs sm:text-sm text-slate-600 mt-1">
           First 30 minutes of Chat and Voice Call are 100% free with your Breakup Buddy. Choose a support pass below to extend your sessions anytime.
         </p>
       </div>
 
       {/* ACTIVE STATUS & QUOTAS SUMMARY CARD */}
-      <div className="bg-gradient-to-br from-[#121e38] to-[#1c2e56] border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+      <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300 space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-rose-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#e06d53]/20 text-[#e06d53] flex items-center justify-center font-bold text-lg">
-              <Heart className="w-5 h-5 fill-[#e06d53]" />
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#7E2248] flex items-center justify-center font-bold text-lg border border-rose-200 shadow-xs">
+              <Heart className="w-5 h-5 fill-[#7E2248]" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Current Session Status</h3>
-              <span className="text-xs text-slate-300">
+              <h3 className="text-base font-serif font-bold text-slate-900">Current Session Status</h3>
+              <span className="text-xs text-slate-500">
                 {isPassActive
                   ? "Active Package Running"
                   : activeRequest
@@ -265,12 +265,12 @@ export default function PackagesView({ user }: { user: any }) {
 
           <div>
             {isPassActive ? (
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
                 Active Package
               </span>
             ) : (
-              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+              <span className="px-3.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold">
                 🎁 Free 30-Min Quota
               </span>
             )}
@@ -279,28 +279,28 @@ export default function PackagesView({ user }: { user: any }) {
 
         {/* Minutes Breakdown Grid */}
         <div className="grid grid-cols-2 gap-4 text-center">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mb-1">
-              <PhoneCall className="w-4 h-4 text-rose-400" />
+          <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-4">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 mb-1">
+              <PhoneCall className="w-4 h-4 text-rose-600" />
               <span>Voice Calls</span>
             </div>
-            <div className="text-lg font-bold text-white">
+            <div className="text-lg font-serif font-bold text-slate-900">
               {isPassActive ? (
-                <span className="text-emerald-400 font-extrabold">Unlimited</span>
+                <span className="text-emerald-700 font-extrabold">Unlimited</span>
               ) : (
                 `${freeCallMinsLeft}m Free Left`
               )}
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-            <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mb-1">
-              <MessageCircle className="w-4 h-4 text-sky-400" />
+          <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-4">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 mb-1">
+              <MessageCircle className="w-4 h-4 text-[#7E2248]" />
               <span>Live Chats</span>
             </div>
-            <div className="text-lg font-bold text-white">
+            <div className="text-lg font-serif font-bold text-slate-900">
               {isPassActive ? (
-                <span className="text-emerald-400 font-extrabold">Unlimited</span>
+                <span className="text-emerald-700 font-extrabold">Unlimited</span>
               ) : (
                 `${freeChatMinsLeft}m Free Left`
               )}
@@ -309,16 +309,16 @@ export default function PackagesView({ user }: { user: any }) {
         </div>
       </div>
 
-      {/* PACKAGES SELECTION GRID (GENERIC PACKAGES ONLY) */}
+      {/* PACKAGES SELECTION GRID */}
       <div className="space-y-4 pt-2">
-        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#e06d53]" />
+        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#7E2248]" />
           Available Support Packages
         </h3>
 
         {packages.length === 0 ? (
-          <div className="p-8 rounded-3xl bg-[#0d1526] border border-white/10 text-center space-y-2">
-            <p className="text-sm font-semibold text-slate-300">No active Breakup Buddy packages found.</p>
+          <div className="p-8 rounded-3xl bg-white border border-rose-100 text-center space-y-2 shadow-xs">
+            <p className="text-sm font-serif font-semibold text-slate-900">No active Breakup Buddy packages found.</p>
             <p className="text-xs text-slate-500">Packages configured by Admin will appear here.</p>
           </div>
         ) : (
@@ -326,27 +326,27 @@ export default function PackagesView({ user }: { user: any }) {
             {packages.map((pkg) => (
               <div
                 key={pkg.id}
-                className={`p-6 sm:p-7 rounded-3xl bg-[#0d1526] border transition-all duration-200 flex flex-col justify-between space-y-5 ${
+                className={`p-6 sm:p-7 rounded-3xl transition-all duration-300 flex flex-col justify-between space-y-5 relative ${
                   pkg.isPopular
-                    ? "border-[#e06d53] ring-2 ring-[#e06d53]/30 shadow-2xl relative"
-                    : "border-white/10 hover:border-white/20 shadow-lg"
+                    ? "bg-gradient-to-b from-rose-50/40 via-white to-white border-2 border-[#7E2248] shadow-lg hover:shadow-xl"
+                    : "bg-white border border-rose-100 hover:border-rose-200 shadow-sm hover:shadow-md"
                 }`}
               >
                 {pkg.isPopular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-[#e06d53] text-white text-[10px] font-extrabold uppercase rounded-full shadow-md">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 bg-[#7E2248] text-white text-[10px] font-extrabold uppercase rounded-full shadow-md">
                     Most Popular
                   </span>
                 )}
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-base font-bold text-white">{pkg.name}</h4>
-                    <Clock className="w-4 h-4 text-[#e06d53]" />
+                    <h4 className="text-base font-serif font-bold text-slate-900">{pkg.name}</h4>
+                    <Clock className="w-4 h-4 text-[#7E2248]" />
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-white">₹{pkg.price}</span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-2xl font-serif font-black text-slate-900">₹{pkg.price}</span>
+                    <span className="text-[11px] text-slate-500">
                       / {pkg.duration || (pkg.durationHours > 0 || pkg.durationMinutes > 0
                           ? `${pkg.durationHours ? `${pkg.durationHours} ${pkg.durationHours === 1 ? 'Hour' : 'Hours'}` : ''} ${pkg.durationMinutes ? `${pkg.durationMinutes} ${pkg.durationMinutes === 1 ? 'Min' : 'Mins'}` : ''}`.trim()
                           : (pkg.durationDays ? `${pkg.durationDays} Days` : 'pass'))}
@@ -354,10 +354,10 @@ export default function PackagesView({ user }: { user: any }) {
                   </div>
 
                   {Array.isArray(pkg.features) && pkg.features.length > 0 && (
-                    <ul className="space-y-2 pt-2 border-t border-white/5 text-xs text-slate-300">
+                    <ul className="space-y-2 pt-2 border-t border-rose-100 text-xs text-slate-600">
                       {pkg.features.map((f: string, i: number) => (
                         <li key={i} className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           <span>{f}</span>
                         </li>
                       ))}
@@ -367,10 +367,10 @@ export default function PackagesView({ user }: { user: any }) {
 
                 <button
                   onClick={() => handleInitiateBuy(pkg)}
-                  className={`w-full py-3 rounded-2xl text-xs font-bold transition shadow-md cursor-pointer ${
+                  className={`w-full py-3 rounded-full text-xs font-bold transition shadow-xs cursor-pointer ${
                     pkg.isPopular
-                      ? "bg-[#e06d53] hover:bg-[#c95940] text-white shadow-[#e06d53]/30"
-                      : "bg-white/10 hover:bg-white/15 text-white border border-white/10"
+                      ? "bg-[#7E2248] hover:bg-[#681938] text-white shadow-[#7E2248]/20 transform hover:-translate-y-0.5"
+                      : "bg-rose-50 hover:bg-rose-100 text-[#7E2248] border border-rose-200"
                   }`}
                 >
                   Buy Package (₹{pkg.price})
@@ -383,37 +383,37 @@ export default function PackagesView({ user }: { user: any }) {
 
       {/* CHECKOUT CONFIRMATION MODAL */}
       {checkoutPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl w-full max-w-md p-6 sm:p-7 space-y-5 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white border border-rose-100 rounded-3xl w-full max-w-md p-6 sm:p-7 space-y-5 shadow-2xl relative">
             <button
               onClick={() => setCheckoutPkg(null)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-rose-50 transition"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e06d53]/10 border border-[#e06d53]/30 text-[11px] font-semibold text-[#fca5a5] mb-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-semibold text-[#7E2248] mb-2">
                 💳 Secure Checkout
               </div>
-              <h3 className="text-xl font-bold text-white">Confirm Package Purchase</h3>
-              <p className="text-xs text-slate-400 mt-1">
-                You are purchasing the <strong className="text-white">{checkoutPkg.name}</strong>.
+              <h3 className="text-xl font-serif font-bold text-slate-900">Confirm Package Purchase</h3>
+              <p className="text-xs text-slate-600 mt-1">
+                You are purchasing the <strong className="text-slate-900">{checkoutPkg.name}</strong>.
               </p>
             </div>
 
-            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2 text-xs">
-              <div className="flex justify-between text-slate-300">
+            <div className="p-4 bg-rose-50/50 border border-rose-100 rounded-2xl space-y-2 text-xs">
+              <div className="flex justify-between text-slate-600">
                 <span>Package:</span>
-                <span className="font-bold text-white">{checkoutPkg.name}</span>
+                <span className="font-bold text-slate-900">{checkoutPkg.name}</span>
               </div>
-              <div className="flex justify-between text-slate-300">
+              <div className="flex justify-between text-slate-600">
                 <span>Access:</span>
-                <span className="font-bold text-emerald-400">Unlimited Voice & Chat</span>
+                <span className="font-bold text-emerald-700">Unlimited Voice & Chat</span>
               </div>
-              <div className="flex justify-between text-slate-300 pt-2 border-t border-white/10">
+              <div className="flex justify-between text-slate-600 pt-2 border-t border-rose-200">
                 <span>Total Amount:</span>
-                <span className="text-base font-extrabold text-[#e06d53]">₹{checkoutPkg.price}</span>
+                <span className="text-base font-serif font-extrabold text-[#7E2248]">₹{checkoutPkg.price}</span>
               </div>
             </div>
 
@@ -421,7 +421,7 @@ export default function PackagesView({ user }: { user: any }) {
               <button
                 onClick={handleRazorpayPayment}
                 disabled={isProcessingPayment}
-                className="w-full py-3.5 bg-[#e06d53] hover:bg-[#c95940] disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-[#e06d53]/30 transition text-sm flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-50 text-white font-bold rounded-full shadow-md shadow-[#7E2248]/20 transition text-sm flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
               >
                 {isProcessingPayment ? "Processing..." : `Pay ₹${checkoutPkg.price} via Razorpay`}
               </button>
@@ -432,19 +432,19 @@ export default function PackagesView({ user }: { user: any }) {
 
       {/* ALERT / MODAL NOTIFICATION */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#131d2e] border border-white/15 rounded-3xl w-full max-w-sm p-6 text-center space-y-4 shadow-2xl relative">
-            <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-white/5 border border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white border border-rose-100 rounded-3xl w-full max-w-sm p-6 text-center space-y-4 shadow-2xl relative">
+            <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-rose-50 border border-rose-200 text-[#7E2248]">
               {activeModal.type === "success" ? "✓" : activeModal.type === "warning" ? "⚠️" : "✕"}
             </div>
-            <h4 className="text-base font-bold text-white">{activeModal.title}</h4>
-            <p className="text-xs text-slate-300">{activeModal.message}</p>
+            <h4 className="text-base font-serif font-bold text-slate-900">{activeModal.title}</h4>
+            <p className="text-xs text-slate-600">{activeModal.message}</p>
             {activeModal.subMessage && (
-              <p className="text-[11px] text-slate-400">{activeModal.subMessage}</p>
+              <p className="text-[11px] text-slate-500">{activeModal.subMessage}</p>
             )}
             <button
               onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-xs transition"
+              className="w-full py-2.5 bg-[#7E2248] hover:bg-[#681938] text-white font-semibold rounded-full text-xs transition shadow-sm"
             >
               Okay
             </button>

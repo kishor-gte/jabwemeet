@@ -144,7 +144,8 @@ export default function HostDashboardPage() {
   const [selectedEventForModal, setSelectedEventForModal] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
-  // Cute & Professional Dynamic Popup Modal State
+
+  // Dynamic Popup Modal State
   const [popupConfig, setPopupConfig] = useState<{
     isOpen: boolean;
     type: "success" | "error" | "warning" | "info" | "confirm";
@@ -238,7 +239,7 @@ export default function HostDashboardPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formSubmitting, setFormSubmitting] = useState(false);
 
-  // Track seen counts per section so badges disappear once viewed and do not appear again
+  // Track seen counts per section
   const [mounted, setMounted] = useState(false);
   const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
   const storageKey = `jwm_host_sidebar_seen_${user?.id || "default"}`;
@@ -266,7 +267,6 @@ export default function HostDashboardPage() {
     });
   };
 
-  // Automatically mark section as seen if user is currently on that section
   useEffect(() => {
     if (!mounted) return;
     if (activeSection === "events" && stats.totalEvents > 0) {
@@ -371,11 +371,9 @@ export default function HostDashboardPage() {
 
       const data = await res.json();
       if (data.success) {
-        // Update local state immediately
         setBookings((prev) =>
           prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
         );
-        // Refresh full metrics in the background
         fetch("/api/events/host/stats", { credentials: "include" })
           .then((r) => r.json())
           .then((d) => {
@@ -453,7 +451,6 @@ export default function HostDashboardPage() {
         return;
       }
 
-      // Handle development / mock order fallback
       if (data.order?.id?.startsWith("order_mock_")) {
         const verifyRes = await fetch("/api/subscription/verify-payment", {
           method: "POST",
@@ -547,7 +544,7 @@ export default function HostDashboardPage() {
           contact: user?.phone,
         },
         theme: {
-          color: "#e06d53",
+          color: "#7E2248",
         },
       };
 
@@ -899,45 +896,45 @@ export default function HostDashboardPage() {
 
   if (loading && !user) {
     return (
-      <div className="min-h-screen bg-[#0b111e] flex flex-col items-center justify-center text-white space-y-4">
-        <div className="w-12 h-12 rounded-full border-4 border-[#e06d53]/30 border-t-[#e06d53] animate-spin" />
-        <p className="text-slate-400 font-medium">Loading Host Manager Portal...</p>
+      <div className="min-h-screen bg-[#FDFBF9] flex flex-col items-center justify-center text-slate-900 space-y-4 font-sans">
+        <div className="w-12 h-12 rounded-full border-4 border-rose-200 border-t-[#7E2248] animate-spin" />
+        <p className="text-slate-500 font-medium font-serif">Loading Host Operations Hub...</p>
       </div>
     );
   }
 
   // Sidebar content markup
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#0d1526] text-slate-200 border-r border-white/10 select-none">
+    <div className="flex flex-col h-full bg-white text-slate-700 border-r border-rose-100 select-none">
       {/* Brand Header */}
-      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+      <div className="p-6 border-b border-rose-100 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg shadow-[#e06d53]/25 group-hover:scale-105 transition">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7E2248] to-[#5c1333] flex items-center justify-center font-extrabold text-white text-lg shadow-md shadow-[#7E2248]/20 group-hover:scale-105 transition">
             J
           </div>
           <div>
-            <div className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-              Jab<span className="text-[#e06d53]">We</span>Meet
+            <div className="font-serif font-bold text-xl tracking-tight text-slate-900 flex items-center gap-1">
+              Jab<span className="text-[#7E2248]">We</span>Meet
             </div>
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-[#e06d53]">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#7E2248]">
               Host & Event Manager
             </div>
           </div>
         </Link>
         <button
           onClick={() => setMobileSidebarOpen(false)}
-          className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition"
+          className="lg:hidden p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-rose-50 transition"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-rose-100">
         {/* MAIN NAVIGATION */}
         <div>
           <div className="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Event Management
+            Event Operations
           </div>
           <div className="space-y-1">
             <button
@@ -945,21 +942,21 @@ export default function HostDashboardPage() {
                 setActiveSection("overview");
                 setMobileSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
                 activeSection === "overview"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
                 <LayoutDashboard
                   className={`w-4 h-4 ${
-                    activeSection === "overview" ? "text-[#e06d53]" : "text-slate-400"
+                    activeSection === "overview" ? "text-[#7E2248]" : "text-slate-400"
                   }`}
                 />
                 <span>Dashboard Overview</span>
               </div>
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
             </button>
 
             <button
@@ -968,18 +965,18 @@ export default function HostDashboardPage() {
                 markSectionAsSeen("events", stats.totalEvents);
                 setMobileSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
                 activeSection === "events"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-slate-400" />
+                <Calendar className={`w-4 h-4 ${activeSection === "events" ? "text-[#7E2248]" : "text-slate-400"}`} />
                 <span>My Hosted Events</span>
               </div>
               {getUnseenCount("events", stats.totalEvents) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248] border border-rose-200">
                   {getUnseenCount("events", stats.totalEvents)}
                 </span>
               )}
@@ -991,18 +988,18 @@ export default function HostDashboardPage() {
                 markSectionAsSeen("attendees", bookings.length);
                 setMobileSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
                 activeSection === "attendees"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <UserCheck className="w-4 h-4 text-slate-400" />
+                <UserCheck className={`w-4 h-4 ${activeSection === "attendees" ? "text-[#7E2248]" : "text-slate-400"}`} />
                 <span>Attendees & RSVPs</span>
               </div>
               {getUnseenCount("attendees", bookings.length) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248] border border-rose-200">
                   {getUnseenCount("attendees", bookings.length)}
                 </span>
               )}
@@ -1013,17 +1010,17 @@ export default function HostDashboardPage() {
                 setActiveSection("analytics");
                 setMobileSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
                 activeSection === "analytics"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <TrendingUp className="w-4 h-4 text-slate-400" />
+                <TrendingUp className={`w-4 h-4 ${activeSection === "analytics" ? "text-[#7E2248]" : "text-slate-400"}`} />
                 <span>Sales & Revenue</span>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                 ₹{stats.totalRevenue.toLocaleString("en-IN")}
               </span>
             </button>
@@ -1033,22 +1030,22 @@ export default function HostDashboardPage() {
                 setActiveSection("subscriptions");
                 setMobileSidebarOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
                 activeSection === "subscriptions"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-slate-400" />
+                <Sparkles className={`w-4 h-4 ${activeSection === "subscriptions" ? "text-[#7E2248]" : "text-slate-400"}`} />
                 <span>Subscription & Plans</span>
               </div>
               {subStatus && (
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  subStatus.currentPlan === 'STARTER' ? 'bg-white/10 text-slate-300' :
-                  subStatus.currentPlan === 'BASIC' ? 'bg-blue-500/20 text-blue-300' :
-                  subStatus.currentPlan === 'PRO' ? 'bg-amber-500/20 text-amber-300' :
-                  'bg-purple-500/20 text-purple-300'
+                  subStatus.currentPlan === 'STARTER' ? 'bg-slate-100 text-slate-600 border border-slate-200' :
+                  subStatus.currentPlan === 'BASIC' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                  subStatus.currentPlan === 'PRO' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                  'bg-rose-50 text-[#7E2248] border border-rose-200'
                 }`}>
                   {subStatus.currentPlan}
                 </span>
@@ -1056,7 +1053,6 @@ export default function HostDashboardPage() {
             </button>
           </div>
         </div>
-
 
         {/* ACCOUNT & SWITCH */}
         <div>
@@ -1066,7 +1062,7 @@ export default function HostDashboardPage() {
           <div className="space-y-1">
             <Link
               href="/dashboard"
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-rose-50/60 transition"
             >
               <ArrowLeftRight className="w-4 h-4 text-slate-400" />
               <span>Switch to Member View</span>
@@ -1075,18 +1071,18 @@ export default function HostDashboardPage() {
             {user?.role === "ADMIN" && (
               <Link
                 href="/admin"
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-red-300 hover:text-red-200 hover:bg-red-500/10 transition border border-red-500/20"
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-rose-700 hover:text-rose-800 hover:bg-rose-100/60 transition border border-rose-200 bg-rose-50/50"
               >
-                <CheckCircle2 className="w-4 h-4 text-red-400" />
+                <CheckCircle2 className="w-4 h-4 text-[#7E2248]" />
                 <span>Admin Console</span>
               </Link>
             )}
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
             >
-              <LogOut className="w-4 h-4 text-red-400" />
+              <LogOut className="w-4 h-4 text-rose-600" />
               <span>Sign Out</span>
             </button>
           </div>
@@ -1094,14 +1090,14 @@ export default function HostDashboardPage() {
       </div>
 
       {/* User Profile Card */}
-      <div className="p-4 border-t border-white/10 bg-[#0a101d]">
+      <div className="p-4 border-t border-rose-100 bg-[#FAF3F6]/50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#e06d53]/20 border border-[#e06d53]/40 text-[#e06d53] font-extrabold flex items-center justify-center text-sm">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 text-[#7E2248] font-bold flex items-center justify-center text-sm shadow-xs">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "HM"}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm text-white truncate">{user?.name}</div>
-            <div className="text-xs text-slate-400 truncate">{user?.email}</div>
+            <div className="font-semibold text-sm text-slate-900 truncate">{user?.name}</div>
+            <div className="text-xs text-slate-500 truncate">{user?.email}</div>
           </div>
         </div>
       </div>
@@ -1109,23 +1105,23 @@ export default function HostDashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FDFBF9] text-slate-900 flex flex-col font-sans selection:bg-[#7E2248] selection:text-white">
       {/* Mobile Top Header */}
-      <div className="lg:hidden bg-[#0d1526] border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+      <div className="lg:hidden bg-white/95 backdrop-blur-md border-b border-rose-100 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5"
+            className="p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-rose-50"
           >
             <Menu className="w-6 h-6" />
           </button>
-          <div className="font-extrabold text-lg text-white">
-            Jab<span className="text-[#e06d53]">We</span>Meet Host
+          <div className="font-serif font-bold text-lg text-slate-900">
+            Jab<span className="text-[#7E2248]">We</span>Meet Host
           </div>
         </div>
         <button
           onClick={handleOpenCreateModal}
-          className="bg-[#e06d53] text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow"
+          className="bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition"
         >
           <Plus className="w-3.5 h-3.5" />
           Create
@@ -1134,7 +1130,7 @@ export default function HostDashboardPage() {
 
       <div className="flex flex-1">
         {/* Desktop Fixed Sidebar */}
-        <aside className="hidden lg:block w-72 h-screen sticky top-0 shrink-0 shadow-2xl z-20">
+        <aside className="hidden lg:block w-72 h-screen sticky top-0 shrink-0 shadow-sm border-r border-rose-100 z-20">
           {sidebarContent}
         </aside>
 
@@ -1142,10 +1138,10 @@ export default function HostDashboardPage() {
         {mobileSidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden flex">
             <div
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
               onClick={() => setMobileSidebarOpen(false)}
             />
-            <div className="relative w-72 max-w-[80vw] h-full z-10 animate-slide-right">
+            <div className="relative w-72 max-w-[80vw] h-full z-10 shadow-2xl">
               {sidebarContent}
             </div>
           </div>
@@ -1154,31 +1150,31 @@ export default function HostDashboardPage() {
         {/* Main Dashboard Area */}
         <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
           {/* Header Banner */}
-          <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-xl">
-            <div className="absolute right-0 top-0 w-96 h-96 bg-[#e06d53]/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-white border border-rose-100 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="absolute right-0 top-0 w-96 h-96 bg-rose-50/50 rounded-full blur-3xl pointer-events-none" />
             <div className="space-y-2 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e06d53]/15 border border-[#e06d53]/30 text-xs font-bold text-[#fca5a5]">
-                <Sparkles className="w-3.5 h-3.5 text-[#e06d53]" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-bold text-[#7E2248]">
+                <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
                 Event Host Operations Hub
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-white">
+              <h1 className="text-2xl md:text-3xl font-serif font-bold text-slate-900">
                 Welcome back, {user?.name || "Host"}!
               </h1>
-              <p className="text-sm text-slate-400 max-w-xl">
+              <p className="text-sm text-slate-600 max-w-xl">
                 Manage your speed dating mixers, dance dating nights, single travels, and live guest check-ins with real-time sync.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 relative z-10">
               <button
                 onClick={loadHostData}
-                className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition"
+                className="px-4 py-2.5 bg-[#FAF3F6] hover:bg-[#F3E8EE] border border-rose-200 text-slate-700 hover:text-slate-900 rounded-xl text-sm font-semibold flex items-center gap-2 transition"
               >
                 <RefreshCw className="w-4 h-4" />
                 Refresh
               </button>
               <button
                 onClick={handleOpenCreateModal}
-                className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] px-5 py-2.5 rounded-xl font-bold text-sm text-white flex items-center gap-2 transition shadow-lg shadow-[#e06d53]/25"
+                className="bg-[#7E2248] hover:bg-[#681938] px-5 py-2.5 rounded-xl font-bold text-sm text-white flex items-center gap-2 transition shadow-md shadow-[#7E2248]/20"
               >
                 <Plus className="w-4 h-4" />
                 Create New Event
@@ -1188,42 +1184,42 @@ export default function HostDashboardPage() {
 
           {/* Key Metrics Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-6 relative overflow-hidden hover:border-[#e06d53]/30 transition group">
+            <div className="bg-white border border-rose-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Events</span>
-                <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Events</span>
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#7E2248] border border-rose-100 flex items-center justify-center">
                   <Calendar className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white">{stats.totalEvents}</span>
-                <span className="text-xs text-slate-400">active & past</span>
+                <span className="text-3xl font-serif font-bold text-slate-900">{stats.totalEvents}</span>
+                <span className="text-xs text-slate-500">active & past</span>
               </div>
             </div>
 
-            <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-6 relative overflow-hidden hover:border-[#e06d53]/30 transition group">
+            <div className="bg-white border border-rose-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total RSVPs</span>
-                <div className="w-9 h-9 rounded-xl bg-[#e06d53]/15 text-[#e06d53] flex items-center justify-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total RSVPs</span>
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#7E2248] border border-rose-100 flex items-center justify-center">
                   <Users className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-[#fca5a5]">{stats.totalAttendees}</span>
-                <span className="text-xs text-slate-400">confirmed spots</span>
+                <span className="text-3xl font-serif font-bold text-[#7E2248]">{stats.totalAttendees}</span>
+                <span className="text-xs text-slate-500">confirmed spots</span>
               </div>
             </div>
 
-            <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-6 relative overflow-hidden hover:border-[#e06d53]/30 transition group">
+            <div className="bg-white border border-rose-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Checked In</span>
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Checked In</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center">
                   <UserCheck className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-emerald-400">{stats.checkedInCount}</span>
-                <span className="text-xs text-slate-400">
+                <span className="text-3xl font-serif font-bold text-emerald-700">{stats.checkedInCount}</span>
+                <span className="text-xs text-slate-500">
                   {stats.totalAttendees > 0
                     ? `(${Math.round((stats.checkedInCount / stats.totalAttendees) * 100)}% attendance)`
                     : "0%"}
@@ -1231,16 +1227,16 @@ export default function HostDashboardPage() {
               </div>
             </div>
 
-            <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-6 relative overflow-hidden hover:border-[#e06d53]/30 transition group">
+            <div className="bg-white border border-rose-100 rounded-3xl p-6 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Revenue</span>
-                <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Revenue</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center">
                   <IndianRupee className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-amber-300">₹{stats.totalRevenue.toLocaleString("en-IN")}</span>
-                <span className="text-xs text-emerald-400">verified sales</span>
+                <span className="text-3xl font-serif font-bold text-slate-900">₹{stats.totalRevenue.toLocaleString("en-IN")}</span>
+                <span className="text-xs text-emerald-700 font-semibold">verified sales</span>
               </div>
             </div>
           </div>
@@ -1251,11 +1247,11 @@ export default function HostDashboardPage() {
               {/* Hosted Events Header + Filter */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-[#e06d53]" />
+                  <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-[#7E2248]" />
                     Your Event Portfolio
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Filter by experience category</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Filter by experience category</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {["All", ...CATEGORIES].map((cat) => (
@@ -1264,8 +1260,8 @@ export default function HostDashboardPage() {
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${
                         selectedCategory === cat
-                          ? "bg-[#e06d53] text-white shadow-md shadow-[#e06d53]/25"
-                          : "bg-[#131d2e] text-slate-300 hover:text-white border border-white/10"
+                          ? "bg-[#7E2248] text-white shadow-sm"
+                          : "bg-white text-slate-600 hover:text-slate-900 hover:bg-rose-50 border border-rose-200 font-medium"
                       }`}
                     >
                       {cat}
@@ -1277,17 +1273,17 @@ export default function HostDashboardPage() {
               {/* Event Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEvents.length === 0 ? (
-                  <div className="col-span-full bg-[#131d2e] rounded-3xl p-12 text-center border border-white/10 space-y-4">
-                    <div className="w-16 h-16 rounded-2xl bg-[#e06d53]/15 text-[#e06d53] flex items-center justify-center text-3xl mx-auto">
+                  <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-rose-100 shadow-sm space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-rose-50 text-[#7E2248] border border-rose-100 flex items-center justify-center text-3xl mx-auto">
                       🎉
                     </div>
-                    <h3 className="text-xl font-bold text-white">No Events in this Category</h3>
-                    <p className="text-slate-400 max-w-md mx-auto text-sm">
+                    <h3 className="text-xl font-serif font-bold text-slate-900">No Events in this Category</h3>
+                    <p className="text-slate-600 max-w-md mx-auto text-sm">
                       Create an event under "{selectedCategory}" to start accepting attendee registrations.
                     </p>
                     <button
                       onClick={handleOpenCreateModal}
-                      className="bg-[#e06d53] hover:bg-[#c95940] px-6 py-2.5 rounded-full font-bold text-sm text-white inline-flex items-center gap-2 transition"
+                      className="bg-[#7E2248] hover:bg-[#681938] px-6 py-2.5 rounded-full font-bold text-sm text-white inline-flex items-center gap-2 transition shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
                       Create Event Now
@@ -1302,48 +1298,48 @@ export default function HostDashboardPage() {
                     return (
                       <div
                         key={evt.id}
-                        className="bg-[#131d2e] rounded-3xl p-6 border border-white/10 hover:border-[#e06d53]/40 transition flex flex-col justify-between group shadow-lg"
+                        className="bg-white rounded-3xl p-6 border border-rose-100 hover:border-rose-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <span className="px-3 py-1 bg-[#23324c] rounded-full text-xs font-semibold text-[#fca5a5] border border-[#e06d53]/20">
+                            <span className="px-3 py-1 bg-rose-50 rounded-full text-xs font-semibold text-[#7E2248] border border-rose-200">
                               {evt.category}
                             </span>
-                            <span className="text-sm font-extrabold text-amber-300">
+                            <span className="text-sm font-bold text-[#7E2248]">
                               {evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Free Pass"}
                             </span>
                           </div>
 
                           <div>
-                            <h3 className="text-lg font-bold text-white group-hover:text-[#fca5a5] transition line-clamp-1">
+                            <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#7E2248] transition line-clamp-1">
                               {evt.title}
                             </h3>
-                            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{evt.description}</p>
+                            <p className="text-xs text-slate-600 mt-1 line-clamp-2">{evt.description}</p>
                           </div>
 
-                          <div className="space-y-2 pt-2 text-xs text-slate-300 border-t border-white/5">
+                          <div className="space-y-2 pt-2 text-xs text-slate-600 border-t border-rose-100/70">
                             <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-slate-500 shrink-0" />
+                              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
                               <span>{new Date(evt.date).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
+                              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                               <span className="truncate">{evt.location}, {evt.city}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Users className="w-4 h-4 text-slate-500 shrink-0" />
+                              <Users className="w-4 h-4 text-slate-400 shrink-0" />
                               <span>
-                                <strong>{activeCount}</strong> / {evt.maxAttendees} spots booked ({checkedIn} checked-in)
+                                <strong className="text-slate-900">{activeCount}</strong> / {evt.maxAttendees} spots booked ({checkedIn} checked-in)
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* Progress bar */}
-                        <div className="mt-5 pt-4 border-t border-white/10 space-y-3">
-                          <div className="w-full bg-[#0b111e] h-2 rounded-full overflow-hidden">
+                        <div className="mt-5 pt-4 border-t border-rose-100 space-y-3">
+                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                             <div
-                              className="bg-gradient-to-r from-[#e06d53] to-emerald-400 h-full rounded-full transition-all"
+                              className="bg-gradient-to-r from-[#7E2248] to-rose-400 h-full rounded-full transition-all"
                               style={{ width: `${Math.min(100, (activeCount / (evt.maxAttendees || 50)) * 100)}%` }}
                             />
                           </div>
@@ -1351,12 +1347,12 @@ export default function HostDashboardPage() {
                           <div className="flex items-center justify-between pt-1">
                             <button
                               onClick={() => setSelectedEventForModal(evt)}
-                              className="text-xs font-bold text-[#fca5a5] hover:text-white flex items-center gap-1.5 transition cursor-pointer"
+                              className="text-xs font-bold text-[#7E2248] hover:text-[#681938] flex items-center gap-1.5 transition cursor-pointer"
                             >
                               <UserCheck className="w-3.5 h-3.5" />
                               Manage Attendees ({activeCount})
                             </button>
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-slate-500 font-medium">
                               {Math.max(0, (evt.maxAttendees || 50) - activeCount)} left
                             </span>
                           </div>
@@ -1368,14 +1364,14 @@ export default function HostDashboardPage() {
               </div>
 
               {/* Real-Time Live Attendees Table */}
-              <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
+              <div className="bg-white border border-rose-100 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <UserCheck className="w-5 h-5 text-emerald-400" />
+                    <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
+                      <UserCheck className="w-5 h-5 text-emerald-600" />
                       Live Attendee Roster & RSVPs
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Check in guests at the venue door in real-time or manage spot statuses.
                     </p>
                   </div>
@@ -1387,13 +1383,13 @@ export default function HostDashboardPage() {
                         placeholder="Search attendee or event..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-[#0b111e] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#e06d53]"
+                        className="bg-[#FDFBF9] border border-rose-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                       />
                     </div>
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="bg-[#0b111e] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#e06d53]"
+                      className="bg-[#FDFBF9] border border-rose-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                     >
                       <option value="All">All Statuses</option>
                       <option value="CONFIRMED">Confirmed</option>
@@ -1404,33 +1400,33 @@ export default function HostDashboardPage() {
                 </div>
 
                 {filteredBookings.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 text-sm">
+                  <div className="text-center py-10 text-slate-500 text-sm">
                     No reservations matching current search or filters.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-slate-300">
-                      <thead className="bg-[#0b111e] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                    <table className="w-full text-left text-xs text-slate-700">
+                      <thead className="bg-[#FAF3F6] text-slate-600 uppercase text-[10px] tracking-wider border-b border-rose-100">
                         <tr>
-                          <th className="px-4 py-3 rounded-l-xl">Attendee</th>
-                          <th className="px-4 py-3">Event Title</th>
-                          <th className="px-4 py-3">Spots / Amount</th>
-                          <th className="px-4 py-3">Booking Date</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3 text-right rounded-r-xl">Venue Actions</th>
+                          <th className="px-4 py-3 rounded-l-xl font-bold">Attendee</th>
+                          <th className="px-4 py-3 font-bold">Event Title</th>
+                          <th className="px-4 py-3 font-bold">Spots / Amount</th>
+                          <th className="px-4 py-3 font-bold">Booking Date</th>
+                          <th className="px-4 py-3 font-bold">Status</th>
+                          <th className="px-4 py-3 text-right rounded-r-xl font-bold">Venue Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-rose-100">
                         {filteredBookings.map((b) => (
-                          <tr key={b.id} className="hover:bg-white/[0.02] transition">
+                          <tr key={b.id} className="hover:bg-rose-50/40 transition">
                             <td className="px-4 py-3.5">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#e06d53] to-amber-500 text-white font-bold flex items-center justify-center text-xs">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#7E2248] to-rose-400 text-white font-bold flex items-center justify-center text-xs shadow-xs">
                                   {b.user.name ? b.user.name.slice(0, 2).toUpperCase() : "U"}
                                 </div>
                                 <div>
-                                  <div className="font-bold text-white text-sm">{b.user.name}</div>
-                                  <div className="text-slate-400 flex items-center gap-2">
+                                  <div className="font-bold text-slate-900 text-sm">{b.user.name}</div>
+                                  <div className="text-slate-500 flex items-center gap-2">
                                     <span>{b.user.email}</span>
                                     {b.user.phone && <span>• {b.user.phone}</span>}
                                   </div>
@@ -1438,24 +1434,24 @@ export default function HostDashboardPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3.5">
-                              <div className="font-semibold text-white">{b.event.title}</div>
-                              <div className="text-slate-400 text-[11px]">{b.event.category} • {b.event.city}</div>
+                              <div className="font-semibold text-slate-900">{b.event.title}</div>
+                              <div className="text-slate-500 text-[11px]">{b.event.category} • {b.event.city}</div>
                             </td>
                             <td className="px-4 py-3.5">
-                              <div className="font-bold text-white">{b.spots} spot(s)</div>
-                              <div className="text-amber-400 text-[11px]">₹{b.totalAmount.toLocaleString("en-IN")}</div>
+                              <div className="font-bold text-slate-900">{b.spots} spot(s)</div>
+                              <div className="text-[#7E2248] font-bold text-[11px]">₹{b.totalAmount.toLocaleString("en-IN")}</div>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-400">
+                            <td className="px-4 py-3.5 text-slate-500">
                               {new Date(b.createdAt).toLocaleDateString()}
                             </td>
                             <td className="px-4 py-3.5">
                               <span
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
                                   b.status === "CHECKED_IN"
-                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                                     : b.status === "CONFIRMED"
-                                    ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                                    : "bg-red-500/20 text-red-300 border border-red-500/30"
+                                    ? "bg-blue-50 text-blue-800 border border-blue-200"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200"
                                 }`}
                               >
                                 {b.status === "CHECKED_IN" && <Check className="w-3 h-3" />}
@@ -1470,7 +1466,7 @@ export default function HostDashboardPage() {
                                   <button
                                     disabled={updatingBookingId === b.id}
                                     onClick={() => handleStatusChange(b.id, "CHECKED_IN")}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition shadow disabled:opacity-50"
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition shadow-xs disabled:opacity-50 cursor-pointer"
                                   >
                                     <Check className="w-3 h-3" />
                                     Check In
@@ -1480,7 +1476,7 @@ export default function HostDashboardPage() {
                                   <button
                                     disabled={updatingBookingId === b.id}
                                     onClick={() => handleStatusChange(b.id, "CONFIRMED")}
-                                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition disabled:opacity-50"
+                                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
                                   >
                                     Revert
                                   </button>
@@ -1489,7 +1485,7 @@ export default function HostDashboardPage() {
                                   <button
                                     disabled={updatingBookingId === b.id}
                                     onClick={() => handleStatusChange(b.id, "CANCELLED")}
-                                    className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition disabled:opacity-50"
+                                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition disabled:opacity-50 cursor-pointer"
                                     title="Cancel Reservation"
                                   >
                                     <Ban className="w-3.5 h-3.5" />
@@ -1512,12 +1508,12 @@ export default function HostDashboardPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-white">All Hosted Events</h2>
-                  <p className="text-xs text-slate-400">Review attendance and event configurations</p>
+                  <h2 className="text-xl font-serif font-bold text-slate-900">All Hosted Events</h2>
+                  <p className="text-xs text-slate-500">Review attendance and event configurations</p>
                 </div>
                 <button
                   onClick={handleOpenCreateModal}
-                  className="bg-[#e06d53] hover:bg-[#c95940] px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-2 transition"
+                  className="bg-[#7E2248] hover:bg-[#681938] px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-2 transition shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Create Event
@@ -1531,31 +1527,31 @@ export default function HostDashboardPage() {
                   const checkedIn = eventBookings.filter((b) => b.status === "CHECKED_IN").length;
 
                   return (
-                    <div key={evt.id} className="bg-[#131d2e] rounded-3xl p-6 border border-white/10 space-y-4 shadow-lg">
+                    <div key={evt.id} className="bg-white rounded-3xl p-6 border border-rose-100 space-y-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
                       <div className="flex justify-between items-center">
-                        <span className="px-3 py-1 bg-[#23324c] rounded-full text-xs font-semibold text-[#fca5a5]">
+                        <span className="px-3 py-1 bg-rose-50 rounded-full text-xs font-semibold text-[#7E2248] border border-rose-200">
                           {evt.category}
                         </span>
-                        <span className="font-bold text-amber-300 text-sm">
+                        <span className="font-bold text-[#7E2248] text-sm">
                           {evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Free"}
                         </span>
                       </div>
-                      <h3 className="font-bold text-lg text-white">{evt.title}</h3>
-                      <p className="text-xs text-slate-400 line-clamp-2">{evt.description}</p>
-                      <div className="text-xs text-slate-300 space-y-1.5 pt-2 border-t border-white/5">
+                      <h3 className="font-bold text-lg text-slate-900">{evt.title}</h3>
+                      <p className="text-xs text-slate-600 line-clamp-2">{evt.description}</p>
+                      <div className="text-xs text-slate-600 space-y-1.5 pt-2 border-t border-rose-100">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
                           <span>{evt.location}, {evt.city}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-slate-500" />
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
                           <span>{new Date(evt.date).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 mt-2">
                         <button
                           onClick={() => setSelectedEventForModal(evt)}
-                          className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#fca5a5] hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                          className="w-full py-2.5 bg-rose-50 hover:bg-rose-100/70 border border-rose-200 text-[#7E2248] rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                         >
                           <UserCheck className="w-4 h-4" />
                           Manage Roster ({activeCount} booked / {checkedIn} checked in)
@@ -1563,13 +1559,13 @@ export default function HostDashboardPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => openEditModal(evt)}
-                            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                            className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" /> Edit
                           </button>
                           <button
                             onClick={() => handleDeleteEvent(evt.id, evt.title)}
-                            className="flex-1 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                            className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <Trash className="w-3.5 h-3.5" /> Delete
                           </button>
@@ -1585,11 +1581,11 @@ export default function HostDashboardPage() {
           {/* Section: Attendees Tab */}
           {activeSection === "attendees" && (
             <div className="space-y-6">
-              <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6">
+              <div className="bg-white border border-rose-100 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold text-white">All Event Guests & RSVPs</h2>
-                    <p className="text-xs text-slate-400">Manage all registered spots across all your hosted events</p>
+                    <h2 className="text-xl font-serif font-bold text-slate-900">All Event Guests & RSVPs</h2>
+                    <p className="text-xs text-slate-500">Manage all registered spots across all your hosted events</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -1599,13 +1595,13 @@ export default function HostDashboardPage() {
                         placeholder="Search..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-[#0b111e] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white"
+                        className="bg-[#FDFBF9] border border-rose-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                       />
                     </div>
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="bg-[#0b111e] border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                      className="bg-[#FDFBF9] border border-rose-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                     >
                       <option value="All">All</option>
                       <option value="CONFIRMED">Confirmed</option>
@@ -1616,42 +1612,42 @@ export default function HostDashboardPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-[#0b111e] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-[#FAF3F6] text-slate-600 uppercase text-[10px] tracking-wider border-b border-rose-100">
                       <tr>
-                        <th className="px-4 py-3">Attendee</th>
-                        <th className="px-4 py-3">Event</th>
-                        <th className="px-4 py-3">Seats Booked</th>
-                        <th className="px-4 py-3">Amount</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3 text-right">Action</th>
+                        <th className="px-4 py-3 font-bold">Attendee</th>
+                        <th className="px-4 py-3 font-bold">Event</th>
+                        <th className="px-4 py-3 font-bold">Seats Booked</th>
+                        <th className="px-4 py-3 font-bold">Amount</th>
+                        <th className="px-4 py-3 font-bold">Status</th>
+                        <th className="px-4 py-3 text-right font-bold">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-rose-100">
                       {filteredBookings.map((b) => (
-                        <tr key={b.id} className="hover:bg-white/[0.02]">
+                        <tr key={b.id} className="hover:bg-rose-50/40 transition">
                           <td className="px-4 py-3">
-                            <div className="font-bold text-white">{b.user.name}</div>
-                            <div className="text-slate-400 text-[11px]">{b.user.email} • {b.user.phone}</div>
+                            <div className="font-bold text-slate-900">{b.user.name}</div>
+                            <div className="text-slate-500 text-[11px]">{b.user.email} • {b.user.phone}</div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="text-white font-medium">{b.event.title}</div>
-                            <div className="text-slate-400 text-[11px]">{b.event.city}</div>
+                            <div className="text-slate-900 font-semibold">{b.event.title}</div>
+                            <div className="text-slate-500 text-[11px]">{b.event.city}</div>
                           </td>
-                          <td className="px-4 py-3 font-bold text-amber-300">
+                          <td className="px-4 py-3 font-bold text-slate-900">
                             🎟️ {b.spots || 1} {(b.spots || 1) === 1 ? 'seat' : 'seats'}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-emerald-400">
+                          <td className="px-4 py-3 font-bold text-[#7E2248]">
                             {b.totalAmount ? `₹${b.totalAmount.toLocaleString("en-IN")}` : "Free"}
                           </td>
                           <td className="px-4 py-3">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 b.status === "CHECKED_IN"
-                                  ? "bg-emerald-500/20 text-emerald-300"
+                                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                                   : b.status === "CONFIRMED"
-                                  ? "bg-blue-500/20 text-blue-300"
-                                  : "bg-red-500/20 text-red-300"
+                                  ? "bg-blue-50 text-blue-800 border border-blue-200"
+                                  : "bg-rose-50 text-rose-700 border border-rose-200"
                               }`}
                             >
                               {b.status}
@@ -1661,14 +1657,14 @@ export default function HostDashboardPage() {
                             {b.status !== "CHECKED_IN" ? (
                               <button
                                 onClick={() => handleStatusChange(b.id, "CHECKED_IN")}
-                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition cursor-pointer"
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-xs"
                               >
                                 Check In
                               </button>
                             ) : (
                               <button
                                 onClick={() => handleStatusChange(b.id, "CONFIRMED")}
-                                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition cursor-pointer"
+                                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
                               >
                                 Revert
                               </button>
@@ -1686,24 +1682,24 @@ export default function HostDashboardPage() {
           {/* Section: Analytics Tab */}
           {activeSection === "analytics" && (
             <div className="space-y-6">
-              <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-8 space-y-6">
-                <h2 className="text-xl font-bold text-white">Event Performance & Revenue</h2>
+              <div className="bg-white border border-rose-100 rounded-3xl p-8 space-y-6 shadow-sm">
+                <h2 className="text-xl font-serif font-bold text-slate-900">Event Performance & Revenue</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-[#0b111e] p-6 rounded-2xl border border-white/5 space-y-2">
-                    <span className="text-xs text-slate-400 uppercase font-semibold">Gross Ticket Sales</span>
-                    <p className="text-3xl font-extrabold text-amber-300">₹{stats.totalRevenue.toLocaleString("en-IN")}</p>
+                  <div className="bg-[#FAF3F6] p-6 rounded-2xl border border-rose-100 space-y-2">
+                    <span className="text-xs text-slate-500 uppercase font-semibold">Gross Ticket Sales</span>
+                    <p className="text-3xl font-serif font-bold text-[#7E2248]">₹{stats.totalRevenue.toLocaleString("en-IN")}</p>
                     <p className="text-xs text-slate-500">From {stats.totalAttendees} confirmed spots</p>
                   </div>
-                  <div className="bg-[#0b111e] p-6 rounded-2xl border border-white/5 space-y-2">
-                    <span className="text-xs text-slate-400 uppercase font-semibold">Average Attendance</span>
-                    <p className="text-3xl font-extrabold text-emerald-400">
+                  <div className="bg-[#FAF3F6] p-6 rounded-2xl border border-rose-100 space-y-2">
+                    <span className="text-xs text-slate-500 uppercase font-semibold">Average Attendance</span>
+                    <p className="text-3xl font-serif font-bold text-emerald-700">
                       {stats.totalEvents > 0 ? (stats.totalAttendees / stats.totalEvents).toFixed(1) : 0}
                     </p>
                     <p className="text-xs text-slate-500">Guests per event</p>
                   </div>
-                  <div className="bg-[#0b111e] p-6 rounded-2xl border border-white/5 space-y-2">
-                    <span className="text-xs text-slate-400 uppercase font-semibold">Checked-In Rate</span>
-                    <p className="text-3xl font-extrabold text-blue-400">
+                  <div className="bg-[#FAF3F6] p-6 rounded-2xl border border-rose-100 space-y-2">
+                    <span className="text-xs text-slate-500 uppercase font-semibold">Checked-In Rate</span>
+                    <p className="text-3xl font-serif font-bold text-blue-700">
                       {stats.totalAttendees > 0
                         ? `${Math.round((stats.checkedInCount / stats.totalAttendees) * 100)}%`
                         : "0%"}
@@ -1718,13 +1714,12 @@ export default function HostDashboardPage() {
           {/* Section: Subscriptions */}
           {activeSection === "subscriptions" && (
             <div className="space-y-6">
-            {activeSection === "subscriptions" && (
-              <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-8 space-y-6">
+              <div className="bg-white border border-rose-100 rounded-3xl p-8 space-y-6 shadow-sm">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-400" /> Host Subscriptions & Plans
+                  <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-500" /> Host Subscriptions & Plans
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Manage your event hosting subscription quota and validities.
                   </p>
                 </div>
@@ -1754,19 +1749,19 @@ export default function HostDashboardPage() {
                     return (
                       <div className="space-y-6">
                         {/* Active Subscription Banner Card */}
-                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1e293b] via-[#0f172a] to-[#0b111e] border border-emerald-500/30 p-6 sm:p-8 shadow-2xl">
-                          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-rose-50/40 to-emerald-50/30 border border-emerald-200/80 p-6 sm:p-8 shadow-xs">
+                          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
                           <div className="relative z-10 space-y-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-100 pb-6">
                               <div>
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                   Active Subscription
                                 </div>
-                                <h3 className="text-2xl sm:text-3xl font-black text-white capitalize">
+                                <h3 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 capitalize">
                                   {subStatus.currentPlan}
                                 </h3>
-                                <p className="text-xs text-slate-400 mt-1">
+                                <p className="text-xs text-slate-600 mt-1">
                                   Your host subscription is active and in good standing.
                                 </p>
                               </div>
@@ -1776,7 +1771,7 @@ export default function HostDashboardPage() {
                                   setActiveSection("events");
                                   handleOpenCreateModal();
                                 }}
-                                className="px-5 py-3 rounded-2xl bg-[#e06d53] hover:bg-[#d05c42] text-white text-sm font-bold shadow-lg shadow-[#e06d53]/25 flex items-center justify-center gap-2 transition self-start sm:self-auto shrink-0"
+                                className="px-5 py-3 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white text-sm font-bold shadow-md shadow-[#7E2248]/20 flex items-center justify-center gap-2 transition self-start sm:self-auto shrink-0 cursor-pointer"
                               >
                                 <Plus className="w-4 h-4" /> Create An Event
                               </button>
@@ -1784,37 +1779,37 @@ export default function HostDashboardPage() {
 
                             {/* Quota & Validity Metric Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Events Remaining</div>
-                                <div className="text-3xl font-extrabold text-[#e06d53] mt-1">
+                              <div className="bg-white border border-rose-100 rounded-2xl p-4 shadow-xs">
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Events Remaining</div>
+                                <div className="text-3xl font-serif font-bold text-[#7E2248] mt-1">
                                   {eventsRemaining}
-                                  <span className="text-sm font-semibold text-slate-400"> / {maxEvents} total</span>
+                                  <span className="text-sm font-semibold text-slate-500"> / {maxEvents} total</span>
                                 </div>
-                                <div className="text-[10px] text-slate-400 mt-1">
+                                <div className="text-[10px] text-slate-500 mt-1">
                                   {eventsUsed} event{eventsUsed === 1 ? "" : "s"} already hosted
                                 </div>
                               </div>
 
-                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Valid Until</div>
-                                <div className="text-lg font-bold text-white mt-1">
+                              <div className="bg-white border border-rose-100 rounded-2xl p-4 shadow-xs">
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Valid Until</div>
+                                <div className="text-lg font-bold text-slate-900 mt-1">
                                   {new Date(subStatus.expiresAt).toLocaleDateString(undefined, {
                                     month: "short",
                                     day: "numeric",
                                     year: "numeric",
                                   })}
                                 </div>
-                                <div className="text-[10px] text-emerald-400 mt-1 font-semibold flex items-center gap-1">
+                                <div className="text-[10px] text-emerald-700 mt-1 font-semibold flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> {daysLeft} day{daysLeft === 1 ? "" : "s"} remaining
                                 </div>
                               </div>
 
-                              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                                <div className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Hosting Status</div>
-                                <div className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
-                                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Authorized to Host
+                              <div className="bg-white border border-rose-100 rounded-2xl p-4 shadow-xs">
+                                <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Hosting Status</div>
+                                <div className="text-lg font-bold text-emerald-700 mt-1 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Authorized to Host
                                 </div>
-                                <div className="text-[10px] text-slate-400 mt-1">
+                                <div className="text-[10px] text-slate-500 mt-1">
                                   Instant attendee check-in enabled
                                 </div>
                               </div>
@@ -1822,23 +1817,23 @@ export default function HostDashboardPage() {
 
                             {/* Progress bar */}
                             <div className="space-y-1.5 pt-2">
-                              <div className="flex justify-between text-xs text-slate-400 font-medium">
+                              <div className="flex justify-between text-xs text-slate-600 font-medium">
                                 <span>Event Quota Used ({usagePercent}%)</span>
                                 <span>{eventsRemaining} slot{eventsRemaining === 1 ? "" : "s"} available</span>
                               </div>
-                              <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
+                              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-gradient-to-r from-emerald-500 to-[#e06d53] rounded-full transition-all duration-500"
+                                  className="h-full bg-gradient-to-r from-emerald-500 to-[#7E2248] rounded-full transition-all duration-500"
                                   style={{ width: `${usagePercent}%` }}
                                 />
                               </div>
                             </div>
 
                             {/* Info Callout */}
-                            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 text-xs text-slate-400 flex items-start gap-3">
-                              <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-slate-700 flex items-start gap-3">
+                              <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                               <div>
-                                <span className="font-semibold text-slate-300">Subscription is Active: </span>
+                                <span className="font-semibold text-slate-900">Subscription is Active: </span>
                                 You have active event slots remaining. To keep your dashboard focused, package purchase options are paused and will automatically reappear here once your events run out or when your subscription period concludes.
                               </div>
                             </div>
@@ -1853,30 +1848,30 @@ export default function HostDashboardPage() {
                     <div className="space-y-6">
                       {/* Alert banner if plan ran out */}
                       {isQuotaExhausted && subStatus?.currentPlan !== "STARTER" && (
-                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-300 text-xs">
-                          <Clock className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
+                        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-amber-900 text-xs">
+                          <Clock className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
                           <div>
-                            <div className="font-bold text-sm text-white">Event Quota Exhausted</div>
+                            <div className="font-bold text-sm text-slate-900">Event Quota Exhausted</div>
                             You have created all <strong>{maxEvents}</strong> events permitted by your <strong>{subStatus?.currentPlan}</strong> plan (0 events remaining). Select a package below to renew your quota and host more events.
                           </div>
                         </div>
                       )}
 
                       {isExpired && subStatus?.currentPlan !== "STARTER" && (
-                        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 text-red-300 text-xs">
-                          <Ban className="w-5 h-5 shrink-0 text-red-400 mt-0.5" />
+                        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-900 text-xs">
+                          <Ban className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
                           <div>
-                            <div className="font-bold text-sm text-white">Subscription Expired</div>
+                            <div className="font-bold text-sm text-slate-900">Subscription Expired</div>
                             Your <strong>{subStatus?.currentPlan}</strong> plan expired on {new Date(subStatus.expiresAt).toLocaleDateString()}. Please select an active package below to reactivate your hosting privileges.
                           </div>
                         </div>
                       )}
 
                       {subStatus?.currentPlan === "STARTER" && (
-                        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-4">
+                        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-between gap-4">
                           <div>
-                            <span className="text-[10px] text-blue-400 uppercase font-bold tracking-wider">Free Starter Tier</span>
-                            <div className="text-sm font-semibold text-white mt-0.5">
+                            <span className="text-[10px] text-blue-700 uppercase font-bold tracking-wider">Free Starter Tier</span>
+                            <div className="text-sm font-semibold text-slate-900 mt-0.5">
                               You have {eventsRemaining} free event slot{eventsRemaining === 1 ? "" : "s"} remaining. Upgrade to host unlimited or regular events!
                             </div>
                           </div>
@@ -1885,15 +1880,15 @@ export default function HostDashboardPage() {
 
                       {/* Package Grid */}
                       {availablePackages.length === 0 ? (
-                        <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl p-8 bg-[#0b111e]/50 mt-4">
-                          <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-                          <h3 className="text-base font-semibold text-white">No Subscription Plans Available</h3>
-                          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                        <div className="text-center py-12 border border-dashed border-rose-200 rounded-2xl p-8 bg-rose-50/30 mt-4">
+                          <Sparkles className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                          <h3 className="text-base font-semibold text-slate-900">No Subscription Plans Available</h3>
+                          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
                             There are currently no active host subscription plans published by the administrator. Please check back later.
                           </p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-rose-100">
                           {availablePackages.map((pkg, idx) => {
                             const isSubscribing = subscribingPkgId === pkg.id || subscribingPkgId === pkg.name;
                             const featuresList = Array.isArray(pkg.features)
@@ -1908,40 +1903,32 @@ export default function HostDashboardPage() {
                                 })()
                               : [];
 
-                            const colorAccents = [
-                              { tag: "text-blue-400", border: "hover:border-blue-500/50" },
-                              { tag: "text-amber-400", border: "hover:border-amber-500/50" },
-                              { tag: "text-purple-400", border: "hover:border-purple-500/50" },
-                              { tag: "text-emerald-400", border: "hover:border-emerald-500/50" },
-                            ];
-                            const accent = colorAccents[idx % colorAccents.length];
-
                             return (
                               <div
                                 key={pkg.id}
-                                className={`bg-[#0b111e] border border-white/10 ${accent.border} rounded-2xl p-6 flex flex-col justify-between h-full transition relative group`}
+                                className="bg-white border border-rose-200 hover:border-[#7E2248] rounded-2xl p-6 flex flex-col justify-between h-full transition relative group shadow-sm hover:shadow-md"
                               >
                                 <div>
                                   <div className="flex items-center justify-between">
-                                    <h3 className={`font-bold text-lg capitalize ${accent.tag}`}>{pkg.name}</h3>
+                                    <h3 className="font-serif font-bold text-lg capitalize text-[#7E2248]">{pkg.name}</h3>
                                     {pkg.billingCycle && (
-                                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white/5 text-slate-400">
+                                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-rose-50 text-[#7E2248] border border-rose-200">
                                         {pkg.billingCycle}
                                       </span>
                                     )}
                                   </div>
 
                                   {pkg.description && (
-                                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">{pkg.description}</p>
+                                    <p className="text-xs text-slate-600 mt-2 line-clamp-2">{pkg.description}</p>
                                   )}
 
-                                  <div className="mt-4 space-y-2 text-sm text-slate-300">
+                                  <div className="mt-4 space-y-2 text-sm text-slate-600">
                                     <p className="flex items-center gap-2">
-                                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                                       <span>{pkg.sessionLimit ? `${pkg.sessionLimit} Event Creations` : "Unlimited Events"}</span>
                                     </p>
                                     <p className="flex items-center gap-2">
-                                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                                       <span>{pkg.durationDays || 30} Days Validity</span>
                                     </p>
                                     {featuresList.map((feat: any, fIdx: number) => {
@@ -1949,7 +1936,7 @@ export default function HostDashboardPage() {
                                       if (!featText) return null;
                                       return (
                                         <p key={fIdx} className="flex items-center gap-2">
-                                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                                          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                                           <span>{featText}</span>
                                         </p>
                                       );
@@ -1957,15 +1944,15 @@ export default function HostDashboardPage() {
                                   </div>
                                 </div>
 
-                                <div className="mt-8 pt-4 border-t border-white/10 text-center">
+                                <div className="mt-8 pt-4 border-t border-rose-100 text-center">
                                   <div className="mb-4">
-                                    <p className="text-2xl font-extrabold text-white">₹{pkg.price}</p>
-                                    <span className="text-[11px] text-slate-400">for {pkg.durationDays || 30} days</span>
+                                    <p className="text-2xl font-serif font-bold text-slate-900">₹{pkg.price}</p>
+                                    <span className="text-[11px] text-slate-500">for {pkg.durationDays || 30} days</span>
                                   </div>
                                   <button
                                     onClick={() => handleBuyPlan(pkg)}
                                     disabled={isSubscribing}
-                                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-[#e06d53] hover:bg-[#d05c42] text-white shadow-lg shadow-[#e06d53]/20 ${
+                                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-[#7E2248] hover:bg-[#681938] text-white shadow-md shadow-[#7E2248]/20 cursor-pointer ${
                                       isSubscribing ? "opacity-60 cursor-not-allowed" : ""
                                     }`}
                                   >
@@ -1987,30 +1974,28 @@ export default function HostDashboardPage() {
                   );
                 })()}
               </div>
-            )}
             </div>
           )}
-
         </main>
       </div>
 
       {/* Individual Event Attendees Modal */}
       {selectedEventForModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative w-full max-w-3xl bg-[#131d2e] border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-3xl bg-white border border-rose-100 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 pb-4 border-b border-white/10 shrink-0 bg-[#131d2e]">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-rose-100 shrink-0 bg-white">
               <div>
-                <div className="text-xs font-semibold text-[#fca5a5] uppercase">{selectedEventForModal.category}</div>
-                <h3 className="text-xl font-bold text-white mt-0.5">{selectedEventForModal.title}</h3>
-                <p className="text-xs text-slate-400">
+                <div className="text-xs font-semibold text-[#7E2248] uppercase">{selectedEventForModal.category}</div>
+                <h3 className="text-xl font-serif font-bold text-slate-900 mt-0.5">{selectedEventForModal.title}</h3>
+                <p className="text-xs text-slate-500">
                   {selectedEventForModal.location}, {selectedEventForModal.city} • {new Date(selectedEventForModal.date).toLocaleDateString()}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedEventForModal(null)}
-                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-rose-50 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2021,12 +2006,12 @@ export default function HostDashboardPage() {
               className="flex-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-6 space-y-4"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+              <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 Confirmed Attendees for this Event
               </h4>
 
               {bookings.filter((b) => b.eventId === selectedEventForModal.id).length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-sm bg-[#0b111e] rounded-2xl">
+                <div className="py-8 text-center text-slate-500 text-sm bg-[#FAF3F6] rounded-2xl border border-rose-100">
                   No attendees have reserved a spot for this event yet.
                 </div>
               ) : (
@@ -2036,18 +2021,18 @@ export default function HostDashboardPage() {
                     .map((b) => (
                       <div
                         key={b.id}
-                        className="bg-[#0b111e] p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4"
+                        className="bg-[#FAF3F6] p-4 rounded-2xl border border-rose-100 flex items-center justify-between gap-4"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#e06d53] to-amber-500 text-white font-bold flex items-center justify-center text-xs">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#7E2248] to-rose-400 text-white font-bold flex items-center justify-center text-xs shadow-xs">
                             {b.user.name ? b.user.name.slice(0, 2).toUpperCase() : "U"}
                           </div>
                           <div>
-                            <div className="font-bold text-white text-sm">{b.user.name}</div>
-                            <div className="text-xs text-slate-400">
+                            <div className="font-bold text-slate-900 text-sm">{b.user.name}</div>
+                            <div className="text-xs text-slate-500">
                               {b.user.email} {b.user.phone && `• ${b.user.phone}`}
                             </div>
-                            <div className="text-[11px] text-amber-400 mt-0.5">
+                            <div className="text-[11px] text-[#7E2248] font-semibold mt-0.5">
                               🎟️ {b.spots || 1} {(b.spots || 1) === 1 ? 'seat' : 'seats'} • {b.totalAmount ? `₹${b.totalAmount.toLocaleString("en-IN")}` : 'Free Pass'} • Status: <span className="font-bold">{b.status}</span>
                             </div>
                           </div>
@@ -2058,7 +2043,7 @@ export default function HostDashboardPage() {
                             <button
                               disabled={updatingBookingId === b.id}
                               onClick={() => handleStatusChange(b.id, "CHECKED_IN")}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
                             >
                               <Check className="w-3.5 h-3.5" />
                               Check In
@@ -2067,7 +2052,7 @@ export default function HostDashboardPage() {
                             <button
                               disabled={updatingBookingId === b.id}
                               onClick={() => handleStatusChange(b.id, "CONFIRMED")}
-                              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition cursor-pointer"
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
                             >
                               Revert
                             </button>
@@ -2076,7 +2061,7 @@ export default function HostDashboardPage() {
                             <button
                               disabled={updatingBookingId === b.id}
                               onClick={() => handleStatusChange(b.id, "CANCELLED")}
-                              className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition cursor-pointer"
                               title="Cancel"
                             >
                               <Ban className="w-3.5 h-3.5" />
@@ -2090,11 +2075,11 @@ export default function HostDashboardPage() {
             </div>
 
             {/* Sticky Footer */}
-            <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0c1322] flex justify-end shrink-0 rounded-b-3xl">
+            <div className="p-4 sm:p-5 border-t border-rose-100 bg-[#FAF3F6]/50 flex justify-end shrink-0 rounded-b-3xl">
               <button
                 type="button"
                 onClick={() => setSelectedEventForModal(null)}
-                className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold transition cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-semibold transition cursor-pointer"
               >
                 Done
               </button>
@@ -2105,26 +2090,26 @@ export default function HostDashboardPage() {
 
       {/* Create Event Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl bg-[#131d2e] border border-white/10 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-2xl bg-white border border-rose-100 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-start justify-between p-6 pb-4 border-b border-white/10 shrink-0 bg-[#131d2e]">
+            <div className="flex items-start justify-between p-6 pb-4 border-b border-rose-100 shrink-0 bg-white">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e06d53]/15 text-[#fca5a5] text-xs font-bold mb-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#7E2248] text-xs font-bold mb-1.5 border border-rose-200">
                   <Plus className="w-3.5 h-3.5" />
                   New Experience Creation
                 </div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+                <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">
                   {editingEventId ? "Edit Event" : "Create New Event"}
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Post an offline single event, speed dating night, dance dating party, or group travel.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-rose-50 transition cursor-pointer"
                 title="Close"
               >
                 <X size={20} />
@@ -2139,8 +2124,8 @@ export default function HostDashboardPage() {
               >
                 {/* Validation Error Alert Banner */}
                 {Object.keys(formErrors).length > 0 && (
-                  <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5 shadow-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                     <span>{formErrors.general || "Please fix the highlighted validation errors before saving."}</span>
                   </div>
                 )}
@@ -2148,7 +2133,7 @@ export default function HostDashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Event Title */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Event Title *
                     </label>
                     <input
@@ -2157,12 +2142,12 @@ export default function HostDashboardPage() {
                       name="title"
                       value={formData.title}
                       onChange={(e) => handleFieldChange("title", e.target.value)}
-                      className={`w-full bg-[#0b111e] border ${
-                        formErrors.title ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                      className={`w-full bg-[#FDFBF9] border ${
+                        formErrors.title ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                     />
                     {formErrors.title && (
-                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {formErrors.title}
                       </p>
@@ -2171,7 +2156,7 @@ export default function HostDashboardPage() {
 
                   {/* Description */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Description *
                     </label>
                     <textarea
@@ -2180,12 +2165,12 @@ export default function HostDashboardPage() {
                       name="description"
                       value={formData.description}
                       onChange={(e) => handleFieldChange("description", e.target.value)}
-                      className={`w-full bg-[#0b111e] border ${
-                        formErrors.description ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition h-24`}
+                      className={`w-full bg-[#FDFBF9] border ${
+                        formErrors.description ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition h-24`}
                     />
                     {formErrors.description && (
-                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {formErrors.description}
                       </p>
@@ -2194,14 +2179,14 @@ export default function HostDashboardPage() {
 
                   {/* Category */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Category *
                     </label>
                     <select
                       name="category"
                       value={formData.category}
                       onChange={(e) => handleFieldChange("category", e.target.value)}
-                      className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53]"
+                      className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -2213,7 +2198,7 @@ export default function HostDashboardPage() {
 
                   {/* City */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       City *
                     </label>
                     <input
@@ -2222,12 +2207,12 @@ export default function HostDashboardPage() {
                       name="city"
                       value={formData.city}
                       onChange={(e) => handleFieldChange("city", e.target.value)}
-                      className={`w-full bg-[#0b111e] border ${
-                        formErrors.city ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                      className={`w-full bg-[#FDFBF9] border ${
+                        formErrors.city ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                     />
                     {formErrors.city && (
-                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {formErrors.city}
                       </p>
@@ -2236,7 +2221,7 @@ export default function HostDashboardPage() {
 
                   {/* Location */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Venue / Location *
                     </label>
                     <input
@@ -2245,12 +2230,12 @@ export default function HostDashboardPage() {
                       name="location"
                       value={formData.location}
                       onChange={(e) => handleFieldChange("location", e.target.value)}
-                      className={`w-full bg-[#0b111e] border ${
-                        formErrors.location ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                      className={`w-full bg-[#FDFBF9] border ${
+                        formErrors.location ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                     />
                     {formErrors.location && (
-                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {formErrors.location}
                       </p>
@@ -2259,7 +2244,7 @@ export default function HostDashboardPage() {
 
                   {/* Start Date & Time */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Start Date & Time *
                     </label>
                     <input
@@ -2269,15 +2254,15 @@ export default function HostDashboardPage() {
                       name="date"
                       value={formData.date}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      className={`w-full bg-[#0b111e] border ${
-                        formErrors.date ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                      className={`w-full bg-[#FDFBF9] border ${
+                        formErrors.date ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <p className="text-[11px] text-slate-500 mt-1">
                       Must be a future date and time (past dates and yesterday are disabled).
                     </p>
                     {formErrors.date && (
-                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {formErrors.date}
                       </p>
@@ -2287,7 +2272,7 @@ export default function HostDashboardPage() {
                   {/* Return / End Date or Ticket Price */}
                   {formData.category === "Singles Travels" ? (
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Return / End Date *
                       </label>
                       <input
@@ -2297,15 +2282,15 @@ export default function HostDashboardPage() {
                         name="endDate"
                         value={formData.endDate}
                         onChange={(e) => handleEndDateChange(e.target.value)}
-                        className={`w-full bg-[#0b111e] border ${
-                          formErrors.endDate ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                        className={`w-full bg-[#FDFBF9] border ${
+                          formErrors.endDate ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                        } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                       />
-                      <p className="text-[11px] text-slate-400 mt-1">
+                      <p className="text-[11px] text-slate-500 mt-1">
                         Must be after the start date and time.
                       </p>
                       {formErrors.endDate && (
-                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           {formErrors.endDate}
                         </p>
@@ -2313,7 +2298,7 @@ export default function HostDashboardPage() {
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Ticket Price (₹) *
                       </label>
                       <input
@@ -2323,12 +2308,12 @@ export default function HostDashboardPage() {
                         name="price"
                         value={formData.price}
                         onChange={(e) => handleFieldChange("price", Number(e.target.value))}
-                        className={`w-full bg-[#0b111e] border ${
-                          formErrors.price ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                        className={`w-full bg-[#FDFBF9] border ${
+                          formErrors.price ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                        } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                       />
                       {formErrors.price && (
-                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           {formErrors.price}
                         </p>
@@ -2339,7 +2324,7 @@ export default function HostDashboardPage() {
                   {/* Trip Package Price (Singles Travels) */}
                   {formData.category === "Singles Travels" && (
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Trip Package Price (₹) *
                       </label>
                       <input
@@ -2349,12 +2334,12 @@ export default function HostDashboardPage() {
                         name="price"
                         value={formData.price}
                         onChange={(e) => handleFieldChange("price", Number(e.target.value))}
-                        className={`w-full bg-[#0b111e] border ${
-                          formErrors.price ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                        className={`w-full bg-[#FDFBF9] border ${
+                          formErrors.price ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                        } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                       />
                       {formErrors.price && (
-                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           {formErrors.price}
                         </p>
@@ -2364,7 +2349,7 @@ export default function HostDashboardPage() {
 
                   {/* Max Capacity */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Max Capacity / Attendees *
                     </label>
                     <input
@@ -2375,12 +2360,12 @@ export default function HostDashboardPage() {
                       name="maxAttendees"
                       value={formData.maxAttendees}
                       onChange={(e) => handleFieldChange("maxAttendees", Number(e.target.value))}
-                      className={`w-full bg-[#0b111e] border ${
-                        formErrors.maxAttendees ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                      } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                      className={`w-full bg-[#FDFBF9] border ${
+                        formErrors.maxAttendees ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                     />
                     {formErrors.maxAttendees && (
-                      <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {formErrors.maxAttendees}
                       </p>
@@ -2390,7 +2375,7 @@ export default function HostDashboardPage() {
                   {/* Speed Dating Age Range */}
                   {formData.category === "Speed dating" && (
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Age Bracket (e.g. 24 - 32 years) *
                       </label>
                       <input
@@ -2398,12 +2383,12 @@ export default function HostDashboardPage() {
                         placeholder="24 - 32"
                         value={formData.ageRange}
                         onChange={(e) => handleFieldChange("ageRange", e.target.value)}
-                        className={`w-full bg-[#0b111e] border ${
-                          formErrors.ageRange ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-white/10 focus:border-[#e06d53]"
-                        } rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition`}
+                        className={`w-full bg-[#FDFBF9] border ${
+                          formErrors.ageRange ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30" : "border-rose-200 focus:border-[#7E2248] focus:bg-white"
+                        } rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition`}
                       />
                       {formErrors.ageRange && (
-                        <p className="text-xs text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                        <p className="text-xs text-rose-600 mt-1 flex items-center gap-1 font-medium">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           {formErrors.ageRange}
                         </p>
@@ -2414,7 +2399,7 @@ export default function HostDashboardPage() {
                   {/* Singles Travels Itinerary */}
                   {formData.category === "Singles Travels" && (
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Travel Itinerary & Inclusions
                       </label>
                       <textarea
@@ -2422,7 +2407,7 @@ export default function HostDashboardPage() {
                         placeholder="Day 1: Arrival & Sunset Beach Mixer... Day 2: Trekking & Bonfire..."
                         value={formData.itinerary}
                         onChange={(e) => handleFieldChange("itinerary", e.target.value)}
-                        className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#e06d53] h-20"
+                        className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[#7E2248] focus:bg-white transition h-20"
                       />
                     </div>
                   )}
@@ -2430,18 +2415,18 @@ export default function HostDashboardPage() {
               </div>
 
               {/* Sticky Footer */}
-              <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0c1322] flex items-center justify-end gap-3 shrink-0 rounded-b-3xl">
+              <div className="p-4 sm:p-5 border-t border-rose-100 bg-[#FAF3F6]/50 flex items-center justify-end gap-3 shrink-0 rounded-b-3xl">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-5 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 text-sm font-semibold transition cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-rose-50 text-sm font-semibold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b04b34] disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2.5 rounded-xl font-bold text-sm text-white transition shadow-lg shadow-[#e06d53]/25 cursor-pointer inline-flex items-center gap-2"
+                  className="bg-[#7E2248] hover:bg-[#681938] disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2.5 rounded-xl font-bold text-sm text-white transition shadow-md shadow-[#7E2248]/25 cursor-pointer inline-flex items-center gap-2"
                 >
                   {formSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   <span>{editingEventId ? "Save Changes" : "Publish Event"}</span>
@@ -2452,29 +2437,14 @@ export default function HostDashboardPage() {
         </div>
       )}
 
-      {/* Cute & Professional Dynamic Popup Modal */}
+      {/* Dynamic Popup Modal */}
       {popupConfig.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-[#131d2e]/95 backdrop-blur-xl border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] text-center space-y-5 overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Ambient background glow */}
-            <div
-              className={`absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
-                popupConfig.type === "success"
-                  ? "bg-emerald-500/20"
-                  : popupConfig.type === "error"
-                  ? "bg-rose-500/25"
-                  : popupConfig.type === "warning"
-                  ? "bg-amber-500/25"
-                  : popupConfig.type === "confirm"
-                  ? "bg-[#e06d53]/25"
-                  : "bg-sky-500/20"
-              }`}
-            />
-
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-5 overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Top Close Button */}
             <button
               onClick={closePopup}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition cursor-pointer"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-full hover:bg-rose-50 transition cursor-pointer"
               title="Close modal"
             >
               <X size={18} />
@@ -2483,16 +2453,16 @@ export default function HostDashboardPage() {
             {/* Dynamic Animated Sticker */}
             <div className="relative pt-2">
               <div
-                className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center text-4xl shadow-2xl border border-white/10 select-none transform hover:scale-105 transition ${
+                className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center text-4xl shadow-md border select-none transform hover:scale-105 transition ${
                   popupConfig.type === "success"
-                    ? "bg-emerald-500/15 ring-4 ring-emerald-500/20"
+                    ? "bg-emerald-50 border-emerald-200 ring-4 ring-emerald-50"
                     : popupConfig.type === "error"
-                    ? "bg-rose-500/15 ring-4 ring-rose-500/20"
+                    ? "bg-rose-50 border-rose-200 ring-4 ring-rose-50"
                     : popupConfig.type === "warning"
-                    ? "bg-amber-500/15 ring-4 ring-amber-500/20"
+                    ? "bg-amber-50 border-amber-200 ring-4 ring-amber-50"
                     : popupConfig.type === "confirm"
-                    ? "bg-[#e06d53]/15 ring-4 ring-[#e06d53]/20"
-                    : "bg-sky-500/15 ring-4 ring-sky-500/20"
+                    ? "bg-rose-50 border-rose-200 ring-4 ring-rose-50"
+                    : "bg-sky-50 border-sky-200 ring-4 ring-sky-50"
                 }`}
               >
                 <span className="animate-bounce inline-block">{popupConfig.sticker || "✨"}</span>
@@ -2504,14 +2474,14 @@ export default function HostDashboardPage() {
               <span
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase ${
                   popupConfig.type === "success"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                     : popupConfig.type === "error"
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                    ? "bg-rose-50 text-rose-700 border border-rose-200"
                     : popupConfig.type === "warning"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    ? "bg-amber-50 text-amber-800 border border-amber-200"
                     : popupConfig.type === "confirm"
-                    ? "bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30"
-                    : "bg-sky-500/20 text-sky-300 border border-sky-500/30"
+                    ? "bg-rose-50 text-[#7E2248] border border-rose-200"
+                    : "bg-sky-50 text-sky-800 border border-sky-200"
                 }`}
               >
                 {popupConfig.badgeText ||
@@ -2529,10 +2499,10 @@ export default function HostDashboardPage() {
 
             {/* Title & Description */}
             <div className="space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900 tracking-tight">
                 {popupConfig.title}
               </h3>
-              <p className="text-sm text-slate-300 leading-relaxed font-normal px-2">
+              <p className="text-sm text-slate-600 leading-relaxed font-normal px-2">
                 {popupConfig.message}
               </p>
             </div>
@@ -2547,7 +2517,7 @@ export default function HostDashboardPage() {
                       if (popupConfig.onCancel) popupConfig.onCancel();
                       closePopup();
                     }}
-                    className="w-full py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white font-bold text-sm transition cursor-pointer"
+                    className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition cursor-pointer"
                   >
                     {popupConfig.cancelText || "Cancel"}
                   </button>
@@ -2557,7 +2527,7 @@ export default function HostDashboardPage() {
                       if (popupConfig.onConfirm) popupConfig.onConfirm();
                       closePopup();
                     }}
-                    className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-extrabold text-sm shadow-lg shadow-rose-600/30 transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    className="w-full py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm shadow-md shadow-rose-600/30 transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   >
                     {popupConfig.confirmText || "Confirm"}
                   </button>
@@ -2571,7 +2541,7 @@ export default function HostDashboardPage() {
                         if (popupConfig.onCancel) popupConfig.onCancel();
                         closePopup();
                       }}
-                      className="w-full py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white font-bold text-sm transition cursor-pointer"
+                      className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition cursor-pointer"
                     >
                       {popupConfig.cancelText}
                     </button>
@@ -2582,7 +2552,7 @@ export default function HostDashboardPage() {
                       if (popupConfig.onConfirm) popupConfig.onConfirm();
                       closePopup();
                     }}
-                    className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#f07d63] hover:to-[#d96950] text-white font-extrabold text-sm shadow-lg shadow-[#e06d53]/30 transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    className="w-full py-3.5 px-6 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white font-extrabold text-sm shadow-md shadow-[#7E2248]/30 transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   >
                     {popupConfig.confirmText || "Got It! ✨"}
                   </button>
@@ -2593,27 +2563,27 @@ export default function HostDashboardPage() {
         </div>
       )}
 
-      {/* Cute Floating Toast Notification - Centered */}
+      {/* Floating Toast Notification - Centered */}
       {toastConfig.isOpen && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[130] w-full max-w-md px-4 animate-in slide-in-from-top-4 zoom-in-95 duration-200 pointer-events-auto">
           <div
-            className={`flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-[#0e1626]/98 backdrop-blur-2xl border shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-left ${
+            className={`flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-white/98 backdrop-blur-2xl border shadow-xl text-left ${
               toastConfig.type === "success"
-                ? "border-emerald-500/40 text-emerald-200 ring-2 ring-emerald-500/10"
+                ? "border-emerald-200 text-emerald-900"
                 : toastConfig.type === "warning"
-                ? "border-amber-500/40 text-amber-200 ring-2 ring-amber-500/10"
+                ? "border-amber-200 text-amber-900"
                 : toastConfig.type === "error"
-                ? "border-rose-500/40 text-rose-200 ring-2 ring-rose-500/10"
-                : "border-sky-500/40 text-sky-200 ring-2 ring-sky-500/10"
+                ? "border-rose-200 text-rose-900"
+                : "border-sky-200 text-sky-900"
             }`}
           >
             <span className="text-2xl shrink-0 select-none animate-bounce">{toastConfig.sticker}</span>
-            <div className="flex-1 text-xs sm:text-sm font-semibold text-white leading-snug">
+            <div className="flex-1 text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
               {toastConfig.message}
             </div>
             <button
               onClick={() => setToastConfig((prev) => ({ ...prev, isOpen: false }))}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer shrink-0"
+              className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-rose-50 transition cursor-pointer shrink-0"
               title="Dismiss"
             >
               <X size={16} />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -31,55 +32,67 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b111e] text-white flex flex-col items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-md bg-[#131d2e] border border-white/10 rounded-2xl p-8 shadow-2xl">
+    <div className="relative min-h-screen bg-gradient-to-b from-[#FAF3F6] via-[#FDFBF9] to-white text-slate-800 flex flex-col items-center justify-center p-4 sm:p-6 font-sans selection:bg-[#7E2248] selection:text-white">
+      {/* Back button */}
+      <div className="absolute top-6 left-6 sm:top-10 sm:left-10 z-10">
+        <Link
+          href="/login"
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 hover:border-[#7E2248] text-slate-700 hover:text-[#7E2248] rounded-full transition text-xs font-semibold shadow-xs"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Login
+        </Link>
+      </div>
+
+      <div className="w-full max-w-md bg-white border border-rose-100 rounded-3xl p-8 sm:p-10 shadow-xl shadow-rose-950/5 relative my-8">
         <div className="text-center mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-bold text-white">
-              J
-            </div>
-            <span className="font-extrabold text-lg">Jab<span className="text-[#e06d53]">We</span>Meet</span>
+          <Link href="/" className="inline-flex items-center gap-2 mb-2 group">
+            <span className="font-extrabold text-2xl tracking-wider text-[#7E2248] uppercase">
+              JABWEMEET
+            </span>
           </Link>
-          <h1 className="text-2xl font-bold text-white font-serif">Forgot Password</h1>
-          <p className="text-sm text-slate-400 mt-1">Enter your registered email to reset your password.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-serif">Forgot Password</h1>
+          <p className="text-xs text-slate-500 mt-1">Enter your registered email to reset your password.</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-sm">
-            {error}
+          <div className="mb-4 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+            ⚠️ {error}
           </div>
         )}
 
         {message && (
-          <div className="mb-4 p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm">
-            {message}
+          <div className="mb-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+            ✓ {message}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+            <label className="block text-slate-700 font-bold uppercase tracking-wider text-xs mb-1.5">
+              Email Address
+            </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
-              className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-[#e06d53]"
+              className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white text-sm transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white font-semibold text-sm transition shadow-lg disabled:opacity-60"
+            className="w-full py-3.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs uppercase tracking-wider transition shadow-md shadow-[#7E2248]/20 disabled:opacity-60"
           >
             {loading ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
-          <Link href="/login" className="text-slate-400 hover:text-white">
+        <p className="text-center text-xs text-slate-500 mt-6">
+          <Link href="/login" className="text-[#7E2248] font-bold hover:underline">
             ← Back to Login
           </Link>
         </p>

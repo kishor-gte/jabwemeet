@@ -159,18 +159,18 @@ export default function DashboardSidebar({
   };
 
   const navContent = (
-    <div className="flex flex-col h-full bg-[#0d1526] text-slate-200 border-r border-white/10 select-none">
+    <div className="flex flex-col h-full bg-white text-slate-700 border-r border-rose-100 shadow-xs select-none">
       {/* Brand Header */}
-      <div className="p-6 border-b border-white/10 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg shadow-[#e06d53]/25 group-hover:scale-105 transition">
+      <div className="p-6 border-b border-rose-100 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#7E2248] to-[#982b57] flex items-center justify-center font-extrabold text-white text-base shadow-md shadow-[#7E2248]/20 group-hover:scale-105 transition">
             J
           </div>
           <div>
-            <div className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-              Jab<span className="text-[#e06d53]">We</span>Meet
+            <div className="font-extrabold text-xl tracking-wider text-[#7E2248] uppercase">
+              JABWEMEET
             </div>
-            <div className="text-[10px] font-medium uppercase tracking-widest text-slate-400">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Member Portal • {user.city}
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function DashboardSidebar({
         {/* Mobile Close Button */}
         <button
           onClick={onCloseMobile}
-          className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition"
+          className="lg:hidden p-2 text-slate-400 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition"
           aria-label="Close sidebar"
         >
           <X className="w-5 h-5" />
@@ -186,15 +186,15 @@ export default function DashboardSidebar({
       </div>
 
       {/* Navigation Links with Dynamic Badge Counts */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-rose-100">
         {/* Admin Return Link (Only for Admins) */}
         {user.role === "ADMIN" && (
-          <div className="pb-3 border-b border-red-500/20">
+          <div className="pb-3 border-b border-rose-100">
             <Link
               href="/admin"
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg shadow-red-600/20 border border-red-400/30 transition group transform hover:-translate-y-0.5"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-[#7E2248] hover:bg-[#681938] text-white shadow-sm transition group transform hover:-translate-y-0.5"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 <span>Return to Admin</span>
               </div>
@@ -216,21 +216,21 @@ export default function DashboardSidebar({
                 onSelectSection("dashboard");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "dashboard"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
                 <LayoutDashboard
                   className={`w-4 h-4 ${
-                    activeSection === "dashboard" ? "text-[#e06d53]" : "text-slate-400"
+                    activeSection === "dashboard" ? "text-[#7E2248]" : "text-slate-400"
                   }`}
                 />
                 <span>Dashboard</span>
               </div>
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
             </button>
 
             <button
@@ -239,18 +239,22 @@ export default function DashboardSidebar({
                 onSelectSection("events");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "events"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-slate-400" />
+                <Calendar
+                  className={`w-4 h-4 ${
+                    activeSection === "events" ? "text-[#7E2248]" : "text-slate-400"
+                  }`}
+                />
                 <span>Discover Events</span>
               </div>
               {getUnseenCount("events", eventsCount) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300 transition-opacity">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248]">
                   {getUnseenCount("events", eventsCount)}
                 </span>
               )}
@@ -262,18 +266,22 @@ export default function DashboardSidebar({
                 onSelectSection("my-events");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "my-events"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <CalendarCheck className="w-4 h-4 text-slate-400" />
+                <CalendarCheck
+                  className={`w-4 h-4 ${
+                    activeSection === "my-events" ? "text-[#7E2248]" : "text-slate-400"
+                  }`}
+                />
                 <span>My Events</span>
               </div>
               {getUnseenCount("my-events", myEventsCount) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30 transition-opacity">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7E2248] text-white">
                   {getUnseenCount("my-events", myEventsCount)}
                 </span>
               )}
@@ -285,18 +293,22 @@ export default function DashboardSidebar({
                 onSelectSection("connections");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "connections"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-slate-400" />
+                <Users
+                  className={`w-4 h-4 ${
+                    activeSection === "connections" ? "text-[#7E2248]" : "text-slate-400"
+                  }`}
+                />
                 <span>My Connections</span>
               </div>
               {getUnseenCount("connections", connectionsCount) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 transition-opacity">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248]">
                   {getUnseenCount("connections", connectionsCount)}
                 </span>
               )}
@@ -308,23 +320,23 @@ export default function DashboardSidebar({
         <div>
           <div className="px-3 mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
             <span>Premium Services</span>
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
           </div>
           <div className="space-y-1">
             <Link
               href="/relationship-manager"
               onClick={onCloseMobile}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition group ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition group ${
                 activeSection === "relationship-manager"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <HeartHandshake className="w-4 h-4 text-rose-400 group-hover:scale-110 transition" />
+                <HeartHandshake className="w-4 h-4 text-[#7E2248] group-hover:scale-110 transition" />
                 <span>Relationship Manager</span>
               </div>
-              <span className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500/20 to-amber-500/20 text-rose-300 border border-rose-500/30">
+              <span className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248] border border-rose-200">
                 Premium
               </span>
             </Link>
@@ -332,17 +344,17 @@ export default function DashboardSidebar({
             <Link
               href="/breakup-buddy"
               onClick={onCloseMobile}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition group ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition group ${
                 activeSection === "breakup-buddy"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Headphones className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />
+                <Headphones className="w-4 h-4 text-purple-600 group-hover:scale-110 transition" />
                 <span>Breakup Buddy</span>
               </div>
-              <span className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <span className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                 Premium
               </span>
             </Link>
@@ -352,13 +364,13 @@ export default function DashboardSidebar({
                 onSelectSection("packages");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "packages"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
-              <Package className="w-4 h-4 text-emerald-400" />
+              <Package className="w-4 h-4 text-emerald-600" />
               <span>My Packages</span>
             </button>
           </div>
@@ -375,10 +387,10 @@ export default function DashboardSidebar({
                 onSelectSection("profile");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "profile"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <User className="w-4 h-4 text-slate-400" />
@@ -391,10 +403,10 @@ export default function DashboardSidebar({
                 onSelectSection("messages");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "messages"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -402,7 +414,7 @@ export default function DashboardSidebar({
                 <span>Messages</span>
               </div>
               {getUnseenCount("messages", unreadMessagesCount) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-opacity">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                   {getUnseenCount("messages", unreadMessagesCount)}
                 </span>
               )}
@@ -413,13 +425,13 @@ export default function DashboardSidebar({
                 onSelectSection("call-history");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "call-history"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
-              <PhoneCall className="w-4 h-4 text-indigo-400" />
+              <PhoneCall className="w-4 h-4 text-slate-400" />
               <span>Call History</span>
             </button>
 
@@ -429,10 +441,10 @@ export default function DashboardSidebar({
                 onSelectSection("notifications");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "notifications"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -440,7 +452,7 @@ export default function DashboardSidebar({
                 <span>Notifications</span>
               </div>
               {getUnseenCount("notifications", notificationsCount) > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-opacity">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
                   {getUnseenCount("notifications", notificationsCount)}
                 </span>
               )}
@@ -451,10 +463,10 @@ export default function DashboardSidebar({
                 onSelectSection("payments");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "payments"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <CreditCard className="w-4 h-4 text-slate-400" />
@@ -466,10 +478,10 @@ export default function DashboardSidebar({
                 onSelectSection("settings");
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition ${
                 activeSection === "settings"
-                  ? "bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-white/5"
+                  ? "bg-rose-50 text-[#7E2248] border border-rose-200/80 shadow-xs font-bold"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50"
               }`}
             >
               <Settings className="w-4 h-4 text-slate-400" />
@@ -480,23 +492,23 @@ export default function DashboardSidebar({
       </div>
 
       {/* User Profile & Logout Bottom Card */}
-      <div className="p-4 border-t border-white/10 bg-[#0a101d]">
-        <div className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-white/5 transition">
+      <div className="p-4 border-t border-rose-100 bg-[#FAF3F6]/80">
+        <div className="flex items-center justify-between gap-3 p-2 rounded-2xl hover:bg-white transition shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#7E2248] to-[#982b57] flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-sm">
               {getInitials(user.name)}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
+              <div className="text-sm font-bold text-slate-900 truncate flex items-center gap-1.5">
                 <span>{user.name}</span>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               </div>
-              <div className="text-xs text-slate-400 truncate">{user.email}</div>
+              <div className="text-xs text-slate-500 truncate">{user.email}</div>
               {user.role === "ADMIN" && (
                 <div className="mt-1">
                   <Link
                     href="/admin"
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-red-400 hover:text-red-300 transition"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7E2248] hover:underline transition"
                   >
                     <ArrowLeft className="w-3 h-3" />
                     <span>Control Center</span>
@@ -509,7 +521,7 @@ export default function DashboardSidebar({
           <button
             onClick={onLogout}
             title="Log out"
-            className="p-2 text-slate-400 hover:text-[#fca5a5] hover:bg-rose-500/10 rounded-lg transition shrink-0"
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-100/60 rounded-xl transition shrink-0"
             aria-label="Logout"
           >
             <LogOut className="w-4 h-4" />
@@ -531,7 +543,7 @@ export default function DashboardSidebar({
         <div className="lg:hidden fixed inset-0 z-50 flex">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
             aria-hidden="true"
           />

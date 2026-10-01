@@ -15,9 +15,12 @@ import {
   Clock,
   PhoneCall,
   Loader2,
-  HeartHandshake
+  HeartHandshake,
+  Menu,
+  LogOut,
 } from "lucide-react";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
+import DashboardSidebar from "../dashboard/components/DashboardSidebar";
 import { io } from "socket.io-client";
 import { getSocketUrl } from "@/lib/socketUrl";
 
@@ -26,6 +29,13 @@ export default function BreakupBuddyPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [badgeCounts, setBadgeCounts] = useState({
+    eventsCount: 0,
+    myEventsCount: 0,
+    connectionsCount: 0,
+    notificationsCount: 0,
+  });
 
   // Calling State
   const [activeCallReqId, setActiveCallReqId] = useState<string | null>(null);
@@ -104,12 +114,61 @@ export default function BreakupBuddyPage() {
         if (data?.success && data?.user) {
           setCurrentUser(data.user);
           fetchMyRequests();
+
+          // Load local user counts for sidebar
+          try {
+            const savedRsvps = localStorage.getItem(`jwm_rsvps_${data.user.id}`);
+            const myEventsCount = savedRsvps ? JSON.parse(savedRsvps).length : 0;
+            const savedConns = localStorage.getItem(`jwm_conns_${data.user.id}`);
+            const connectionsCount = savedConns ? JSON.parse(savedConns).length : 0;
+            const savedServices = localStorage.getItem(`jwm_services_${data.user.id}`);
+            const services = savedServices ? JSON.parse(savedServices) : {};
+            const serviceReqCount = (services.relationshipManager ? 1 : 0) + (services.breakupBuddy ? 1 : 0);
+
+            setBadgeCounts({
+              eventsCount: 0,
+              myEventsCount,
+              connectionsCount,
+              notificationsCount: myEventsCount + serviceReqCount,
+            });
+          } catch (e) {}
         } else {
           setLoading(false);
         }
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch (e) {}
+    router.replace("/login");
+  };
+
+  const sidebarUser = currentUser
+    ? {
+        id: currentUser.id,
+        name: currentUser.name || "Member",
+        email: currentUser.email || "",
+        phone: currentUser.phone || "",
+        city: currentUser.city && currentUser.city !== "N/A" ? currentUser.city : "Pan-India",
+        gender: currentUser.gender || null,
+        relationshipIntent: currentUser.relationshipIntent || null,
+        role: currentUser.role || "USER",
+        createdAt: currentUser.createdAt || new Date().toISOString(),
+      }
+    : {
+        id: "guest",
+        name: "Member",
+        email: "",
+        phone: "",
+        city: "Pan-India",
+        gender: null,
+        relationshipIntent: null,
+        role: "USER",
+        createdAt: new Date().toISOString(),
+      };
 
   // Real-time socket listener for incoming voice calls
   useEffect(() => {
@@ -261,7 +320,7 @@ export default function BreakupBuddyPage() {
           contact: currentUser.phone || "",
         },
         theme: {
-          color: "#e06d53",
+          color: "#7E2248",
         },
         handler: async (response: any) => {
           try {
@@ -304,7 +363,7 @@ export default function BreakupBuddyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white">
+    <div className="min-h-screen bg-[#FDFBF9] text-slate-900 font-sans selection:bg-[#7E2248] selection:text-white flex flex-col">
       {/* Voice Call Overlay */}
       {(activeCallReqId || userIncomingCall) && (
         <VoiceCallOverlay
@@ -325,75 +384,143 @@ export default function BreakupBuddyPage() {
 
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1e293b] border border-[#e06d53] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in">
-          <Sparkles className="w-5 h-5 text-[#e06d53]" />
+        <div className="fixed bottom-6 right-6 z-50 bg-white border border-rose-200 text-slate-900 px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-fade-in">
+          <Sparkles className="w-5 h-5 text-[#7E2248]" />
           <span className="text-sm font-medium">{toastMessage}</span>
         </div>
       )}
 
-      {/* TOP NAVBAR */}
-      <nav className="sticky top-0 z-40 bg-[#0b111e]/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-lg shadow-lg">
-                J
-              </div>
-              <span className="font-extrabold text-2xl tracking-tight text-white">
-                Jab<span className="text-[#e06d53]">We</span>Meet
-              </span>
-            </Link>
+      {/* Mobile Topbar */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-rose-100 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-rose-50 transition cursor-pointer"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
 
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#7E2248] flex items-center justify-center font-extrabold text-white text-sm shadow-xs">
+              J
+            </div>
+            <span className="font-serif font-bold text-base tracking-tight text-slate-900">
+              Jab<span className="text-[#7E2248]">We</span>Meet
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {currentUser ? (
+            <>
+              <span className="text-xs font-semibold text-slate-700 hidden sm:inline truncate max-w-[120px]">
+                {currentUser.name}
+              </span>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="p-2 text-slate-500 hover:text-[#7E2248] rounded-lg transition cursor-pointer"
+                aria-label="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
             <Link
-              href={currentUser ? "/dashboard" : "/"}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-3 py-1.5 rounded-full bg-white/5 border border-white/10"
+              href="/login"
+              className="px-3 py-1 rounded-lg bg-[#7E2248] text-white text-xs font-semibold"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+              Login
             </Link>
+          )}
+        </div>
+      </header>
+
+      {/* Desktop Sidebar + Mobile Drawer */}
+      <DashboardSidebar
+        user={sidebarUser}
+        activeSection="breakup-buddy"
+        eventsCount={badgeCounts.eventsCount}
+        myEventsCount={badgeCounts.myEventsCount}
+        connectionsCount={badgeCounts.connectionsCount}
+        notificationsCount={badgeCounts.notificationsCount}
+        onSelectSection={(sec) => {
+          if (sec === "dashboard") {
+            const dashUrl = currentUser?.role === 'ADMIN' ? '/admin' :
+                            currentUser?.role === 'MATCHMAKER' ? '/matchmaker/dashboard' :
+                            currentUser?.role === 'BREAKUP_BUDDY' ? '/breakup-buddy/dashboard' :
+                            currentUser?.role === 'HOST' ? '/host/dashboard' :
+                            '/dashboard';
+            router.push(dashUrl);
+          } else if (sec === "breakup-buddy") {
+            router.push("/breakup-buddy");
+          } else if (sec === "relationship-manager") {
+            router.push("/relationship-manager");
+          } else {
+            router.push(`/dashboard?tab=${sec}`);
+          }
+        }}
+        onLogout={handleLogout}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
+
+      {/* Main Content Area (Offset for Desktop Sidebar) */}
+      <div className="lg:pl-72 flex-1 flex flex-col min-w-0">
+        {/* Desktop Top Header Bar with breadcrumbs (No "Back to Dashboard" button) */}
+        <div className="bg-white/80 backdrop-blur-md border-b border-rose-100 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Premium Services</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-xs font-semibold text-slate-900">Breakup Buddy</span>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={handleConnectWithBuddy}
               disabled={isConnecting || isPending || isAccepted}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold bg-[#e06d53] hover:bg-[#c95940] disabled:opacity-60 text-white shadow-lg shadow-[#e06d53]/30 transition"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-[#7E2248] hover:bg-[#681938] disabled:opacity-60 text-white shadow-md shadow-[#7E2248]/20 transition cursor-pointer"
             >
-              <Heart className="w-4 h-4 fill-white" />
+              <Heart className="w-3.5 h-3.5 fill-white" />
               {isAccepted
                 ? `Connected: ${buddyDisplayName}`
                 : isPending
                 ? "Waiting for Buddy..."
                 : "Connect with Breakup Buddy"}
             </button>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#7E2248]" />
+              Emotional Wellness Support
+            </span>
           </div>
         </div>
-      </nav>
 
       {/* HERO SECTION */}
-      <header className="pt-14 pb-12 px-6 text-center relative overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(224,109,83,0.18)_0%,transparent_65%)] border-b border-white/10">
+      <header className="pt-14 pb-14 px-6 text-center relative overflow-hidden bg-gradient-to-b from-[#FAF3F6] via-[#FDFBF9] to-white border-b border-rose-100">
         <div className="max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#e06d53]/10 border border-[#e06d53]/30 text-xs font-semibold text-[#fca5a5]">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-[#7E2248]">
             🎁 100% Confidential • First 30 Mins Free Call & Chat
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-serif leading-tight">
-            Healing Starts with a <span className="text-[#e06d53]">Safe Conversation</span>
+          <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight font-serif leading-tight">
+            Healing Starts with a <span className="text-[#7E2248]">Safe Conversation</span>
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto leading-relaxed">
             Going through heartbreak, emotional overwhelm, or relationship distress? Connect with a compassionate Breakup Buddy who listens without judgment. Your privacy is 100% protected.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
             {isAccepted ? (
-              <div className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-sm rounded-full shadow-lg flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Connected with {buddyDisplayName}
+              <div className="w-full sm:w-auto px-6 py-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-sm rounded-full shadow-sm flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Connected with {buddyDisplayName}
               </div>
             ) : (
               <button
                 onClick={handleConnectWithBuddy}
                 disabled={isConnecting || isPending}
-                className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-[#e06d53] to-[#b8432a] hover:from-[#c95940] hover:to-[#9f341d] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-[#e06d53]/30 transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3.5 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-lg shadow-[#7E2248]/25 transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isConnecting ? (
                   <>
@@ -413,7 +540,7 @@ export default function BreakupBuddyPage() {
 
             <a
               href="#packages"
-              className="w-full sm:w-auto px-6 py-3.5 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs rounded-full transition text-center"
+              className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-rose-50 border border-rose-200 text-slate-800 font-semibold text-xs rounded-full shadow-xs transition text-center"
             >
               View Support Packages ↓
             </a>
@@ -425,15 +552,15 @@ export default function BreakupBuddyPage() {
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-12">
         {/* PENDING WAITING STATE */}
         {isPending && (
-          <div className="bg-gradient-to-br from-[#1c1917] to-[#131d2e] border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 text-center">
-            <div className="w-14 h-14 bg-amber-500/20 text-amber-300 rounded-full flex items-center justify-center mx-auto animate-pulse">
+          <div className="bg-amber-50/90 border border-amber-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4 text-center">
+            <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto animate-pulse">
               <Clock className="w-7 h-7 animate-spin" />
             </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white">We are assigning you with a Breakup Buddy</h3>
-            <p className="text-xs sm:text-sm text-amber-200 max-w-lg mx-auto leading-relaxed">
+            <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">We are assigning you with a Breakup Buddy</h3>
+            <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
               Please wait, your request has been sent to our Breakup Buddy team. Once a Breakup Buddy accepts your request, you can freely chat or make a voice call during your 30 minutes free session.
             </p>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300 animate-pulse">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-100/80 border border-amber-300 text-xs font-semibold text-amber-900 animate-pulse">
               ⏳ Assigning your Breakup Buddy... Please wait.
             </div>
           </div>
@@ -441,12 +568,12 @@ export default function BreakupBuddyPage() {
 
         {/* ACCEPTED ACTIVE SESSION CARD */}
         {isAccepted && (
-          <div className="bg-gradient-to-br from-[#131d2e] to-[#0f172a] border border-[#e06d53]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-rose-100/40 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border-b border-white/10 pb-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border-b border-rose-100 pb-6">
               <div className="flex items-center gap-4">
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#e06d53]/25 to-[#b8432a]/30 border border-[#e06d53]/40 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#7E2248] to-[#9B2C59] border border-rose-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                   {buddyProfilePhoto ? (
                     <img
                       src={
@@ -465,27 +592,27 @@ export default function BreakupBuddyPage() {
                     />
                   ) : null}
                   <span
-                    className={`avatar-fallback font-extrabold text-2xl text-[#fca5a5] ${
+                    className={`avatar-fallback font-extrabold text-2xl text-white ${
                       buddyProfilePhoto ? "hidden" : "flex"
                     } items-center justify-center`}
                   >
                     {buddyDisplayName.charAt(0).toUpperCase()}
                   </span>
-                  <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#131d2e] rounded-full" title="Online & Connected" />
+                  <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" title="Online & Connected" />
                 </div>
 
                 <div>
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                    <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 border border-emerald-200 text-emerald-800">
                       ✓ Connected with {buddyDisplayName}
                     </span>
                   </div>
 
-                  <h3 className="text-xl sm:text-2xl font-bold text-white">
+                  <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">
                     Active Session with {buddyDisplayName}
                   </h3>
 
-                  <p className="text-xs text-slate-300 mt-1">
+                  <p className="text-xs text-slate-600 mt-1">
                     Your 30 minutes free session is active. You can freely call or chat with {buddyDisplayName} below.
                   </p>
                 </div>
@@ -493,16 +620,16 @@ export default function BreakupBuddyPage() {
 
               {/* Free Minutes / Package Badges */}
               <div className="flex items-center gap-2 shrink-0">
-                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Free Chat</div>
-                  <div className="text-sm font-bold text-[#fca5a5]">
+                <div className="px-3.5 py-2 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-center min-w-[90px]">
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Free Chat</div>
+                  <div className="text-sm font-bold text-[#7E2248]">
                     {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.chatMinutesLeft || 30}m Left`}
                   </div>
                 </div>
 
-                <div className="px-3.5 py-2 bg-white/5 border border-white/10 rounded-2xl text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Free Call</div>
-                  <div className="text-sm font-bold text-[#fca5a5]">
+                <div className="px-3.5 py-2 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-center min-w-[90px]">
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Free Call</div>
+                  <div className="text-sm font-bold text-[#7E2248]">
                     {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.callMinutesLeft || 30}m Left`}
                   </div>
                 </div>
@@ -513,7 +640,7 @@ export default function BreakupBuddyPage() {
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
               <Link
                 href="/messages"
-                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold rounded-xl shadow-lg shadow-[#e06d53]/30 transition"
+                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold rounded-2xl shadow-xs transition"
               >
                 <MessageCircle className="w-4 h-4" /> Open Chat with {buddyDisplayName}
               </Link>
@@ -523,7 +650,7 @@ export default function BreakupBuddyPage() {
                   setActiveCallReqId(activeConnection.id);
                   setActiveCallBuddyId(activeConnection.buddyId);
                 }}
-                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition"
+                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-2xl shadow-xs transition cursor-pointer"
               >
                 <PhoneCall className="w-4 h-4" /> Start Voice Call with {buddyDisplayName}
               </button>
@@ -533,32 +660,32 @@ export default function BreakupBuddyPage() {
 
         {/* 3 CORE PILLARS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 bg-[#131d2e] border border-white/10 rounded-3xl space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#e06d53]/10 text-[#e06d53] flex items-center justify-center text-xl">
+          <div className="p-6 bg-white border border-rose-100 rounded-3xl space-y-3 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-[#7E2248] flex items-center justify-center text-xl">
               🎁
             </div>
-            <h3 className="text-base font-bold text-white">First 30 Mins Free</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h3 className="text-base font-serif font-bold text-slate-900">First 30 Mins Free</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
               Every connection starts with 30 minutes of free call and chat support so you can talk freely without hesitation.
             </p>
           </div>
 
-          <div className="p-6 bg-[#131d2e] border border-white/10 rounded-3xl space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#e06d53]/10 text-[#e06d53] flex items-center justify-center text-xl">
+          <div className="p-6 bg-white border border-rose-100 rounded-3xl space-y-3 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-[#7E2248] flex items-center justify-center text-xl">
               🛡️
             </div>
-            <h3 className="text-base font-bold text-white">100% Confidential</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h3 className="text-base font-serif font-bold text-slate-900">100% Confidential</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
               All conversations and identities are completely private and confidential. No real names are ever exposed.
             </p>
           </div>
 
-          <div className="p-6 bg-[#131d2e] border border-white/10 rounded-3xl space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#e06d53]/10 text-[#e06d53] flex items-center justify-center text-xl">
+          <div className="p-6 bg-white border border-rose-100 rounded-3xl space-y-3 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-[#7E2248] flex items-center justify-center text-xl">
               ⚡
             </div>
-            <h3 className="text-base font-bold text-white">Instant Team Dispatch</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h3 className="text-base font-serif font-bold text-slate-900">Instant Team Dispatch</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
               Your connection request is dispatched immediately to our Breakup Buddy network for the fastest response.
             </p>
           </div>
@@ -567,9 +694,9 @@ export default function BreakupBuddyPage() {
         {/* PACKAGES SECTION */}
         <section id="packages" className="space-y-6 pt-6">
           <div className="text-center space-y-2">
-            <span className="text-xs font-bold text-[#e06d53] uppercase tracking-wider">Session Plans</span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white font-serif">Breakup Buddy Packages</h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
+            <span className="text-xs font-bold text-[#7E2248] uppercase tracking-wider">Session Plans</span>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900">Breakup Buddy Packages</h2>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
               {isAccepted
                 ? `Completed your 30-min free session? Choose a package to keep speaking with ${buddyDisplayName} anytime.`
                 : "Completed your 30-min free session? Choose a package to keep speaking with your Breakup Buddy anytime."}
@@ -580,33 +707,33 @@ export default function BreakupBuddyPage() {
             {packages.map((pkg) => (
               <div
                 key={pkg.id}
-                className={`p-6 sm:p-8 rounded-3xl bg-[#131d2e] border transition duration-300 flex flex-col justify-between space-y-6 ${
+                className={`p-6 sm:p-8 rounded-3xl bg-white transition duration-300 flex flex-col justify-between space-y-6 ${
                   pkg.isPopular
-                    ? "border-[#e06d53] shadow-xl shadow-[#e06d53]/20 relative"
-                    : "border-white/10 hover:border-white/20 shadow-lg"
+                    ? "border-2 border-[#7E2248] shadow-xl shadow-[#7E2248]/10 relative"
+                    : "border border-rose-100 hover:border-rose-200 shadow-sm"
                 }`}
               >
                 {pkg.isPopular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#e06d53] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-md">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#7E2248] text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-xs">
                     Most Popular
                   </div>
                 )}
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-white">{pkg.name}</h3>
-                    <Clock className="w-4 h-4 text-[#e06d53]" />
+                    <h3 className="text-lg font-serif font-bold text-slate-900">{pkg.name}</h3>
+                    <Clock className="w-4 h-4 text-[#7E2248]" />
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-white">₹{pkg.price}</span>
-                    <span className="text-xs text-slate-400">/ {pkg.duration}</span>
+                    <span className="text-3xl font-serif font-bold text-slate-900">₹{pkg.price}</span>
+                    <span className="text-xs text-slate-500">/ {pkg.duration}</span>
                   </div>
 
-                  <ul className="space-y-2.5 pt-2 border-t border-white/10 text-xs text-slate-300">
+                  <ul className="space-y-2.5 pt-2 border-t border-rose-100 text-xs text-slate-600">
                     {pkg.features.map((f: string, i: number) => (
                       <li key={i} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span>{f}</span>
                       </li>
                     ))}
@@ -616,10 +743,10 @@ export default function BreakupBuddyPage() {
                 <button
                   onClick={() => handleBuyPackage(pkg)}
                   disabled={isProcessingPayment}
-                  className={`w-full py-3 rounded-2xl text-xs font-bold transition shadow-md ${
+                  className={`w-full py-3 rounded-2xl text-xs font-bold transition shadow-xs cursor-pointer ${
                     pkg.isPopular
-                      ? "bg-[#e06d53] hover:bg-[#c95940] text-white shadow-[#e06d53]/30"
-                      : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
+                      ? "bg-[#7E2248] hover:bg-[#681938] text-white shadow-[#7E2248]/20"
+                      : "bg-[#FAF3F6] hover:bg-rose-100/70 text-slate-800 border border-rose-200"
                   }`}
                 >
                   {isProcessingPayment ? "Processing..." : `Buy Package (₹${pkg.price})`}
@@ -629,6 +756,7 @@ export default function BreakupBuddyPage() {
           </div>
         </section>
       </main>
+      </div>
     </div>
   );
 }

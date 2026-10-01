@@ -15,7 +15,8 @@ import {
   Calendar as CalendarIcon,
   Search,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 
@@ -55,13 +56,13 @@ export default function MatchmakerDashboard() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-40 bg-rose-50 rounded-2xl"></div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-white rounded-xl"></div>)}
+        <div className="h-44 bg-rose-50/60 border border-rose-100 rounded-3xl"></div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-white border border-rose-100 rounded-3xl"></div>)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-96 bg-white rounded-xl"></div>
-          <div className="h-96 bg-white rounded-xl"></div>
+          <div className="lg:col-span-2 h-96 bg-white border border-rose-100 rounded-3xl"></div>
+          <div className="h-96 bg-white border border-rose-100 rounded-3xl"></div>
         </div>
       </div>
     );
@@ -69,10 +70,11 @@ export default function MatchmakerDashboard() {
 
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-2xl shadow-sm border border-slate-100">
-        <AlertCircle className="w-12 h-12 text-rose-400 mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">Unable to load dashboard data</h2>
-        <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-rose-500 text-white rounded-full text-sm font-medium hover:bg-rose-600 transition">
+      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl shadow-sm border border-rose-100 p-8 text-center">
+        <AlertCircle className="w-12 h-12 text-[#7E2248] mb-4" />
+        <h2 className="text-xl font-serif font-bold text-slate-900">Unable to load dashboard data</h2>
+        <p className="text-sm text-slate-500 mt-1 max-w-sm">Please refresh your connection or log in again to access the matchmaker console.</p>
+        <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2.5 bg-[#7E2248] hover:bg-[#681938] text-white rounded-full text-xs font-bold transition shadow-sm cursor-pointer">
           Try Again
         </button>
       </div>
@@ -83,38 +85,35 @@ export default function MatchmakerDashboard() {
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-3xl p-8 md:p-10 relative overflow-hidden border border-rose-100/50 shadow-sm">
-        <div className="relative z-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
-            {getGreeting()}, {data.manager?.name.split(' ')[0]}! 👋
-          </h1>
-          <p className="text-slate-600 mb-4 max-w-lg">
-            Here's what's happening with your assigned clients and matchmaking activities today.
-          </p>
-          <div className="flex items-center text-sm font-medium text-slate-500 bg-white/60 w-fit px-4 py-2 rounded-full shadow-sm backdrop-blur-sm">
-            <CalendarIcon className="w-4 h-4 mr-2 text-rose-400" />
-            {getFormattedDate()}
-          </div>
-        </div>
+      <div className="bg-white border border-rose-100 rounded-3xl p-8 md:p-10 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-rose-50/50 rounded-full blur-3xl pointer-events-none" />
         
-        {/* Decorative elements */}
-        <div className="absolute right-0 top-0 h-full w-1/3 opacity-20 pointer-events-none hidden md:block">
-          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="absolute -right-10 -top-10 w-64 h-64 fill-rose-300">
-            <path d="M44.7,-76.4C58.8,-69.2,71.8,-59.1,81.6,-46.3C91.4,-33.5,98.1,-18.1,97.7,-3.1C97.3,12,89.9,26.7,80,39.2C70.1,51.6,57.7,61.9,43.9,69.5C30,77.2,15,82.2,-0.2,82.5C-15.4,82.8,-30.9,78.5,-44.5,70.5C-58.1,62.5,-69.9,50.8,-78.9,37C-87.9,23.1,-94.1,7.2,-93.3,-8.4C-92.5,-23.9,-84.6,-38.9,-74,-51C-63.5,-63.1,-50.2,-72.1,-36.3,-79.3C-22.4,-86.5,-7.9,-91.7,3.5,-97.5C14.9,-103.3,29.8,-110,44.7,-76.4Z" transform="translate(100 100)" />
-          </svg>
-        </div>
-        <div className="absolute right-10 bottom-10 hidden md:block text-right">
-          <p className="font-serif text-2xl text-rose-300/80 italic transform -rotate-6">Real People</p>
-          <p className="font-serif text-2xl text-rose-300/80 italic transform -rotate-6 ml-4">Real Connections <Heart className="inline w-5 h-5 text-rose-300/80" /></p>
+        <div className="relative z-10 space-y-2">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-bold text-[#7E2248]">
+            <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
+            Matchmaker Operations Hub
+          </div>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-slate-900">
+            {getGreeting()}, {data.manager?.name?.split(' ')[0] || "Matchmaker"}! 👋
+          </h1>
+          <p className="text-slate-600 max-w-xl text-sm leading-relaxed">
+            Here's what's happening with your assigned clients, intros, and matchmaking activities today.
+          </p>
+          <div className="pt-2">
+            <div className="inline-flex items-center text-xs font-semibold text-slate-600 bg-[#FAF3F6] border border-rose-200 px-4 py-2 rounded-full shadow-xs">
+              <CalendarIcon className="w-3.5 h-3.5 mr-2 text-[#7E2248]" />
+              {getFormattedDate()}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <KpiCard title="Assigned Clients" count={data.stats.assignedClients} subtitle="Active clients" icon={Users} color="bg-rose-100 text-rose-600" />
-        <KpiCard title="Matchmaking Requests" count={data.stats.pendingRequests} subtitle="Pending review" icon={Heart} color="bg-purple-100 text-purple-600" />
-        <KpiCard title="Suggestions" count={data.stats.suggestions} subtitle="New matches suggested" icon={Lightbulb} color="bg-emerald-100 text-emerald-600" />
-        <KpiCard title="Upcoming Schedule" count={data.stats.upcomingSchedules} subtitle="Today's meetings" icon={CalendarDays} color="bg-blue-100 text-blue-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <KpiCard title="Assigned Clients" count={data.stats.assignedClients} subtitle="Active clients in portfolio" icon={Users} color="bg-rose-50 text-[#7E2248] border border-rose-100" />
+        <KpiCard title="Matchmaking Requests" count={data.stats.pendingRequests} subtitle="Pending your review" icon={Heart} color="bg-rose-50 text-[#7E2248] border border-rose-100" />
+        <KpiCard title="Suggestions" count={data.stats.suggestions} subtitle="New curated matches" icon={Lightbulb} color="bg-emerald-50 text-emerald-700 border border-emerald-100" />
+        <KpiCard title="Upcoming Schedule" count={data.stats.upcomingSchedules} subtitle="Today's calls & meets" icon={CalendarDays} color="bg-blue-50 text-blue-700 border border-blue-100" />
       </div>
 
       {/* Main Grid Content */}
@@ -129,19 +128,19 @@ export default function MatchmakerDashboard() {
               {data.assignedClients.length === 0 ? (
                 <EmptyState message="No assigned clients yet." />
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-rose-100">
                   {data.assignedClients.map((client: any) => (
-                    <div key={client.id} className="py-4 flex items-center justify-between group hover:bg-slate-50 -mx-4 px-4 transition rounded-xl cursor-pointer">
+                    <div key={client.id} className="py-3.5 flex items-center justify-between group hover:bg-rose-50/50 -mx-3 px-3 transition rounded-2xl cursor-pointer">
                       <div className="flex items-center gap-3">
-                        <img src={client.profileImage} alt={client.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                        <img src={client.profileImage} alt={client.name} className="w-10 h-10 rounded-full object-cover border border-rose-200 shadow-xs" />
                         <div>
-                          <p className="text-sm font-bold text-slate-800">{client.name}</p>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#7E2248] transition">{client.name}</p>
                           <p className="text-xs text-slate-500">{client.age} yrs • {client.city}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         <StatusBadge status={client.status} />
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500" />
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#7E2248] transition" />
                       </div>
                     </div>
                   ))}
@@ -154,19 +153,19 @@ export default function MatchmakerDashboard() {
               {data.requests.length === 0 ? (
                 <EmptyState message="No pending requests." />
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-rose-100">
                   {data.requests.map((req: any) => (
-                    <div key={req.id} className="py-4 flex items-center justify-between group hover:bg-slate-50 -mx-4 px-4 transition rounded-xl cursor-pointer">
+                    <div key={req.id} className="py-3.5 flex items-center justify-between group hover:bg-rose-50/50 -mx-3 px-3 transition rounded-2xl cursor-pointer">
                       <div className="flex items-center gap-3">
-                        <img src={req.profileImage} alt={req.clientName} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                        <img src={req.profileImage} alt={req.clientName} className="w-10 h-10 rounded-full object-cover border border-rose-200 shadow-xs" />
                         <div>
-                          <p className="text-sm font-bold text-slate-800">{req.clientName}</p>
+                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#7E2248] transition">{req.clientName}</p>
                           <p className="text-xs text-slate-500">{req.age} yrs • {req.city}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Looking for: {req.lookingFor}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">Looking for: {req.lookingFor}</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-slate-400 font-medium">
                           {new Date(req.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         </span>
                         <StatusBadge status={req.status} />
@@ -180,14 +179,22 @@ export default function MatchmakerDashboard() {
 
           {/* Quick Actions */}
           <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <span className="text-amber-500">⚡</span> Quick Actions
+            <h3 className="text-lg font-serif font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="text-amber-500">⚡</span> Quick Operations
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <QuickAction icon={Users} label="View All Clients" sub="Check assigned clients" color="bg-rose-50 text-rose-600" />
-              <QuickAction icon={Heart} label="View Requests" sub="Review new requests" color="bg-purple-50 text-purple-600" />
-              <QuickAction icon={Lightbulb} label="See Suggestions" sub="Explore matches" color="bg-emerald-50 text-emerald-600" />
-              <QuickAction icon={CalendarDays} label="Manage Schedule" sub="View & update meetings" color="bg-blue-50 text-blue-600" />
+              <Link href="/matchmaker/clients">
+                <QuickAction icon={Users} label="View All Clients" sub="Assigned roster" color="bg-rose-50 text-[#7E2248] border border-rose-100" />
+              </Link>
+              <Link href="/matchmaker/requests">
+                <QuickAction icon={Heart} label="View Requests" sub="Pending reviews" color="bg-rose-50 text-[#7E2248] border border-rose-100" />
+              </Link>
+              <Link href="/matchmaker/suggestions">
+                <QuickAction icon={Lightbulb} label="See Suggestions" sub="Curated matches" color="bg-emerald-50 text-emerald-700 border border-emerald-100" />
+              </Link>
+              <Link href="/matchmaker/scheduling">
+                <QuickAction icon={CalendarDays} label="Manage Schedule" sub="Bookings & dates" color="bg-blue-50 text-blue-700 border border-blue-100" />
+              </Link>
             </div>
           </div>
         </div>
@@ -196,25 +203,19 @@ export default function MatchmakerDashboard() {
         <div className="space-y-6 md:space-y-8">
           
           {/* Upcoming Schedule */}
-          <DashboardCard title="Upcoming Schedule" icon={CalendarDays} link="/matchmaker/scheduling" bg="bg-[#f8faff]">
+          <DashboardCard title="Upcoming Schedule" icon={CalendarDays} link="/matchmaker/scheduling">
             {data.schedule.length === 0 ? (
               <EmptyState message="No meetings scheduled today." />
             ) : (
-              <div className="relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-                {data.schedule.map((appt: any, i: number) => (
-                  <div key={appt.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active mb-6 last:mb-0">
-                    
-                    <div className="flex items-center justify-center w-2 h-2 rounded-full border-2 border-white bg-blue-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 absolute left-4 md:left-1/2 z-10"></div>
-                    
-                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-1.5rem)] ml-12 md:ml-0 px-4 py-3 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-blue-200 transition cursor-pointer">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-blue-600">{appt.time}</span>
-                        {appt.mode === 'Video Call' ? <Video className="w-3 h-3 text-slate-400" /> : <Phone className="w-3 h-3 text-slate-400" />}
-                      </div>
-                      <p className="text-sm font-bold text-slate-800">{appt.type}</p>
-                      <p className="text-xs text-slate-500 mt-1">{appt.clientName}</p>
+              <div className="space-y-3">
+                {data.schedule.map((appt: any) => (
+                  <div key={appt.id} className="p-4 bg-[#FAF3F6] rounded-2xl border border-rose-100 hover:border-rose-300 transition cursor-pointer">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-[#7E2248]">{appt.time}</span>
+                      {appt.mode === 'Video Call' ? <Video className="w-3.5 h-3.5 text-slate-400" /> : <Phone className="w-3.5 h-3.5 text-slate-400" />}
                     </div>
-
+                    <p className="text-sm font-bold text-slate-900">{appt.type}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{appt.clientName}</p>
                   </div>
                 ))}
               </div>
@@ -223,25 +224,23 @@ export default function MatchmakerDashboard() {
 
           {/* Recent Messages */}
           <DashboardCard title="Messages with Admin" icon={MessageCircle} link="/matchmaker/messages">
-            <div className="divide-y divide-slate-100">
-              <div className="py-4 flex items-start justify-between group hover:bg-slate-50 -mx-4 px-4 transition rounded-xl cursor-pointer">
+            <div className="divide-y divide-rose-100">
+              <div className="py-3 flex items-start justify-between group hover:bg-rose-50/50 -mx-3 px-3 transition rounded-2xl cursor-pointer">
                 <div className="flex gap-3">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center border border-rose-200">
-                      <span className="text-rose-600 font-bold text-lg">A</span>
-                    </div>
+                  <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center border border-rose-200 text-[#7E2248] font-bold text-sm shrink-0">
+                    A
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-slate-900 group-hover:text-[#7E2248] transition">
                       System Admin
                     </p>
-                    <p className="text-xs mt-0.5 line-clamp-1 text-slate-500">
-                      Welcome to your dashboard. Reach out here for support.
+                    <p className="text-xs mt-0.5 line-clamp-2 text-slate-500">
+                      Welcome to your dashboard. Reach out here for operations and support.
                     </p>
                   </div>
                 </div>
                 <div className="text-right shrink-0 ml-2">
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-400 font-medium">
                     Just now
                   </p>
                 </div>
@@ -259,29 +258,29 @@ export default function MatchmakerDashboard() {
 
 function KpiCard({ title, count, subtitle, icon: Icon, color }: any) {
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition cursor-pointer flex items-center justify-between group">
+    <div className="bg-white p-6 rounded-3xl shadow-sm border border-rose-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex items-center justify-between group">
       <div>
-        <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-        <p className="text-3xl font-bold text-slate-800 mb-1 group-hover:text-rose-600 transition">{count}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">{title}</p>
+        <p className="text-3xl font-serif font-bold text-slate-900 mb-1 group-hover:text-[#7E2248] transition">{count}</p>
         <p className="text-xs text-slate-400">{subtitle}</p>
       </div>
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${color} shadow-xs`}>
         <Icon className="w-6 h-6" />
       </div>
     </div>
   );
 }
 
-function DashboardCard({ title, icon: Icon, link, bg = "bg-white", children }: any) {
+function DashboardCard({ title, icon: Icon, link, children }: any) {
   return (
-    <div className={`${bg} rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col`}>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-          <Icon className="w-5 h-5 text-rose-400" />
+    <div className="bg-white rounded-3xl shadow-sm border border-rose-100 p-6 md:p-7 flex flex-col hover:shadow-md transition-all duration-300">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+          <Icon className="w-4 h-4 text-[#7E2248]" />
           {title}
         </h2>
-        <Link href={link} className="text-xs font-medium text-rose-500 hover:text-rose-600 flex items-center">
-          View All <ChevronRight className="w-3 h-3 ml-0.5" />
+        <Link href={link} className="text-xs font-bold text-[#7E2248] hover:text-[#681938] flex items-center gap-1 transition">
+          View All <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       </div>
       <div className="flex-1">
@@ -293,12 +292,12 @@ function DashboardCard({ title, icon: Icon, link, bg = "bg-white", children }: a
 
 function QuickAction({ icon: Icon, label, sub, color }: any) {
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-rose-100 transition cursor-pointer group flex flex-col items-center text-center">
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 ${color} group-hover:scale-110 transition`}>
+    <div className="bg-white p-5 rounded-3xl shadow-sm border border-rose-100 hover:shadow-md hover:border-rose-300 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group flex flex-col items-center text-center">
+      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center mb-3 ${color} group-hover:scale-105 transition shadow-xs`}>
         <Icon className="w-5 h-5" />
       </div>
-      <p className="text-sm font-bold text-slate-800 mb-0.5">{label}</p>
-      <p className="text-[10px] text-slate-400 leading-tight">{sub}</p>
+      <p className="text-sm font-bold text-slate-900 mb-1 group-hover:text-[#7E2248] transition">{label}</p>
+      <p className="text-[11px] text-slate-500 leading-tight">{sub}</p>
     </div>
   );
 }
@@ -306,15 +305,15 @@ function QuickAction({ icon: Icon, label, sub, color }: any) {
 function StatusBadge({ status }: { status: string }) {
   const getStyles = () => {
     switch (status.toLowerCase()) {
-      case 'active': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case 'in progress': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'new': return 'bg-rose-50 text-rose-600 border-rose-100';
-      case 'under review': return 'bg-amber-50 text-amber-600 border-amber-100';
-      default: return 'bg-slate-50 text-slate-600 border-slate-100';
+      case 'active': return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      case 'in progress': return 'bg-blue-50 text-blue-800 border-blue-200';
+      case 'new': return 'bg-rose-50 text-[#7E2248] border border-rose-200';
+      case 'under review': return 'bg-amber-50 text-amber-800 border-amber-200';
+      default: return 'bg-slate-50 text-slate-700 border-slate-200';
     }
   };
   return (
-    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${getStyles()}`}>
+    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shadow-xs ${getStyles()}`}>
       {status}
     </span>
   );
@@ -322,11 +321,11 @@ function StatusBadge({ status }: { status: string }) {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-8 opacity-60">
-      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-3">
         <Search className="w-5 h-5 text-slate-400" />
       </div>
-      <p className="text-sm text-slate-500 text-center">{message}</p>
+      <p className="text-xs text-slate-500">{message}</p>
     </div>
   );
 }

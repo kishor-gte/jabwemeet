@@ -34,9 +34,9 @@ export default function QuickStats({
       value: totalEventsCount.toString(),
       helper: localEventsCount > 0 ? `${localEventsCount} right in ${userCity}` : `Live across all cities`,
       icon: Calendar,
-      color: "text-amber-400",
-      bg: "bg-amber-400/10",
-      border: "border-amber-400/20",
+      color: "text-[#7E2248]",
+      bg: "bg-rose-50",
+      border: "border-rose-200/80",
       onClick: onViewEvents,
     },
     {
@@ -44,9 +44,9 @@ export default function QuickStats({
       value: localEventsCount.toString(),
       helper: localEventsCount > 0 ? `Local offline experiences` : `No local events today`,
       icon: MapPin,
-      color: "text-emerald-400",
-      bg: "bg-emerald-400/10",
-      border: "border-emerald-400/20",
+      color: "text-emerald-700",
+      bg: "bg-emerald-50",
+      border: "border-emerald-200/80",
       onClick: onViewLocalEvents,
     },
     {
@@ -54,9 +54,9 @@ export default function QuickStats({
       value: joinedEventsCount.toString(),
       helper: joinedEventsCount === 0 ? "No active reservations" : `${joinedEventsCount} spot${joinedEventsCount > 1 ? "s" : ""} secured`,
       icon: CalendarCheck,
-      color: "text-[#fca5a5]",
-      bg: "bg-[#e06d53]/15",
-      border: "border-[#e06d53]/30",
+      color: "text-[#7E2248]",
+      bg: "bg-rose-50",
+      border: "border-rose-200/80",
       onClick: onViewEvents,
     },
     {
@@ -64,9 +64,9 @@ export default function QuickStats({
       value: connectionsCount.toString(),
       helper: connectionsCount === 0 ? "Connect with event peers" : `${connectionsCount} mutual connection${connectionsCount > 1 ? "s" : ""}`,
       icon: Users,
-      color: "text-blue-400",
-      bg: "bg-blue-400/10",
-      border: "border-blue-400/20",
+      color: "text-purple-700",
+      bg: "bg-purple-50",
+      border: "border-purple-200/80",
       onClick: onViewConnections,
     },
     {
@@ -74,9 +74,9 @@ export default function QuickStats({
       value: `${profileCompletionPercentage}%`,
       helper: profileCompletionPercentage === 100 ? "All verified details complete" : `${100 - profileCompletionPercentage}% details missing`,
       icon: CheckCircle2,
-      color: profileCompletionPercentage >= 80 ? "text-teal-400" : "text-amber-400",
-      bg: profileCompletionPercentage >= 80 ? "bg-teal-400/10" : "bg-amber-400/10",
-      border: profileCompletionPercentage >= 80 ? "border-teal-400/20" : "border-amber-400/20",
+      color: profileCompletionPercentage >= 80 ? "text-emerald-700" : "text-amber-700",
+      bg: profileCompletionPercentage >= 80 ? "bg-emerald-50" : "bg-amber-50",
+      border: profileCompletionPercentage >= 80 ? "border-emerald-200/80" : "border-amber-200/80",
       onClick: onViewProfile,
     },
   ];
@@ -89,30 +89,30 @@ export default function QuickStats({
           <button
             key={idx}
             onClick={stat.onClick}
-            className="group text-left relative overflow-hidden rounded-2xl bg-[#131d2e] border border-white/10 p-4 sm:p-5 hover:border-white/20 hover:bg-[#162238] transition duration-200 shadow-sm hover:shadow-md flex flex-col justify-between"
+            className="group text-left relative overflow-hidden rounded-3xl bg-white border border-rose-100 p-4 sm:p-5 hover:border-[#7E2248]/40 hover:shadow-md transition duration-300 shadow-xs flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
                   {stat.label}
                 </span>
-                <div className={`p-1.5 sm:p-2 rounded-xl ${stat.bg} ${stat.border} border ${stat.color} group-hover:scale-110 transition shrink-0`}>
+                <div className={`p-1.5 sm:p-2 rounded-2xl ${stat.bg} ${stat.border} border ${stat.color} group-hover:scale-110 transition shrink-0`}>
                   <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
 
               <div className="flex items-baseline gap-1">
-                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight">
+                <span className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 group-hover:text-[#7E2248] tracking-tight transition">
                   {stat.value}
                 </span>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 mt-2 truncate">
+            <p className="text-[11px] text-slate-500 mt-2 truncate">
               {stat.helper}
             </p>
 
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:via-[#e06d53]/50 transition" />
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-rose-100 to-transparent group-hover:via-[#7E2248]/50 transition" />
           </button>
         );
       })}

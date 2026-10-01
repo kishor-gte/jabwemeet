@@ -107,15 +107,15 @@ export default function InterestsPersonalitySection({
   const personaOptions = ["Introvert", "Extrovert", "Ambivert", "Not Sure / Situational"];
 
   return (
-    <div id="section-interests" className="rounded-3xl bg-[#131d2e] border border-white/10 p-6 sm:p-8 space-y-7 shadow-xl">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <div id="section-interests" className="rounded-3xl bg-white border border-rose-100 p-6 sm:p-8 space-y-7 shadow-sm">
+      <div className="flex items-center justify-between border-b border-rose-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700 shadow-xs">
             <Compass className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Interests, Hobbies & Personality</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-lg font-serif font-bold text-slate-900">Interests, Hobbies & Personality</h3>
+            <p className="text-xs text-slate-500">
               Connect effortlessly with attendees and matches who share your genuine vibe.
             </p>
           </div>
@@ -125,10 +125,10 @@ export default function InterestsPersonalitySection({
       {/* Hobbies & Passions */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#e06d53]" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
             <span>Hobbies & Passions</span>
-            <span className="text-slate-400 font-normal">({data.hobbies.length} selected)</span>
+            <span className="text-slate-500 font-normal">({data.hobbies.length} selected)</span>
           </label>
           <span className="text-[11px] text-slate-400">Tap to select or deselect</span>
         </div>
@@ -141,10 +141,10 @@ export default function InterestsPersonalitySection({
                 key={hobby}
                 type="button"
                 onClick={() => onChange("hobbies", toggleItem(data.hobbies, hobby))}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-[#e06d53] text-white shadow-md shadow-[#e06d53]/25 border border-[#e06d53]"
-                    : "bg-[#0b111e] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white"
+                    ? "bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
+                    : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3" />}
@@ -159,14 +159,14 @@ export default function InterestsPersonalitySection({
             .map((custom) => (
               <span
                 key={custom}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#e06d53] text-white shadow-md border border-[#e06d53]"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
               >
                 <Check className="w-3 h-3" />
                 <span>{custom}</span>
                 <button
                   type="button"
                   onClick={() => removeHobby(custom)}
-                  className="hover:text-rose-200 transition"
+                  className="hover:text-rose-200 transition cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -182,12 +182,12 @@ export default function InterestsPersonalitySection({
               value={customHobby}
               onChange={(e) => setCustomHobby(e.target.value)}
               placeholder="Add other interest (e.g. Pottery, Bouldering)..."
-              className="bg-[#0b111e] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53] flex-1"
+              className="bg-[#FDFBF9] border border-rose-200 rounded-full px-3.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white flex-1"
             />
             <button
               type="submit"
               disabled={!customHobby.trim()}
-              className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 disabled:opacity-40 text-xs font-semibold flex items-center gap-1 transition"
+              className="px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-[#7E2248] disabled:opacity-40 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add</span>
@@ -197,9 +197,9 @@ export default function InterestsPersonalitySection({
       </div>
 
       {/* Social Energy / Persona */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
-        <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-          <Smile className="w-3.5 h-3.5 text-amber-400" />
+      <div className="space-y-3 pt-3 border-t border-rose-100">
+        <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+          <Smile className="w-3.5 h-3.5 text-amber-600" />
           <span>Social Energy & Disposition</span>
         </label>
 
@@ -211,10 +211,10 @@ export default function InterestsPersonalitySection({
                 key={opt}
                 type="button"
                 onClick={() => onChange("selfDescription", opt)}
-                className={`p-3 rounded-xl border text-center transition text-xs font-medium ${
+                className={`p-3 rounded-2xl border text-center transition text-xs font-medium cursor-pointer ${
                   isSelected
-                    ? "bg-purple-500/15 border-purple-500 text-purple-300 font-semibold shadow-sm"
-                    : "bg-[#0b111e] border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                    ? "bg-rose-50 border-[#7E2248] text-[#7E2248] font-bold shadow-xs"
+                    : "bg-[#FDFBF9] border-rose-200 text-slate-600 hover:text-slate-900 hover:border-rose-300"
                 }`}
               >
                 {opt}
@@ -225,12 +225,12 @@ export default function InterestsPersonalitySection({
       </div>
 
       {/* Personality Traits Multi-select */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
+      <div className="space-y-3 pt-3 border-t border-rose-100">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-[#7E2248]" />
             <span>Core Personality Traits</span>
-            <span className="text-slate-400 font-normal">
+            <span className="text-slate-500 font-normal">
               ({data.personalityTraits.length} selected)
             </span>
           </label>
@@ -247,10 +247,10 @@ export default function InterestsPersonalitySection({
                 onClick={() =>
                   onChange("personalityTraits", toggleItem(data.personalityTraits, trait))
                 }
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25 border border-indigo-500"
-                    : "bg-[#0b111e] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white"
+                    ? "bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
+                    : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3" />}
@@ -262,12 +262,12 @@ export default function InterestsPersonalitySection({
       </div>
 
       {/* Preferred Social Environment */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
+      <div className="space-y-3 pt-3 border-t border-rose-100">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Users2 className="w-3.5 h-3.5 text-emerald-400" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Users2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>Preferred Social Settings</span>
-            <span className="text-slate-400 font-normal">
+            <span className="text-slate-500 font-normal">
               ({data.preferredSocialEnvironment.length} selected)
             </span>
           </label>
@@ -287,14 +287,14 @@ export default function InterestsPersonalitySection({
                     toggleItem(data.preferredSocialEnvironment, env)
                   )
                 }
-                className={`p-3 rounded-xl border text-left transition text-xs font-medium flex items-center justify-between ${
+                className={`p-3 rounded-2xl border text-left transition text-xs font-medium flex items-center justify-between cursor-pointer ${
                   isSelected
-                    ? "bg-emerald-500/15 border-emerald-500 text-white"
-                    : "bg-[#0b111e] border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold shadow-xs"
+                    : "bg-[#FDFBF9] border-rose-200 text-slate-600 hover:text-slate-900 hover:border-rose-300"
                 }`}
               >
                 <span>{env}</span>
-                {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />}
+                {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
               </button>
             );
           })}

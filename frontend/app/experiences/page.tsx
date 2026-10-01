@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  ArrowLeft, 
   ArrowRight,
   ShieldCheck, 
   Coffee, 
@@ -180,20 +179,12 @@ export default function ExperiencesPage() {
       {/* ========================================================================= */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-rose-100/70 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo & Back button */}
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 group">
-              <span className="font-extrabold text-2xl tracking-wider text-[#7E2248] uppercase">
-                JABWEMEET
-              </span>
-            </Link>
-            <Link
-              href="/"
-              className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7E2248] px-3 py-1.5 rounded-full bg-rose-50/60 border border-rose-100 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
-            </Link>
-          </div>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="font-extrabold text-2xl tracking-wider text-[#7E2248] uppercase">
+              JABWEMEET
+            </span>
+          </Link>
 
           {/* Center Nav Links */}
           <div className="hidden lg:flex items-center gap-8 text-xs font-bold uppercase tracking-wider text-slate-600">

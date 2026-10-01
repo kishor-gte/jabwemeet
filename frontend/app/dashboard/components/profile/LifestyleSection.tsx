@@ -63,15 +63,15 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
   const sleepOptions = ["Early Bird (Morning Person)", "Night Owl", "Flexible / In Between"];
 
   return (
-    <div id="section-lifestyle" className="rounded-3xl bg-[#131d2e] border border-white/10 p-6 sm:p-8 space-y-6 shadow-xl">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <div id="section-lifestyle" className="rounded-3xl bg-white border border-rose-100 p-6 sm:p-8 space-y-6 shadow-sm">
+      <div className="flex items-center justify-between border-b border-rose-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Daily Lifestyle & Habits</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-lg font-serif font-bold text-slate-900">Daily Lifestyle & Habits</h3>
+            <p className="text-xs text-slate-500">
               Helps matchmakers and event hosts pair you with like-minded members.
             </p>
           </div>
@@ -81,14 +81,14 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
         {/* Smoking */}
         <div>
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <Cigarette className="w-4 h-4 text-[#e06d53]" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <Cigarette className="w-4 h-4 text-[#7E2248]" />
             <span>Smoking</span>
           </label>
           <select
             value={data.smoking}
             onChange={(e) => onChange("smoking", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select smoking habit</option>
             {smokingOptions.map((opt) => (
@@ -101,14 +101,14 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
 
         {/* Alcohol */}
         <div>
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <Wine className="w-4 h-4 text-purple-400" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <Wine className="w-4 h-4 text-purple-600" />
             <span>Alcohol</span>
           </label>
           <select
             value={data.alcohol}
             onChange={(e) => onChange("alcohol", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select alcohol consumption</option>
             {alcoholOptions.map((opt) => (
@@ -121,14 +121,14 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
 
         {/* Food Preference */}
         <div>
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <Utensils className="w-4 h-4 text-emerald-400" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <Utensils className="w-4 h-4 text-emerald-600" />
             <span>Dietary Preference</span>
           </label>
           <select
             value={data.foodPreference}
             onChange={(e) => onChange("foodPreference", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select diet preference</option>
             {foodOptions.map((opt) => (
@@ -141,14 +141,14 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
 
         {/* Pets */}
         <div>
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <PawPrint className="w-4 h-4 text-amber-400" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <PawPrint className="w-4 h-4 text-amber-600" />
             <span>Pets & Animals</span>
           </label>
           <select
             value={data.pets}
             onChange={(e) => onChange("pets", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select pet preference</option>
             {petsOptions.map((opt) => (
@@ -161,14 +161,14 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
 
         {/* Fitness */}
         <div>
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <Dumbbell className="w-4 h-4 text-blue-400" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <Dumbbell className="w-4 h-4 text-[#7E2248]" />
             <span>Fitness & Activity</span>
           </label>
           <select
             value={data.fitness}
             onChange={(e) => onChange("fitness", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select fitness frequency</option>
             {fitnessOptions.map((opt) => (
@@ -181,14 +181,14 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
 
         {/* Travel Frequency */}
         <div>
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <Plane className="w-4 h-4 text-sky-400" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <Plane className="w-4 h-4 text-[#7E2248]" />
             <span>Travel Frequency</span>
           </label>
           <select
             value={data.travelFrequency}
             onChange={(e) => onChange("travelFrequency", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select travel frequency</option>
             {travelOptions.map((opt) => (
@@ -201,8 +201,8 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
 
         {/* Sleep Rhythm / Routine */}
         <div className="sm:col-span-2">
-          <label className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5">
-            <SunMoon className="w-4 h-4 text-indigo-400" />
+          <label className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1.5">
+            <SunMoon className="w-4 h-4 text-purple-600" />
             <span>Daily Routine / Sleep Rhythm</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -213,15 +213,15 @@ export default function LifestyleSection({ data, onChange }: LifestyleSectionPro
                   key={opt}
                   type="button"
                   onClick={() => onChange("sleepRhythm", opt)}
-                  className={`p-3 rounded-xl border text-left transition text-xs font-medium flex items-center justify-between ${
+                  className={`p-3 rounded-2xl border text-left transition text-xs font-medium flex items-center justify-between cursor-pointer ${
                     isSelected
-                      ? "bg-[#e06d53]/15 border-[#e06d53] text-white"
-                      : "bg-[#0b111e] border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                      ? "bg-rose-50 border-[#7E2248] text-[#7E2248] font-bold shadow-xs"
+                      : "bg-[#FDFBF9] border-rose-200 text-slate-600 hover:text-slate-900 hover:border-rose-300"
                   }`}
                 >
                   <span>{opt}</span>
                   {isSelected && (
-                    <span className="w-2 h-2 rounded-full bg-[#e06d53] shrink-0 ml-2" />
+                    <span className="w-2 h-2 rounded-full bg-[#7E2248] shrink-0 ml-2" />
                   )}
                 </button>
               );

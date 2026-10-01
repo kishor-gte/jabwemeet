@@ -581,7 +581,7 @@ function DashboardContent() {
           contact: user.phone,
         },
         theme: {
-          color: "#e06d53",
+          color: "#7E2248",
         },
         modal: {
           ondismiss: function () {
@@ -662,26 +662,26 @@ function DashboardContent() {
   // ERROR STATE
   if (error || !user) {
     return (
-      <div className="min-h-screen bg-[#0b111e] text-white flex items-center justify-center p-6">
-        <div className="max-w-md w-full rounded-3xl bg-[#131d2e] border border-white/10 p-8 text-center space-y-4 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mx-auto">
+      <div className="min-h-screen bg-[#FDFBF9] text-slate-800 flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-3xl bg-white border border-rose-100 p-8 text-center space-y-4 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] mx-auto shadow-sm">
             <AlertCircle className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-bold">Unable to load dashboard</h2>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <h2 className="text-xl font-serif font-bold text-slate-900">Unable to load dashboard</h2>
+          <p className="text-xs sm:text-sm text-slate-600">
             {error || "Your session could not be verified. Please try again."}
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-semibold shadow-md transition"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-semibold shadow-md shadow-[#7E2248]/20 transition transform hover:-translate-y-0.5"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Try Again</span>
             </button>
             <button
               onClick={() => router.replace("/login")}
-              className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
+              className="px-6 py-2.5 rounded-full bg-rose-50 hover:bg-rose-100 text-[#7E2248] border border-rose-200 text-xs font-semibold transition"
             >
               Go to Login
             </button>
@@ -707,11 +707,11 @@ function DashboardContent() {
   const completionPercentage = calculateProfileCompletion();
 
   return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white flex flex-col">
+    <div className="min-h-screen bg-[#FDFBF9] text-slate-800 font-sans selection:bg-[#7E2248] selection:text-white flex flex-col">
       {/* Dynamic Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-200">
-          <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/40 border-emerald-400/30' : 'bg-red-500 shadow-red-500/40 border-red-400/30'}`}>
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-600 shadow-emerald-600/30 border-emerald-500' : 'bg-rose-600 shadow-rose-600/30 border-rose-500'}`}>
             {toast.type === 'success' ? <ShieldCheck className="w-4 h-4 shrink-0" /> : <div className="w-4 h-4 shrink-0 font-bold text-center leading-4">!</div>}
             <span>{toast.text}</span>
           </div>
@@ -719,35 +719,34 @@ function DashboardContent() {
       )}
 
       {/* Mobile Topbar */}
-      <header className="lg:hidden sticky top-0 z-40 bg-[#0d1526]/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-rose-100 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition"
+            className="p-2 rounded-xl text-slate-600 hover:text-[#7E2248] hover:bg-rose-50 transition"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-sm">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7E2248] to-[#5c1331] flex items-center justify-center font-extrabold text-white text-sm shadow-sm">
               J
             </div>
-            <span className="font-extrabold text-base tracking-tight text-white">
-              Jab<span className="text-[#e06d53]">We</span>Meet
+            <span className="font-serif font-bold text-base tracking-tight text-slate-900">
+              Jab<span className="text-[#7E2248]">We</span>Meet
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          
-          <span className="text-xs font-semibold text-slate-300 hidden sm:inline truncate max-w-[120px]">
+          <span className="text-xs font-semibold text-slate-600 hidden sm:inline truncate max-w-[120px]">
             {user.name}
           </span>
           <button
             onClick={handleLogout}
             title="Log out"
-            className="p-2 text-slate-400 hover:text-[#fca5a5] rounded-lg transition"
+            className="p-2 text-slate-400 hover:text-red-500 hover:bg-rose-50 rounded-lg transition"
             aria-label="Logout"
           >
             <LogOut className="w-4 h-4" />
@@ -784,26 +783,26 @@ function DashboardContent() {
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10 flex-1">
           {/* Admin Mode Top Banner & Back Navigation (Exclusively for Admins) */}
           {user.role === "ADMIN" && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-red-950/40 via-[#182337] to-[#101928] border border-red-500/30 shadow-2xl backdrop-blur-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-rose-50 via-white to-rose-50/50 border border-rose-200 shadow-sm">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0 shadow-inner">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-200 text-[#7E2248] flex items-center justify-center shrink-0 shadow-sm">
                   <Shield className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs sm:text-sm font-black text-white tracking-tight">Administrator Preview Mode</span>
-                    <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+                    <span className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">Administrator Preview Mode</span>
+                    <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248] border border-rose-200">
                       SUPER_ADMIN
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     You are previewing the member dashboard as an administrator. You can return to the control center anytime.
                   </p>
                 </div>
               </div>
               <Link
                 href="/admin"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs shadow-lg shadow-red-500/30 border border-red-400/30 transition shrink-0 group transform hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs shadow-md shadow-[#7E2248]/20 transition shrink-0 group transform hover:-translate-y-0.5"
               >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 <span>Back to Admin Dashboard</span>
@@ -815,17 +814,17 @@ function DashboardContent() {
             <>
               {/* Broadcast Announcement Banner */}
               {announcements.length > 0 && !dismissedAnnouncement && (
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-500/20 via-[#162238] to-[#101a2c] border border-amber-500/40 p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-50 via-white to-amber-50/40 border border-amber-200 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-300">
                   <div className="flex items-start sm:items-center gap-3.5">
-                    <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 shadow-inner">
+                    <div className="p-3 rounded-2xl bg-amber-100 text-amber-800 border border-amber-200 shrink-0 shadow-sm">
                       <Megaphone className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-200 border border-amber-500/40 tracking-wider">
+                        <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 tracking-wider">
                           Platform Announcement
                         </span>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-500">
                           {new Date(announcements[0].sentAt).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
@@ -833,10 +832,10 @@ function DashboardContent() {
                           })}
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-white mt-1">
+                      <h3 className="text-base font-serif font-bold text-slate-900 mt-1">
                         {announcements[0].title}
                       </h3>
-                      <p className="text-xs text-slate-300 mt-0.5 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">
                         {announcements[0].message}
                       </p>
                     </div>
@@ -847,14 +846,14 @@ function DashboardContent() {
                         setActiveSection("notifications");
                         window.history.replaceState(null, "", "/dashboard?tab=notifications");
                       }}
-                      className="text-xs font-bold text-amber-200 hover:text-white px-3.5 py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-500/40 transition cursor-pointer"
+                      className="text-xs font-bold text-amber-900 hover:text-amber-950 px-4 py-2 rounded-full bg-amber-100 hover:bg-amber-200 border border-amber-300 transition cursor-pointer"
                     >
                       View in Notifications
                     </button>
                     <button
                       onClick={() => setDismissedAnnouncement(true)}
                       title="Dismiss announcement banner"
-                      className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+                      className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-amber-100/60 transition cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1077,7 +1076,7 @@ function DashboardContent() {
         </main>
 
         {/* Dynamic Footer */}
-        <footer className="border-t border-white/5 py-6 px-8 text-center text-xs text-slate-400">
+        <footer className="border-t border-rose-100/80 py-6 px-8 text-center text-xs text-slate-500">
           <p>
             JabWeMeet Member Portal • Real People. Real Places. Real Connections. Active in {user.city} and nationwide.
           </p>
@@ -1089,39 +1088,39 @@ function DashboardContent() {
 
 function DashboardLoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 flex flex-col font-sans">
-      <div className="h-16 border-b border-white/10 bg-[#0d1526] px-6 flex items-center justify-between">
+    <div className="min-h-screen bg-[#FDFBF9] text-slate-800 flex flex-col font-sans">
+      <div className="h-16 border-b border-rose-100 bg-white px-6 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white/10 animate-pulse" />
-          <div className="w-28 h-5 rounded-md bg-white/10 animate-pulse" />
+          <div className="w-9 h-9 rounded-xl bg-rose-100/70 animate-pulse" />
+          <div className="w-28 h-5 rounded-md bg-rose-100/70 animate-pulse" />
         </div>
-        <div className="w-20 h-8 rounded-full bg-white/10 animate-pulse" />
+        <div className="w-20 h-8 rounded-full bg-rose-100/70 animate-pulse" />
       </div>
 
       <div className="flex-1 flex">
-        <div className="hidden lg:block w-72 border-r border-white/10 bg-[#0d1526] p-6 space-y-4">
-          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
-          <div className="w-full h-8 rounded-xl bg-white/5 animate-pulse" />
+        <div className="hidden lg:block w-72 border-r border-rose-100 bg-white p-6 space-y-4 shadow-xs">
+          <div className="w-full h-9 rounded-2xl bg-rose-50 animate-pulse" />
+          <div className="w-full h-9 rounded-2xl bg-rose-50 animate-pulse" />
+          <div className="w-full h-9 rounded-2xl bg-rose-50 animate-pulse" />
+          <div className="w-full h-9 rounded-2xl bg-rose-50 animate-pulse" />
         </div>
 
         <div className="flex-1 p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
-          <div className="h-44 rounded-3xl bg-[#131d2e] border border-white/10 animate-pulse p-8 space-y-4">
-            <div className="w-32 h-6 rounded-full bg-white/10" />
-            <div className="w-64 h-8 rounded-lg bg-white/10" />
-            <div className="w-96 h-4 rounded-md bg-white/5" />
+          <div className="h-44 rounded-3xl bg-white border border-rose-100 shadow-sm animate-pulse p-8 space-y-4">
+            <div className="w-32 h-6 rounded-full bg-rose-100/70" />
+            <div className="w-64 h-8 rounded-lg bg-rose-100/70" />
+            <div className="w-96 h-4 rounded-md bg-rose-50" />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-28 rounded-2xl bg-[#131d2e] border border-white/10 animate-pulse p-4" />
+              <div key={i} className="h-28 rounded-2xl bg-white border border-rose-100 shadow-sm animate-pulse p-4" />
             ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-72 rounded-2xl bg-[#131d2e] border border-white/10 animate-pulse" />
+              <div key={i} className="h-72 rounded-2xl bg-white border border-rose-100 shadow-sm animate-pulse" />
             ))}
           </div>
         </div>

@@ -15,7 +15,7 @@ export default function MatchmakerLayout({ children }: { children: React.ReactNo
         const res = await fetch("/api/auth/me", { credentials: 'include' });
         if (!res.ok) throw new Error("Unauthorized");
         const data = await res.json();
-        if (data.success && data.user.role === "MATCHMAKER") {
+        if (data.success && (data.user.role === "MATCHMAKER" || data.user.role === "ADMIN")) {
           setLoading(false);
         } else {
           router.replace("/login");
@@ -28,15 +28,20 @@ export default function MatchmakerLayout({ children }: { children: React.ReactNo
   }, [router]);
 
   if (loading) {
-    return <div className="h-screen w-screen flex items-center justify-center bg-[#fff5f7] text-rose-500">Loading...</div>;
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#FDFBF9] text-slate-900 font-sans space-y-4">
+        <div className="w-12 h-12 rounded-full border-4 border-rose-200 border-t-[#7E2248] animate-spin" />
+        <p className="text-slate-500 font-medium font-serif">Loading Matchmaker Operations Hub...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="h-screen w-screen flex bg-[#fff9fa] text-slate-800 overflow-hidden font-sans">
+    <div className="h-screen w-screen flex bg-[#FDFBF9] text-slate-900 overflow-hidden font-sans selection:bg-[#7E2248] selection:text-white">
       <MatchmakerSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <MatchmakerNavbar />
-        <main className="flex-1 overflow-y-auto bg-[#fff9fa] p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto bg-[#FDFBF9] p-4 md:p-8">
           {children}
         </main>
       </div>

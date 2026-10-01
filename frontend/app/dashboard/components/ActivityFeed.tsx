@@ -125,7 +125,7 @@ export default function ActivityFeed({
       detail: "Registered and authenticated verified member",
       time: formattedCreated,
       icon: Sparkles,
-      color: "text-[#fca5a5] bg-[#e06d53]/15 border-[#e06d53]/30",
+      color: "text-[#7E2248] bg-rose-50 border-rose-200",
     },
   ];
 
@@ -181,14 +181,14 @@ export default function ActivityFeed({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Dynamic Recent Activity */}
-      <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-6 flex flex-col justify-between shadow-md">
+      <div className="rounded-3xl bg-white border border-rose-100 p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300">
         <div>
-          <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-white/5">
+          <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-rose-100">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#e06d53]" />
-              <h3 className="text-base font-bold text-white">Live Activity Feed</h3>
+              <Clock className="w-4 h-4 text-[#7E2248]" />
+              <h3 className="text-base font-serif font-bold text-slate-900">Live Activity Feed</h3>
             </div>
-            <span className="text-xs text-slate-400">{activities.length} recorded events</span>
+            <span className="text-xs text-slate-500">{activities.length} recorded events</span>
           </div>
 
           <div className="space-y-3.5">
@@ -196,19 +196,19 @@ export default function ActivityFeed({
               const Icon = act.icon;
               return (
                 <div key={i} className="flex items-start gap-3">
-                  <div className={`p-2 rounded-xl border ${act.color} shrink-0 mt-0.5`}>
+                  <div className={`p-2 rounded-xl border ${act.color} shrink-0 mt-0.5 shadow-2xs`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs sm:text-sm text-slate-200 font-semibold leading-snug truncate">
+                      <p className="text-xs sm:text-sm text-slate-800 font-semibold leading-snug truncate">
                         {act.title}
                       </p>
                       <span className="text-[10px] text-slate-400 shrink-0 font-medium">
                         {act.time}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-normal">
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
                       {act.detail}
                     </p>
                   </div>
@@ -220,21 +220,21 @@ export default function ActivityFeed({
       </div>
 
       {/* Dynamic Notifications Preview */}
-      <div className="rounded-2xl bg-[#131d2e] border border-white/10 p-6 flex flex-col justify-between shadow-md">
+      <div className="rounded-3xl bg-white border border-rose-100 p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300">
         <div>
-          <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-white/5">
+          <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-rose-100">
             <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-amber-400" />
-              <h3 className="text-base font-bold text-white">Notifications</h3>
+              <Bell className="w-4 h-4 text-amber-600" />
+              <h3 className="text-base font-serif font-bold text-slate-900">Notifications</h3>
               {notifications.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200">
                   {notifications.length} New
                 </span>
               )}
             </div>
             <button
               onClick={onViewAllNotifications || (() => alert("Notification center is up to date."))}
-              className="text-xs font-semibold text-[#fca5a5] hover:text-white transition flex items-center gap-1 cursor-pointer"
+              className="text-xs font-semibold text-[#7E2248] hover:text-[#681938] transition flex items-center gap-1 cursor-pointer"
             >
               <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -248,25 +248,25 @@ export default function ActivityFeed({
                 return (
                   <div
                     key={notif.id}
-                    className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+                    className={`p-3.5 rounded-2xl border flex items-start gap-3 transition ${
                       notif.isBroadcast
-                        ? "bg-amber-500/10 border-amber-500/30"
-                        : "bg-white/5 border-white/5"
+                        ? "bg-amber-50/70 border-amber-200"
+                        : "bg-rose-50/30 border-rose-100 hover:bg-rose-50/60"
                     }`}
                   >
                     <Icon className={`w-4 h-4 ${notif.color} shrink-0 mt-0.5`} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-xs text-slate-200 font-semibold truncate">
+                        <p className="text-xs text-slate-900 font-semibold truncate">
                           {notif.title}
                         </p>
                         {notif.isBroadcast && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                             Broadcast
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed line-clamp-2">
+                      <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed line-clamp-2">
                         {notif.subtitle}
                       </p>
                     </div>
@@ -276,21 +276,21 @@ export default function ActivityFeed({
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 mx-auto mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] mx-auto mb-3 shadow-xs">
                 <Inbox className="w-6 h-6" />
               </div>
-              <p className="text-sm font-semibold text-slate-200">You're all caught up</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+              <p className="text-sm font-serif font-bold text-slate-900">You're all caught up</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
                 No unread alerts. Event tickets, matchmaker updates, and peer messages will appear here.
               </p>
             </div>
           )}
         </div>
 
-        <div className="pt-4 mt-4 border-t border-white/5 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>SMS & Email Alerts: <strong className="text-slate-300">Live</strong></span>
-          <span className="text-emerald-400 flex items-center gap-1.5 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="pt-4 mt-4 border-t border-rose-100 text-[11px] text-slate-500 flex items-center justify-between">
+          <span>SMS & Email Alerts: <strong className="text-slate-800">Live</strong></span>
+          <span className="text-emerald-700 flex items-center gap-1.5 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
             Connected
           </span>
         </div>

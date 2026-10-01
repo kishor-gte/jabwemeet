@@ -84,63 +84,63 @@ export default function ProfilePreviewCard({
     <div id="section-preview" className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248]">
             <Eye className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-white">Live Public Profile Preview</h4>
-            <p className="text-[11px] text-slate-400">
+            <h4 className="text-sm font-serif font-bold text-slate-900">Live Public Profile Preview</h4>
+            <p className="text-[11px] text-slate-500">
               How verified attendees and table hosts see you at JabWeMeet events.
             </p>
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-300 font-medium">
-          <Lock className="w-3 h-3 text-emerald-400" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-medium">
+          <Lock className="w-3 h-3 text-emerald-600" />
           <span>Email, Phone & Deal Breakers Hidden</span>
         </div>
       </div>
 
       {/* Member Public Card */}
-      <div className="rounded-3xl bg-gradient-to-b from-[#162438] to-[#0f1726] border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+      <div className="rounded-3xl bg-white border border-rose-100 p-6 sm:p-8 shadow-sm space-y-6 relative overflow-hidden">
         {/* Glow effect */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-rose-100/40 rounded-full blur-3xl pointer-events-none" />
 
         {/* Card Header: Avatar & Main Identity */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[#e06d53] to-amber-500 flex items-center justify-center font-extrabold text-white text-2xl sm:text-3xl shadow-xl shadow-[#e06d53]/20 shrink-0">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[#7E2248] to-[#9B2C59] flex items-center justify-center font-extrabold text-white text-2xl sm:text-3xl shadow-lg shadow-[#7E2248]/20 shrink-0">
               {fullName ? fullName.slice(0, 2).toUpperCase() : "ME"}
             </div>
 
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900 tracking-tight">
                   {fullName || "Verified Member"}
                 </h3>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   Verified
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-300 mt-1">
+              <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-600 mt-1">
                 {showAgePublicly && age !== null && <span>{age} years old</span>}
                 {showAgePublicly && age !== null && city && <span>•</span>}
                 {city && (
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
+                    <MapPin className="w-3.5 h-3.5 text-[#7E2248]" />
                     {city}
                   </span>
                 )}
                 {showHometownPublicly && hometown && (
-                  <span className="text-slate-400">(from {hometown})</span>
+                  <span className="text-slate-500">(from {hometown})</span>
                 )}
               </div>
 
               {profession && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-                  <Briefcase className="w-3.5 h-3.5 text-amber-400" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
+                  <Briefcase className="w-3.5 h-3.5 text-amber-600" />
                   <span>
                     {profession} {industry ? `• ${industry}` : ""}
                   </span>
@@ -152,8 +152,8 @@ export default function ProfilePreviewCard({
           {/* Relationship Intent Badge */}
           {relationshipIntent && (
             <div className="self-start sm:self-center shrink-0">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#e06d53]/15 text-[#fca5a5] border border-[#e06d53]/30 text-xs font-semibold shadow-sm">
-                <Heart className="w-3.5 h-3.5 text-[#e06d53]" />
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200 text-xs font-semibold shadow-xs">
+                <Heart className="w-3.5 h-3.5 text-[#7E2248]" />
                 <span>{relationshipIntent}</span>
               </span>
             </div>
@@ -162,11 +162,11 @@ export default function ProfilePreviewCard({
 
         {/* About Me Bio */}
         {aboutMe ? (
-          <div className="bg-[#0b111e]/80 border border-white/5 rounded-2xl p-4 text-xs text-slate-300 leading-relaxed relative z-10">
+          <div className="bg-[#FDFBF9] border border-rose-100 rounded-2xl p-4 text-xs text-slate-700 leading-relaxed relative z-10 shadow-xs">
             <p className="italic font-normal">"{aboutMe}"</p>
           </div>
         ) : (
-          <div className="bg-[#0b111e]/40 border border-dashed border-white/10 rounded-2xl p-4 text-xs text-slate-400 italic">
+          <div className="bg-[#FDFBF9] border border-dashed border-rose-200 rounded-2xl p-4 text-xs text-slate-500 italic">
             Add an "About Me" summary above to introduce yourself to offline event attendees!
           </div>
         )}
@@ -174,26 +174,26 @@ export default function ProfilePreviewCard({
         {/* Key Quick Badges: Persona, Diet, Pets, Fitness */}
         <div className="flex flex-wrap gap-2 text-xs relative z-10">
           {selfDescription && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-slate-300">
-              <Sparkles className="w-3 h-3 text-purple-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-700 font-medium">
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
               <span>{selfDescription}</span>
             </span>
           )}
           {foodPreference && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-slate-300">
-              <Utensils className="w-3 h-3 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-700 font-medium">
+              <Utensils className="w-3.5 h-3.5 text-emerald-600" />
               <span>{foodPreference}</span>
             </span>
           )}
           {pets && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-slate-300">
-              <PawPrint className="w-3 h-3 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-700 font-medium">
+              <PawPrint className="w-3.5 h-3.5 text-amber-600" />
               <span>{pets}</span>
             </span>
           )}
           {travelFrequency && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-slate-300">
-              <Plane className="w-3 h-3 text-sky-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-700 font-medium">
+              <Plane className="w-3.5 h-3.5 text-[#7E2248]" />
               <span>{travelFrequency}</span>
             </span>
           )}
@@ -201,15 +201,15 @@ export default function ProfilePreviewCard({
 
         {/* Hobbies & Passions */}
         {hobbies.length > 0 && (
-          <div className="space-y-2 relative z-10 pt-2 border-t border-white/5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="space-y-2 relative z-10 pt-2 border-t border-rose-100">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Hobbies & Passions
             </span>
             <div className="flex flex-wrap gap-1.5">
               {hobbies.map((h) => (
                 <span
                   key={h}
-                  className="px-2.5 py-1 rounded-lg bg-white/5 text-slate-300 text-xs font-medium border border-white/10"
+                  className="px-3 py-1 rounded-lg bg-rose-50/70 text-slate-700 text-xs font-medium border border-rose-200"
                 >
                   {h}
                 </span>
@@ -220,15 +220,15 @@ export default function ProfilePreviewCard({
 
         {/* Personality Traits */}
         {personalityTraits.length > 0 && (
-          <div className="space-y-2 relative z-10 pt-2 border-t border-white/5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="space-y-2 relative z-10 pt-2 border-t border-rose-100">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Personality Traits
             </span>
             <div className="flex flex-wrap gap-1.5">
               {personalityTraits.map((t) => (
                 <span
                   key={t}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 text-xs font-medium border border-indigo-500/20"
+                  className="px-3 py-1 rounded-lg bg-purple-50 text-purple-800 text-xs font-medium border border-purple-200"
                 >
                   {t}
                 </span>
@@ -239,15 +239,15 @@ export default function ProfilePreviewCard({
 
         {/* Core Values Valued in Match */}
         {coreQualities.length > 0 && (
-          <div className="space-y-2 relative z-10 pt-2 border-t border-white/5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="space-y-2 relative z-10 pt-2 border-t border-rose-100">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Values Most in a Partner
             </span>
             <div className="flex flex-wrap gap-1.5">
               {coreQualities.map((q) => (
                 <span
                   key={q}
-                  className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-300 text-xs font-medium border border-rose-500/20"
+                  className="px-3 py-1 rounded-lg bg-rose-50 text-[#7E2248] text-xs font-medium border border-rose-200"
                 >
                   {q}
                 </span>
@@ -258,16 +258,16 @@ export default function ProfilePreviewCard({
 
         {/* Preferred Events */}
         {eventFormats.length > 0 && (
-          <div className="space-y-2 relative z-10 pt-2 border-t border-white/5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <Ticket className="w-3.5 h-3.5 text-sky-400" />
+          <div className="space-y-2 relative z-10 pt-2 border-t border-rose-100">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+              <Ticket className="w-3.5 h-3.5 text-[#7E2248]" />
               <span>Looking Forward To</span>
             </span>
             <div className="flex flex-wrap gap-1.5">
               {eventFormats.map((f) => (
                 <span
                   key={f}
-                  className="px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-300 text-xs font-medium border border-sky-500/20"
+                  className="px-3 py-1 rounded-lg bg-[#FAF3F6] text-[#7E2248] text-xs font-medium border border-rose-200"
                 >
                   {f}
                 </span>

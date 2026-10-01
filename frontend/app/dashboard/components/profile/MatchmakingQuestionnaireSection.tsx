@@ -50,37 +50,37 @@ export default function MatchmakingQuestionnaireSection({
   return (
     <div
       id="section-questionnaire"
-      className="rounded-3xl bg-[#131d2e] border border-white/10 overflow-hidden shadow-xl"
+      className="rounded-3xl bg-white border border-rose-100 overflow-hidden shadow-sm"
     >
       {/* Header bar / Toggle */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="p-6 sm:p-8 flex items-center justify-between cursor-pointer select-none border-b border-white/10 hover:bg-white/[0.02] transition"
+        className="p-6 sm:p-8 flex items-center justify-between cursor-pointer select-none border-b border-rose-100 hover:bg-rose-50/40 transition"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] shadow-xs">
             <FileQuestion className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-white">
+              <h3 className="text-lg font-serif font-bold text-slate-900">
                 Relationship Manager Intake Questionnaire
               </h3>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200">
                 Optional
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Deals deeper into your personality for curated 1-on-1 blind dates and personalized introductions.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Delves deeper into your personality for curated 1-on-1 blind dates and personalized introductions.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline-block">
+          <span className="text-xs text-slate-500 font-medium hidden sm:inline-block">
             {answeredCount} of 14 answered
           </span>
-          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">
+          <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-slate-600">
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
         </div>
@@ -89,23 +89,23 @@ export default function MatchmakingQuestionnaireSection({
       {isOpen && (
         <div className="p-6 sm:p-8 space-y-6">
           {/* Privacy Notice */}
-          <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/25 flex items-start gap-3 text-xs">
-            <Lock className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-            <div className="text-slate-300">
-              <span className="font-bold text-emerald-300">Confidential to Matchmaking Team: </span>
+          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-start gap-3 text-xs">
+            <Lock className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+            <div className="text-slate-700 leading-relaxed">
+              <span className="font-bold text-emerald-900">Confidential to Matchmaking Team: </span>
               Your answers here are reviewed exclusively by JabWeMeet Relationship Managers to curate high-compatibility blind dates and private introductions. They are never published on your public event profile.
             </div>
           </div>
 
           {/* Sub-tabs */}
-          <div className="flex items-center gap-2 border-b border-white/10 pb-3 overflow-x-auto text-xs">
+          <div className="flex items-center gap-2 border-b border-rose-100 pb-3 overflow-x-auto text-xs">
             <button
               type="button"
               onClick={() => setActiveCategory("about")}
-              className={`px-4 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeCategory === "about"
-                  ? "bg-[#e06d53] text-white"
-                  : "bg-white/5 text-slate-400 hover:text-white"
+                  ? "bg-[#7E2248] text-white shadow-xs"
+                  : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:text-slate-900 hover:border-rose-300"
               }`}
             >
               <UserCheck className="w-3.5 h-3.5" />
@@ -115,10 +115,10 @@ export default function MatchmakingQuestionnaireSection({
             <button
               type="button"
               onClick={() => setActiveCategory("relationships")}
-              className={`px-4 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeCategory === "relationships"
-                  ? "bg-[#e06d53] text-white"
-                  : "bg-white/5 text-slate-400 hover:text-white"
+                  ? "bg-[#7E2248] text-white shadow-xs"
+                  : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:text-slate-900 hover:border-rose-300"
               }`}
             >
               <HeartHandshake className="w-3.5 h-3.5" />
@@ -128,10 +128,10 @@ export default function MatchmakingQuestionnaireSection({
             <button
               type="button"
               onClick={() => setActiveCategory("dating")}
-              className={`px-4 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeCategory === "dating"
-                  ? "bg-[#e06d53] text-white"
-                  : "bg-white/5 text-slate-400 hover:text-white"
+                  ? "bg-[#7E2248] text-white shadow-xs"
+                  : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:text-slate-900 hover:border-rose-300"
               }`}
             >
               <Coffee className="w-3.5 h-3.5" />
@@ -143,7 +143,7 @@ export default function MatchmakingQuestionnaireSection({
           {activeCategory === "about" && (
             <div className="space-y-5 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   1. What makes you feel most energized, peaceful, or happy in daily life?
                 </label>
                 <textarea
@@ -151,12 +151,12 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q1Energized}
                   onChange={(e) => onChange("q1Energized", e.target.value)}
                   placeholder="e.g. Morning coffee in quiet, finishing a good workout, catching up with close friends..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   2. What does your ideal, uncomplicated Sunday look like?
                 </label>
                 <textarea
@@ -164,12 +164,12 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q2IdealSunday}
                   onChange={(e) => onChange("q2IdealSunday", e.target.value)}
                   placeholder="e.g. Sleeping in till 9, exploring a breakfast cafe, reading a book or going for a swim..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   3. What are 1-2 passions or niche topics you could talk about for hours?
                 </label>
                 <input
@@ -177,18 +177,18 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q3Passions}
                   onChange={(e) => onChange("q3Passions", e.target.value)}
                   placeholder="e.g. Formula 1 racing, specialty pour-over coffee, architecture, history of cinema..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-slate-300 font-semibold">
+                  <label className="text-slate-700 font-semibold">
                     4. What are your major personal or career goals for the next 2-3 years?
                   </label>
                   <span
                     className={`font-mono text-[11px] ${
-                      data.q4FutureGoals.length > 500 ? "text-rose-400 font-bold" : "text-slate-400"
+                      data.q4FutureGoals.length > 500 ? "text-rose-600 font-bold" : "text-slate-500"
                     }`}
                   >
                     {data.q4FutureGoals.length} / 500
@@ -200,7 +200,7 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q4FutureGoals}
                   onChange={(e) => onChange("q4FutureGoals", e.target.value)}
                   placeholder="e.g. Transitioning into leadership, traveling through Japan, buying my first home..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function MatchmakingQuestionnaireSection({
           {activeCategory === "relationships" && (
             <div className="space-y-5 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   5. In your own words, how do you define a healthy, thriving relationship?
                 </label>
                 <textarea
@@ -218,12 +218,12 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q5HealthyRelationship}
                   onChange={(e) => onChange("q5HealthyRelationship", e.target.value)}
                   placeholder="e.g. Mutual respect, emotional safety, laughing often, and giving each other room to grow..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   6. How do you naturally handle disagreement or conflict?
                 </label>
                 <textarea
@@ -231,12 +231,12 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q6ConflictHandling}
                   onChange={(e) => onChange("q6ConflictHandling", e.target.value)}
                   placeholder="e.g. I prefer taking 15 minutes to cool down, then talking through things calmly without raising voices..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   7. What is something you hold non-negotiable in deep human connections?
                 </label>
                 <input
@@ -244,19 +244,19 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q7DeepValues}
                   onChange={(e) => onChange("q7DeepValues", e.target.value)}
                   placeholder="e.g. Intellectual honesty, kindness to service staff, empathy in tough times..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1.5">
+                  <label className="block text-slate-700 font-semibold mb-1.5">
                     8. Primary Love Language
                   </label>
                   <select
                     value={data.q8LoveLanguage}
                     onChange={(e) => onChange("q8LoveLanguage", e.target.value)}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                    className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   >
                     <option value="">Select primary love language</option>
                     <option value="Quality Time">Quality Time</option>
@@ -268,13 +268,13 @@ export default function MatchmakingQuestionnaireSection({
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1.5">
+                  <label className="block text-slate-700 font-semibold mb-1.5">
                     9. Marriage & Intent Timeline
                   </label>
                   <select
                     value={data.q9MarriageTimeline}
                     onChange={(e) => onChange("q9MarriageTimeline", e.target.value)}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                    className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   >
                     <option value="">Select intention timeline</option>
                     <option value="Ready for marriage within 1-2 years">
@@ -299,7 +299,7 @@ export default function MatchmakingQuestionnaireSection({
           {activeCategory === "dating" && (
             <div className="space-y-5 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   10. What was your most memorable date or social experience and why?
                 </label>
                 <textarea
@@ -307,19 +307,19 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q10MemorableDate}
                   onChange={(e) => onChange("q10MemorableDate", e.target.value)}
                   placeholder="e.g. Getting lost on a spontaneous food walk in old Bangalore, or playing board games until midnight..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl p-3 text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl p-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1.5">
+                  <label className="block text-slate-700 font-semibold mb-1.5">
                     11. Comfort with Curated 1-on-1 Blind Dates
                   </label>
                   <select
                     value={data.q11BlindDateComfort}
                     onChange={(e) => onChange("q11BlindDateComfort", e.target.value)}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                    className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   >
                     <option value="">Select comfort level</option>
                     <option value="Very excited & ready to try!">Very excited & ready to try!</option>
@@ -334,13 +334,13 @@ export default function MatchmakingQuestionnaireSection({
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1.5">
+                  <label className="block text-slate-700 font-semibold mb-1.5">
                     12. Relationship Manager Assistance
                   </label>
                   <select
                     value={data.q12RmAssistance}
                     onChange={(e) => onChange("q12RmAssistance", e.target.value)}
-                    className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                    className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   >
                     <option value="">Select assistance preference</option>
                     <option value="Yes! Pre-screen and introduce me to verified matches">
@@ -357,7 +357,7 @@ export default function MatchmakingQuestionnaireSection({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   13. What is one honest thing someone should know about you before a date?
                 </label>
                 <input
@@ -365,12 +365,12 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q13ThingToKnow}
                   onChange={(e) => onChange("q13ThingToKnow", e.target.value)}
                   placeholder="e.g. I take a minute to warm up in new settings, I love dad jokes, I am very punctual..."
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1.5">
+                <label className="block text-slate-700 font-semibold mb-1.5">
                   14. What is your favorite icebreaker or conversation starter?
                 </label>
                 <input
@@ -378,7 +378,7 @@ export default function MatchmakingQuestionnaireSection({
                   value={data.q14Icebreaker}
                   onChange={(e) => onChange("q14Icebreaker", e.target.value)}
                   placeholder="e.g. If you had 2 free weeks and unlimited flight credits tomorrow, where are we landing?"
-                  className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+                  className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
             </div>

@@ -101,15 +101,14 @@ export default function ConnectionsSection({
       });
       const data = await res.json();
       if (data.success) {
-        alert("Cafe booked successfully!");
+        alert("Success! Table booked at " + cafeName);
         setCafeFinderLocation(null);
-        window.location.reload();
       } else {
-        alert("Failed to book cafe: " + data.message);
+        alert(data.message || "Failed to book cafe table.");
       }
     } catch (e) {
       console.error(e);
-      alert("Error booking cafe.");
+      alert("Error booking cafe table");
     } finally {
       setBookingCafe(false);
     }
@@ -132,7 +131,6 @@ export default function ConnectionsSection({
       setShowPaymentModal(true);
     } else {
       onUpdateConnection(connId, "Approve");
-      // Optionally decrement locally to reflect usage of the free date immediately
       setEligibility(prev => prev ? { ...prev, freeDatesRemaining: Math.max(0, prev.freeDatesRemaining - 1) } : null);
     }
   };
@@ -162,7 +160,6 @@ export default function ConnectionsSection({
         return;
       }
 
-      // 1. Create order on backend
       const res = await fetch("/api/auth/payments/create-razorpay-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -177,7 +174,6 @@ export default function ConnectionsSection({
         return;
       }
 
-      // 2. Configure Razorpay Options
       const options = {
         key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_RIlD5bEKRjyn3h",
         amount: orderData.amount,
@@ -188,7 +184,6 @@ export default function ConnectionsSection({
         order_id: orderData.orderId,
         handler: async (response: any) => {
           try {
-            // 3. Verify payment signature on backend
             const verifyRes = await fetch("/api/auth/payments/verify-razorpay-payment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -220,12 +215,12 @@ export default function ConnectionsSection({
           }
         },
         prefill: {
-          name: "User", // Can be dynamic if user context is available
+          name: "User",
           email: "user@example.com",
           contact: "9999999999"
         },
         theme: {
-          color: "#f43f5e", // rose-500
+          color: "#7E2248",
         },
         modal: {
           ondismiss: () => {
@@ -286,34 +281,34 @@ export default function ConnectionsSection({
   return (
     <div className="space-y-8 relative">
       <div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Your Connections</h2>
-        <p className="text-slate-400 mt-1">Matches suggested by your Relationship Manager</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif">Your Connections</h2>
+        <p className="text-slate-500 mt-1 text-sm">Matches suggested by your Relationship Manager</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 max-w-lg">
-        <div className="bg-[#121b2b] border border-white/10 rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center gap-3 mb-2 text-rose-400">
+        <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs">
+          <div className="flex items-center gap-2.5 mb-2 text-[#7E2248]">
             <Heart className="w-5 h-5" />
-            <h3 className="font-bold text-sm">Matched</h3>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600">Matched</h3>
           </div>
-          <p className="text-3xl font-black text-white">{connectedCount}</p>
+          <p className="text-3xl font-serif font-bold text-slate-900">{connectedCount}</p>
         </div>
-        <div className="bg-[#121b2b] border border-white/10 rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center gap-3 mb-2 text-amber-400">
+        <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs">
+          <div className="flex items-center gap-2.5 mb-2 text-amber-700">
             <UserPlus className="w-5 h-5" />
-            <h3 className="font-bold text-sm">Pending</h3>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600">Pending</h3>
           </div>
-          <p className="text-3xl font-black text-white">{pendingCount}</p>
+          <p className="text-3xl font-serif font-bold text-slate-900">{pendingCount}</p>
         </div>
       </div>
 
       {connections.length === 0 ? (
-        <div className="rounded-3xl bg-[#121b2b]/50 border border-white/5 p-12 text-center max-w-2xl">
-          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
-            <Users className="w-8 h-8 text-slate-400" />
+        <div className="rounded-3xl bg-white border border-rose-100 p-12 text-center max-w-2xl shadow-xs">
+          <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-4 border border-rose-200 text-[#7E2248]">
+            <Users className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-white">No Match Suggestions Yet</h3>
-          <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+          <h3 className="text-xl font-bold font-serif text-slate-900">No Match Suggestions Yet</h3>
+          <p className="text-xs sm:text-sm text-slate-600 mt-2 max-w-md mx-auto leading-relaxed">
             Your Relationship Manager is currently looking for the perfect match. Suggestions will appear here once they find someone compatible.
           </p>
         </div>
@@ -327,98 +322,98 @@ export default function ConnectionsSection({
             if (!otherPerson) return null;
 
             return (
-              <div key={conn.id} className="bg-[#131d2e] rounded-2xl p-5 border border-white/10 shadow-xl relative overflow-hidden flex flex-col justify-between hover:border-emerald-500/30 transition group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition duration-500" />
+              <div key={conn.id} className="bg-white rounded-3xl p-6 border border-rose-100 shadow-sm hover:shadow-xl relative overflow-hidden flex flex-col justify-between hover:border-[#7E2248]/30 transition group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-100/40 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition duration-500" />
                 
                 {conn.status === "DateFixed" && (
-                   <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold text-center py-1 z-20">
-                      IT'S A DATE!
+                   <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-[#7E2248] via-[#982b57] to-[#7E2248] text-white text-[10px] font-bold uppercase tracking-wider text-center py-1 z-20">
+                      IT'S A DATE! 🥂
                    </div>
                 )}
 
                 <div>
                   <div className={`flex items-start gap-4 mb-5 relative z-10 ${conn.status === 'DateFixed' ? 'mt-4' : ''}`}>
                     <img 
-                      src={otherPerson.profileImage || `https://ui-avatars.com/api/?name=${otherPerson.name}&background=1e293b&color=fff`} 
+                      src={otherPerson.profileImage || `https://ui-avatars.com/api/?name=${otherPerson.name}&background=7E2248&color=fff`} 
                       alt={otherPerson.name} 
-                      className="w-14 h-14 rounded-full object-cover shadow-lg border border-white/10" 
+                      className="w-14 h-14 rounded-full object-cover shadow-sm border border-rose-200" 
                     />
                     <div className="flex-1 min-w-0 pt-1">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <h4 className="text-sm font-bold text-white truncate">{otherPerson.name}</h4>
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <h4 className="text-sm font-bold text-slate-900 truncate">{otherPerson.name}</h4>
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       </div>
-                      <p className="text-xs text-slate-400 truncate">{otherPerson.city}</p>
-                      <p className="text-[10px] text-slate-500 mt-1">Suggested by {conn.matchmaker?.name || "Matchmaker"}</p>
+                      <p className="text-xs text-slate-500 truncate">{otherPerson.city}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Suggested by {conn.matchmaker?.name || "Matchmaker"}</p>
                     </div>
                   </div>
 
                   {conn.status === "DateFixed" ? (
-                    <div className="bg-rose-500/10 rounded-xl p-3 border border-rose-500/20 text-center relative z-10">
-                      <div className="flex justify-center mb-1"><Gift className="w-4 h-4 text-rose-400" /></div>
-                      <p className="text-xs font-bold text-white mb-1">
+                    <div className="bg-rose-50/70 rounded-2xl p-4 border border-rose-200 text-center relative z-10 space-y-2">
+                      <div className="flex justify-center mb-1"><Gift className="w-5 h-5 text-[#7E2248]" /></div>
+                      <p className="text-xs font-bold text-slate-900">
                         {conn.meetingDate ? new Date(conn.meetingDate).toLocaleDateString() : ''} at {conn.meetingDate ? new Date(conn.meetingDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
                       </p>
                       {(conn.meetingLocation || conn.meetingVenue) && (
                         <div className="flex flex-col items-center justify-center gap-1 mb-1">
-                          <p className="text-[10px] text-white/70 flex items-center justify-center gap-1">
-                            <MapPin className="w-3 h-3 text-rose-400" /> 
+                          <p className="text-[11px] text-slate-700 flex items-center justify-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#7E2248]" /> 
                             {conn.meetingVenue && <span className="font-bold">{conn.meetingVenue}</span>}
                             {conn.meetingVenue && conn.meetingLocation && <span>, </span>}
                             {conn.meetingLocation && <span>{conn.meetingLocation}</span>}
                           </p>
                           {conn.meetingLocation && !conn.meetingVenue && (
-                             <button onClick={() => handleFindNearestCafe(conn.id, conn.meetingLocation!, conn.meetingDate)} className="mt-1 bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1 rounded-full text-[10px] transition border border-white/20 shadow-sm flex items-center gap-1">
+                             <button onClick={() => handleFindNearestCafe(conn.id, conn.meetingLocation!, conn.meetingDate)} className="mt-1 bg-white hover:bg-rose-50 text-[#7E2248] font-bold px-3 py-1 rounded-full text-[10px] transition border border-rose-200 shadow-2xs flex items-center gap-1">
                                <MapPin className="w-3 h-3" /> Find nearest cafe
                              </button>
                           )}
                         </div>
                       )}
-                      <p className="text-[10px] text-rose-300 font-medium mb-3">
-                        {conn.meetingMessage}
+                      <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                        "{conn.meetingMessage}"
                       </p>
-                      <div className="flex flex-col gap-2">
-                        <button onClick={() => onChat?.(conn.id)} className="w-full py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-                          <MessageCircle className="w-3 h-3" /> Chat with {otherPerson.name}
+                      <div className="flex flex-col gap-2 pt-2">
+                        <button onClick={() => onChat?.(conn.id)} className="w-full py-2 bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 rounded-full text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                          <MessageCircle className="w-3.5 h-3.5" /> Chat with {otherPerson.name}
                         </button>
-                        <button onClick={() => setFeedbackModalConnId(conn.id)} className="w-full py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-                          <Star className="w-3 h-3" /> Share Experience
+                        <button onClick={() => setFeedbackModalConnId(conn.id)} className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-[#7E2248] border border-rose-200 rounded-full text-xs font-bold transition flex items-center justify-center gap-1.5">
+                          <Star className="w-3.5 h-3.5" /> Share Experience
                         </button>
                       </div>
                     </div>
                   ) : myStatus === "Pending" && conn.status !== "Rejected" ? (
                     <div className="flex flex-col gap-3 mt-2 relative z-10">
-                       <div className="bg-purple-500/10 rounded-lg p-2.5 border border-purple-500/20">
-                          <p className="text-[11px] text-purple-300 leading-tight">
-                            <Sparkles className="w-3 h-3 inline mr-1 text-purple-400 -mt-0.5" />
+                       <div className="bg-rose-50/70 rounded-2xl p-3 border border-rose-200">
+                          <p className="text-xs text-rose-950 leading-relaxed">
+                            <Sparkles className="w-3.5 h-3.5 inline mr-1 text-[#7E2248] -mt-0.5" />
                             Your Relationship Manager found this highly compatible match for you!
                           </p>
                        </div>
                        <div className="flex items-center gap-2">
-                         <button onClick={() => handleApprove(conn.id)} className="flex-1 flex justify-center items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 py-1.5 rounded-lg text-xs font-bold transition">
-                            <Check className="w-3 h-3" /> Approve
+                         <button onClick={() => handleApprove(conn.id)} className="flex-1 flex justify-center items-center gap-1 bg-[#7E2248] hover:bg-[#681938] text-white py-2 rounded-full text-xs font-bold transition shadow-xs">
+                            <Check className="w-3.5 h-3.5" /> Approve
                          </button>
-                         <button onClick={() => onUpdateConnection(conn.id, "Reject")} className="flex-1 flex justify-center items-center gap-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 py-1.5 rounded-lg text-xs font-bold transition">
-                            <X className="w-3 h-3" /> Pass
+                         <button onClick={() => onUpdateConnection(conn.id, "Reject")} className="flex-1 flex justify-center items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-full text-xs font-semibold transition">
+                            <X className="w-3.5 h-3.5" /> Pass
                          </button>
                        </div>
                     </div>
                   ) : myStatus === "Approved" && conn.status !== "BothApproved" && conn.status !== "Rejected" ? (
-                     <div className="text-center py-2 bg-white/5 rounded-lg border border-white/5 relative z-10">
-                        <span className="text-[10px] text-slate-400 font-medium">Waiting for {otherPerson.name}'s response</span>
+                     <div className="text-center py-2.5 bg-rose-50/50 rounded-2xl border border-rose-100 relative z-10">
+                        <span className="text-xs text-slate-500 font-medium">Waiting for {otherPerson.name}'s response</span>
                      </div>
                   ) : conn.status === "BothApproved" ? (
                      <div className="flex flex-col gap-2 relative z-10">
-                       <div className="text-center py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                          <span className="text-[10px] text-emerald-400 font-bold">Both Approved! Matchmaker is arranging a date.</span>
+                       <div className="text-center py-2.5 bg-emerald-50 rounded-2xl border border-emerald-200">
+                          <span className="text-xs text-emerald-800 font-bold">Both Approved! Matchmaker is arranging a date.</span>
                        </div>
-                       <button onClick={() => onChat?.(conn.id)} className="w-full py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-                         <MessageCircle className="w-3 h-3" /> Chat with {otherPerson.name}
+                       <button onClick={() => onChat?.(conn.id)} className="w-full py-2 bg-[#7E2248] hover:bg-[#681938] text-white rounded-full text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs">
+                         <MessageCircle className="w-3.5 h-3.5" /> Chat with {otherPerson.name}
                        </button>
                      </div>
                   ) : (
-                     <div className="text-center py-2 bg-rose-500/5 rounded-lg border border-rose-500/10 relative z-10">
-                        <span className="text-[10px] text-rose-400 font-medium">Not a Match</span>
+                     <div className="text-center py-2.5 bg-slate-50 rounded-2xl border border-slate-200 relative z-10">
+                        <span className="text-xs text-slate-500 font-medium">Not a Match</span>
                      </div>
                   )}
                 </div>
@@ -428,36 +423,37 @@ export default function ConnectionsSection({
         </div>
       )}
 
+      {/* Dating Packages Modal */}
       {showPaymentModal && eligibility && (
-        <div className="fixed inset-0 z-[100] bg-[#0c1424]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-[#121b2b] border border-white/10 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative">
-            <button onClick={() => setShowPaymentModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition z-10">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-rose-100 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative p-8">
+            <button onClick={() => setShowPaymentModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition z-10">
               <X className="w-5 h-5" />
             </button>
-            <div className="p-8">
-              <div className="w-16 h-16 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/20 shadow-inner">
+            <div>
+              <div className="w-16 h-16 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center mb-4 border border-rose-200 shadow-2xs">
                 <Heart className="w-8 h-8" />
               </div>
-              <h2 className="text-3xl font-black text-white mb-3">Unlock Your Next Date</h2>
-              <p className="text-slate-400 mb-8 max-w-lg leading-relaxed">
+              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-slate-900 mb-2">Unlock Your Next Date</h2>
+              <p className="text-slate-600 mb-6 max-w-lg text-xs sm:text-sm leading-relaxed">
                 Your first date was complimentary! To continue meeting curated matches and arrange your next date, please select a dating package.
               </p>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-2">
                 {eligibility.packages.length > 0 ? (
                   eligibility.packages.map(pkg => (
-                    <div key={pkg.id} className="p-5 rounded-2xl border border-white/10 bg-[#162136] hover:border-rose-500/40 hover:bg-[#1a2741] transition group flex flex-col justify-between shadow-lg">
+                    <div key={pkg.id} className="p-5 rounded-2xl border border-rose-100 bg-[#FAF3F6]/50 hover:border-[#7E2248]/40 hover:bg-white transition group flex flex-col justify-between shadow-2xs">
                       <div>
-                        <div className="flex justify-between items-start mb-3">
-                          <h4 className="font-bold text-white text-lg">{pkg.name}</h4>
-                          <span className="text-rose-400 font-black text-xl">₹{pkg.price}</span>
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-slate-900 text-base">{pkg.name}</h4>
+                          <span className="text-[#7E2248] font-serif font-bold text-lg">₹{pkg.price}</span>
                         </div>
-                        <p className="text-sm text-slate-400 mb-6">{pkg.description}</p>
+                        <p className="text-xs text-slate-600 mb-4">{pkg.description}</p>
                       </div>
                       <button
                         disabled={isProcessing}
                         onClick={() => handlePurchasePackage(pkg)}
-                        className="w-full py-2.5 bg-white/10 group-hover:bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md transition"
+                        className="w-full py-2.5 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-50 text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-sm transition"
                       >
                         {isProcessing ? "Processing..." : `Get ${pkg.name}`}
                       </button>
@@ -465,7 +461,7 @@ export default function ConnectionsSection({
                   ))
                 ) : (
                   <div className="col-span-2 text-center py-8">
-                    <p className="text-slate-400 text-sm">No dating packages available right now.</p>
+                    <p className="text-slate-500 text-xs">No dating packages available right now.</p>
                   </div>
                 )}
               </div>
@@ -474,51 +470,52 @@ export default function ConnectionsSection({
         </div>
       )}
 
+      {/* Date Feedback Modal */}
       {feedbackModalConnId && (
-        <div className="fixed inset-0 z-[100] bg-[#0c1424]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-[#121b2b] border border-white/10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative">
-            <button onClick={() => setFeedbackModalConnId(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition z-10">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-rose-100 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative p-8">
+            <button onClick={() => setFeedbackModalConnId(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition z-10">
               <X className="w-5 h-5" />
             </button>
-            <div className="p-8">
-              <div className="w-16 h-16 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/20 shadow-inner">
-                <Star className="w-8 h-8" />
+            <div>
+              <div className="w-14 h-14 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center mb-4 border border-rose-200">
+                <Star className="w-7 h-7" />
               </div>
-              <h2 className="text-2xl font-black text-white mb-2">How was your date?</h2>
-              <p className="text-slate-400 mb-6 text-sm">
+              <h2 className="text-2xl font-bold font-serif text-slate-900 mb-1">How was your date?</h2>
+              <p className="text-slate-500 mb-5 text-xs">
                 Share your experience privately with your Relationship Manager. This helps us find better matches for you!
               </p>
               
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-white mb-3">Rate your experience</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Rate your experience</label>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button 
                         key={star} 
                         onClick={() => setFeedbackRating(star)}
-                        className={`p-2 rounded-xl transition ${feedbackRating >= star ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 text-slate-500 border border-white/5 hover:bg-white/10'}`}
+                        className={`p-2 rounded-xl transition ${feedbackRating >= star ? 'bg-amber-50 text-amber-500 border border-amber-200' : 'bg-slate-50 text-slate-300 border border-slate-200 hover:bg-slate-100'}`}
                       >
-                        <Star className={`w-8 h-8 ${feedbackRating >= star ? 'fill-amber-400' : ''}`} />
+                        <Star className={`w-6 h-6 ${feedbackRating >= star ? 'fill-amber-400' : ''}`} />
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-white mb-2">Your Feedback</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Your Feedback</label>
                   <textarea 
                     value={feedbackText}
                     onChange={(e) => setFeedbackText(e.target.value)}
                     placeholder="Tell us what you liked, what could be better, or if you felt a connection..."
-                    className="w-full bg-[#0b1221] border border-white/10 rounded-xl p-4 text-white text-sm focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/50 outline-none h-32 resize-none custom-scrollbar"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-slate-900 text-xs focus:border-[#7E2248] focus:bg-white outline-none h-28 resize-none"
                   />
                 </div>
 
                 <button 
                   onClick={handleFeedbackSubmit}
                   disabled={submittingFeedback || !feedbackText.trim()}
-                  className="w-full py-3 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white rounded-xl font-bold transition shadow-lg"
+                  className="w-full py-3 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-50 text-white rounded-full font-bold text-xs uppercase tracking-wider transition shadow-md shadow-[#7E2248]/20"
                 >
                   {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
                 </button>
@@ -528,35 +525,36 @@ export default function ConnectionsSection({
         </div>
       )}
 
+      {/* Cafe Finder Modal */}
       {cafeFinderLocation && (
-        <div className="fixed inset-0 z-[100] bg-[#0c1424]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-[#121b2b] border border-white/10 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative">
-            <button onClick={() => setCafeFinderLocation(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition z-10">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white border border-rose-100 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative p-8">
+            <button onClick={() => setCafeFinderLocation(null)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition z-10">
               <X className="w-5 h-5" />
             </button>
-            <div className="p-8">
-              <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20 shadow-inner">
-                <MapPin className="w-8 h-8" />
+            <div>
+              <div className="w-14 h-14 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center mb-4 border border-rose-200">
+                <MapPin className="w-7 h-7" />
               </div>
-              <h2 className="text-3xl font-black text-white mb-3">Cafes in {cafeFinderLocation.location}</h2>
-              <p className="text-slate-400 mb-8 max-w-lg leading-relaxed">
+              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-slate-900 mb-2">Cafes in {cafeFinderLocation.location}</h2>
+              <p className="text-slate-500 mb-6 text-xs max-w-lg leading-relaxed">
                 Select a cafe from our verified partners to book a table for your date.
               </p>
               
-              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
                 {loadingCafes ? (
-                  <div className="text-center py-10 text-slate-500">Finding cafes...</div>
+                  <div className="text-center py-10 text-slate-400 text-xs">Finding cafes...</div>
                 ) : cafesList.length > 0 ? (
                   cafesList.map(cafe => (
-                    <div key={cafe.id} className="p-4 rounded-2xl border border-white/10 bg-[#162136] hover:border-emerald-500/40 hover:bg-[#1a2741] transition group flex flex-col sm:flex-row items-center justify-between shadow-lg gap-4">
+                    <div key={cafe.id} className="p-4 rounded-2xl border border-rose-100 bg-[#FAF3F6]/50 hover:border-[#7E2248]/40 hover:bg-white transition group flex flex-col sm:flex-row items-center justify-between shadow-2xs gap-4">
                       <div>
-                        <h4 className="font-bold text-white text-lg">{cafe.cafeName}</h4>
-                        <p className="text-sm text-slate-400">{cafe.address || cafe.city}</p>
+                        <h4 className="font-bold text-slate-900 text-sm">{cafe.cafeName}</h4>
+                        <p className="text-xs text-slate-500">{cafe.address || cafe.city}</p>
                       </div>
                       <button
                         disabled={bookingCafe || cafe.isBooked}
                         onClick={() => handleBookCafe(cafe.id, cafe.cafeName)}
-                        className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition ${cafe.isBooked ? 'bg-slate-500/20 text-slate-400 cursor-not-allowed' : 'bg-emerald-500/20 group-hover:bg-emerald-500 hover:bg-emerald-600 hover:text-white text-emerald-400 disabled:opacity-50'}`}
+                        className={`w-full sm:w-auto px-6 py-2 rounded-full text-xs font-bold transition ${cafe.isBooked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-[#7E2248] hover:bg-[#681938] text-white shadow-xs'}`}
                       >
                         {cafe.isBooked ? "Fully Booked" : bookingCafe ? "Booking..." : "Book Table"}
                       </button>
@@ -564,7 +562,7 @@ export default function ConnectionsSection({
                   ))
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-slate-400 text-sm">No registered cafes found in this area.</p>
+                    <p className="text-slate-500 text-xs">No registered partner cafes found in this area.</p>
                   </div>
                 )}
               </div>

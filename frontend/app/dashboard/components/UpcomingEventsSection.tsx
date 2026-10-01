@@ -102,12 +102,12 @@ export default function UpcomingEventsSection({
 
   const getCategoryColor = (cat: string) => {
     const lower = cat?.toLowerCase() || "";
-    if (lower.includes("speed")) return { badge: "bg-amber-500/15 text-amber-300 border-amber-500/30", gradient: "from-amber-600/20 to-orange-600/10" };
-    if (lower.includes("mixer") || lower.includes("singles")) return { badge: "bg-rose-500/15 text-rose-300 border-rose-500/30", gradient: "from-rose-600/20 to-pink-600/10" };
-    if (lower.includes("blind")) return { badge: "bg-purple-500/15 text-purple-300 border-purple-500/30", gradient: "from-purple-600/20 to-indigo-600/10" };
-    if (lower.includes("dance")) return { badge: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", gradient: "from-emerald-600/20 to-teal-600/10" };
-    if (lower.includes("travel") || lower.includes("trip")) return { badge: "bg-sky-500/15 text-sky-300 border-sky-500/30", gradient: "from-sky-600/20 to-blue-600/10" };
-    return { badge: "bg-[#e06d53]/15 text-[#fca5a5] border-[#e06d53]/30", gradient: "from-[#e06d53]/20 to-amber-600/10" };
+    if (lower.includes("speed")) return { badge: "bg-amber-50 text-amber-900 border-amber-200", gradient: "from-amber-100/60 via-amber-50/40 to-white" };
+    if (lower.includes("mixer") || lower.includes("singles")) return { badge: "bg-rose-50 text-[#7E2248] border-rose-200", gradient: "from-rose-100/60 via-[#FAF3F6] to-white" };
+    if (lower.includes("blind")) return { badge: "bg-purple-50 text-purple-900 border-purple-200", gradient: "from-purple-100/60 via-purple-50/40 to-white" };
+    if (lower.includes("dance")) return { badge: "bg-emerald-50 text-emerald-900 border-emerald-200", gradient: "from-emerald-100/60 via-emerald-50/40 to-white" };
+    if (lower.includes("travel") || lower.includes("trip")) return { badge: "bg-sky-50 text-sky-900 border-sky-200", gradient: "from-sky-100/60 via-sky-50/40 to-white" };
+    return { badge: "bg-rose-50 text-[#7E2248] border-rose-200", gradient: "from-rose-100/60 via-[#FAF3F6] to-white" };
   };
 
   return (
@@ -115,14 +115,14 @@ export default function UpcomingEventsSection({
       {/* Section Header with Live Counts */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-slate-300 text-xs font-semibold mb-2 border border-white/10">
-            <Calendar className="w-3.5 h-3.5 text-[#e06d53]" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#7E2248] text-xs font-semibold mb-2 border border-rose-200">
+            <Calendar className="w-3.5 h-3.5 text-[#7E2248]" />
             Live Event Feed • {filteredEvents.length} Gatherings Listed
           </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-serif">
             Your Upcoming Events
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
             Real dates, confirmed venues, and intentional crowd limits for genuine connection.
           </p>
         </div>
@@ -131,28 +131,28 @@ export default function UpcomingEventsSection({
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setOnlyLocal(!onlyLocal)}
-            className={`px-3 py-2 rounded-xl text-xs font-semibold transition border ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition border ${
               onlyLocal
-                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
-                : "bg-[#131d2e] border-white/10 text-slate-300 hover:text-white"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-bold"
+                : "bg-white border-slate-200 text-slate-700 hover:text-[#7E2248] hover:border-rose-200"
             }`}
           >
             📍 In {userCity || "My City"} Only
           </button>
 
-          <div className="relative w-full sm:w-60">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search title, city or venue..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#131d2e] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#e06d53]/60 transition"
+              className="w-full bg-white border border-slate-200 rounded-full pl-9 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] transition shadow-2xs"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -164,8 +164,8 @@ export default function UpcomingEventsSection({
       {/* Filter Chips */}
       {categories.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs">
-          <span className="text-slate-400 flex items-center gap-1 shrink-0 mr-1 font-medium">
-            <Filter className="w-3 h-3" /> Category:
+          <span className="text-slate-500 flex items-center gap-1 shrink-0 mr-1 font-semibold">
+            <Filter className="w-3 h-3 text-[#7E2248]" /> Category:
           </span>
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat;
@@ -178,14 +178,14 @@ export default function UpcomingEventsSection({
               <button
                 key={cat}
                 onClick={() => onSelectCategory(cat)}
-                className={`px-3 py-1.5 rounded-full font-medium transition shrink-0 uppercase tracking-wider text-[11px] flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 rounded-full font-medium transition shrink-0 uppercase tracking-wider text-[11px] flex items-center gap-1.5 ${
                   isSelected
-                    ? "bg-[#e06d53] text-white shadow-md shadow-[#e06d53]/25"
-                    : "bg-[#131d2e] text-slate-300 hover:text-white border border-white/10 hover:border-white/20"
+                    ? "bg-[#7E2248] text-white shadow-xs font-bold"
+                    : "bg-white text-slate-600 hover:text-[#7E2248] border border-slate-200 hover:border-rose-200"
                 }`}
               >
                 <span>{cat === "ALL" ? "All Events" : cat}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? "bg-white/20 text-white" : "bg-white/5 text-slate-400"}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? "bg-white/20 text-white font-bold" : "bg-slate-100 text-slate-500"}`}>
                   {count}
                 </span>
               </button>
@@ -228,69 +228,69 @@ export default function UpcomingEventsSection({
             return (
               <div
                 key={evt.id}
-                className="group rounded-2xl bg-[#131d2e] border border-white/10 hover:border-white/25 overflow-hidden flex flex-col justify-between shadow-lg hover:shadow-xl transition-all duration-300"
+                className="group rounded-3xl bg-white border border-rose-100 hover:border-[#7E2248]/40 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-xl transition-all duration-300"
               >
                 {/* Visual Header / Banner */}
-                <div className={`p-5 bg-gradient-to-br ${style.gradient} border-b border-white/5 relative`}>
+                <div className={`p-5 bg-gradient-to-br ${style.gradient} border-b border-rose-100/70 relative`}>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border ${style.badge}`}
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${style.badge}`}
                     >
                       {evt.category || "Social"}
                     </span>
                     <div className="flex items-center gap-1.5">
                       {isLocalCity && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                           In Your City
                         </span>
                       )}
-                      <span className="text-xs font-bold text-white bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10">
+                      <span className="text-xs font-bold text-slate-900 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full border border-rose-100 shadow-2xs">
                         {evt.price > 0 ? `₹${evt.price.toLocaleString("en-IN")}` : "Free Entry"}
                       </span>
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white tracking-tight line-clamp-1 group-hover:text-[#fca5a5] transition">
+                  <h3 className="text-lg font-bold font-serif text-slate-900 tracking-tight line-clamp-1 group-hover:text-[#7E2248] transition">
                     {evt.title}
                   </h3>
 
-                  <div className="flex items-center gap-1.5 text-xs text-slate-300 mt-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#e06d53] shrink-0" />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#7E2248] shrink-0" />
                     <span className="truncate">{evt.location}, {evt.city}</span>
                   </div>
                 </div>
 
                 {/* Card Body */}
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed">
                     {evt.description}
                   </p>
 
-                  <div className="space-y-2 pt-3 border-t border-white/5 text-xs text-slate-300">
+                  <div className="space-y-2 pt-3 border-t border-rose-100/60 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-400">
+                      <span className="flex items-center gap-1.5 text-slate-500">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
                         Date
                       </span>
-                      <span className="font-semibold text-white">
+                      <span className="font-semibold text-slate-800">
                         {formattedDate} ({relativeTime})
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-400">
+                      <span className="flex items-center gap-1.5 text-slate-500">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                         Time
                       </span>
-                      <span className="font-semibold text-white">{formattedTime}</span>
+                      <span className="font-semibold text-slate-800">{formattedTime}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-400">
+                      <span className="flex items-center gap-1.5 text-slate-500">
                         <Users className="w-3.5 h-3.5 text-slate-400" />
                         Availability
                       </span>
-                      <span className={`font-medium text-xs ${spotsRemaining === 0 ? "text-red-400" : spotsRemaining <= 5 ? "text-amber-400" : "text-emerald-400"}`}>
+                      <span className={`font-semibold text-xs ${spotsRemaining === 0 ? "text-rose-600" : spotsRemaining <= 5 ? "text-amber-700" : "text-emerald-700"}`}>
                         {spotsRemaining === 0
                           ? "Sold Out"
                           : `${spotsRemaining} of ${capacity} spots open`}
@@ -298,17 +298,17 @@ export default function UpcomingEventsSection({
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-slate-400">
+                      <span className="flex items-center gap-1.5 text-slate-500">
                         <Ticket className="w-3.5 h-3.5 text-slate-400" />
                         Status
                       </span>
                       {isRegistered ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-emerald-400 text-xs">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-700 text-xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           Spot Confirmed
                         </span>
                       ) : (
-                        <span className="text-xs font-medium text-slate-300">
+                        <span className="text-xs font-medium text-slate-600">
                           {isPast ? "Event Ended" : "Open for RSVP"}
                         </span>
                       )}
@@ -321,9 +321,9 @@ export default function UpcomingEventsSection({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setActiveModalEvent(evt)}
-                          className="flex-1 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-bold border border-emerald-500/30 transition flex items-center justify-center gap-1.5"
+                          className="flex-1 px-4 py-2.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition flex items-center justify-center gap-1.5"
                         >
-                          <Ticket className="w-3.5 h-3.5 text-emerald-400" />
+                          <Ticket className="w-3.5 h-3.5 text-emerald-600" />
                           <span>View Ticket Pass ({evt.bookedSpots || 1})</span>
                         </button>
                         {spotsRemaining > 0 && !isPast && (
@@ -332,7 +332,7 @@ export default function UpcomingEventsSection({
                               setSelectedSpots(1);
                               setBookingModalEvent(evt);
                             }}
-                            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
+                            className="px-4 py-2.5 rounded-full bg-rose-50 hover:bg-rose-100 text-[#7E2248] text-xs font-bold border border-rose-200 transition"
                             title="Book additional tickets"
                           >
                             + Add Seats
@@ -340,10 +340,10 @@ export default function UpcomingEventsSection({
                         )}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <button
                           onClick={() => setActiveModalEvent(evt)}
-                          className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition"
+                          className="px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
                         >
                           View Details
                         </button>
@@ -353,10 +353,10 @@ export default function UpcomingEventsSection({
                             setSelectedSpots(1);
                             setBookingModalEvent(evt);
                           }}
-                          className={`px-3 py-2 rounded-xl text-white text-xs font-bold shadow-md transition cursor-pointer ${
+                          className={`px-4 py-2.5 rounded-full text-white text-xs font-bold shadow-md transition cursor-pointer ${
                             isPast || spotsRemaining === 0
-                              ? "bg-slate-700 opacity-50 cursor-not-allowed"
-                              : "bg-[#e06d53] hover:bg-[#c95940] shadow-[#e06d53]/25"
+                              ? "bg-slate-300 opacity-50 cursor-not-allowed text-slate-500"
+                              : "bg-[#7E2248] hover:bg-[#681938] shadow-[#7E2248]/20"
                           }`}
                         >
                           {isPast ? "Event Ended" : spotsRemaining === 0 ? "Sold Out" : "Book Tickets"}
@@ -371,14 +371,14 @@ export default function UpcomingEventsSection({
         </div>
       ) : (
         /* Empty State */
-        <div className="rounded-3xl bg-[#131d2e] border border-white/10 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-xl">
-          <div className="w-16 h-16 rounded-2xl bg-[#e06d53]/15 border border-[#e06d53]/30 flex items-center justify-center text-[#e06d53] mx-auto mb-4">
+        <div className="rounded-3xl bg-white border border-rose-100 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] mx-auto mb-4">
             <Calendar className="w-8 h-8" />
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
+          <h3 className="text-xl font-bold font-serif text-slate-900 mb-2">
             {events.length === 0 ? "There are no events right now" : "No events match your current filter"}
           </h3>
-          <p className="text-sm text-slate-400 mb-6 max-w-sm mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mb-6 max-w-sm mx-auto leading-relaxed">
             {events.length === 0
               ? "New events will automatically appear here as soon as hosts or administrators schedule them. Check back soon for gatherings in your city."
               : onlyLocal
@@ -393,14 +393,14 @@ export default function UpcomingEventsSection({
                   setOnlyLocal(false);
                   setSearchQuery("");
                 }}
-                className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
+                className="px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition"
               >
                 Reset All Filters
               </button>
             )}
             <button
               onClick={onExploreClick}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-semibold shadow-lg transition"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold uppercase tracking-wider shadow-md transition"
             >
               <Compass className="w-4 h-4" />
               <span>Explore Concepts</span>
@@ -411,56 +411,56 @@ export default function UpcomingEventsSection({
 
       {/* Dynamic Digital Ticket & Event Details Modal */}
       {activeModalEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative w-full max-w-lg bg-[#131d2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200">
                   {activeModalEvent.category}
                 </span>
-                <h3 className="text-xl font-extrabold text-white mt-2">
+                <h3 className="text-xl font-bold font-serif text-slate-900 mt-2">
                   {activeModalEvent.title}
                 </h3>
               </div>
               <button
                 onClick={() => setActiveModalEvent(null)}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition"
+                className="p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
               {activeModalEvent.description}
             </p>
 
             {/* If Registered, Show Live Digital Admission Pass */}
             {registeredEventIds.includes(activeModalEvent.id) ? (
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-[#122320] to-[#0f1f1d] border border-emerald-500/30 space-y-3">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-rose-50 border border-emerald-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-emerald-200 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
                       Confirmed Entry Pass
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono text-emerald-400">
+                  <span className="text-[11px] font-mono font-bold text-emerald-800">
                     PASS-JWM-{activeModalEvent.id.slice(-4).toUpperCase()}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase">Attendee</span>
-                    <p className="font-semibold text-white truncate">{userName}</p>
+                    <span className="text-slate-500 text-[10px] uppercase">Attendee</span>
+                    <p className="font-bold text-slate-900 truncate">{userName}</p>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase">Pass Status</span>
-                    <p className="font-semibold text-emerald-300">Active & Verified</p>
+                    <span className="text-slate-500 text-[10px] uppercase">Pass Status</span>
+                    <p className="font-bold text-emerald-700">Active & Verified</p>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase">Date & Time</span>
-                    <p className="font-semibold text-white">
+                    <span className="text-slate-500 text-[10px] uppercase">Date & Time</span>
+                    <p className="font-semibold text-slate-800">
                       {new Date(activeModalEvent.date).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -468,29 +468,29 @@ export default function UpcomingEventsSection({
                     </p>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase">Admit</span>
-                    <p className="font-semibold text-white">
+                    <span className="text-slate-500 text-[10px] uppercase">Admit</span>
+                    <p className="font-semibold text-slate-800">
                       {activeModalEvent.bookedSpots ? `${activeModalEvent.bookedSpots} ${activeModalEvent.bookedSpots > 1 ? 'Guests' : 'Guest'}` : '1 Guest'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-emerald-500/20 text-[11px] text-emerald-300">
+                <div className="flex items-center justify-between pt-2 border-t border-emerald-200 text-[11px] text-emerald-800">
                   <span>Show this pass at venue door</span>
-                  <QrCode className="w-5 h-5 text-emerald-400" />
+                  <QrCode className="w-5 h-5 text-emerald-600" />
                 </div>
               </div>
             ) : (
               /* Standard Details */
-              <div className="space-y-2.5 p-4 rounded-2xl bg-white/5 border border-white/5 text-xs text-slate-300">
+              <div className="space-y-2.5 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
                 <div className="flex items-center gap-2.5">
-                  <MapPin className="w-4 h-4 text-[#e06d53]" />
+                  <MapPin className="w-4 h-4 text-[#7E2248]" />
                   <span>
                     <strong>Venue:</strong> {activeModalEvent.location}, {activeModalEvent.city}
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Calendar className="w-4 h-4 text-[#e06d53]" />
+                  <Calendar className="w-4 h-4 text-[#7E2248]" />
                   <span>
                     <strong>Date:</strong>{" "}
                     {new Date(activeModalEvent.date).toLocaleDateString("en-IN", {
@@ -502,7 +502,7 @@ export default function UpcomingEventsSection({
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Ticket className="w-4 h-4 text-[#e06d53]" />
+                  <Ticket className="w-4 h-4 text-[#7E2248]" />
                   <span>
                     <strong>Entry Fee:</strong>{" "}
                     {activeModalEvent.price > 0
@@ -511,7 +511,7 @@ export default function UpcomingEventsSection({
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4 text-emerald-400" />
+                  <Users className="w-4 h-4 text-emerald-600" />
                   <span>
                     <strong>Max Capacity:</strong> {activeModalEvent.maxAttendees || 40} guests
                   </span>
@@ -522,14 +522,14 @@ export default function UpcomingEventsSection({
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setActiveModalEvent(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
+                className="px-5 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
               >
                 Close
               </button>
 
               {registeredEventIds.includes(activeModalEvent.id) ? (
-                <div className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Pass Confirmed</span>
                 </div>
               ) : (
@@ -539,7 +539,7 @@ export default function UpcomingEventsSection({
                     setBookingModalEvent(activeModalEvent);
                     setActiveModalEvent(null);
                   }}
-                  className="px-5 py-2 rounded-xl bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold shadow-lg transition cursor-pointer"
+                  className="px-6 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-[#7E2248]/20 transition cursor-pointer"
                 >
                   Book Tickets
                 </button>
@@ -559,49 +559,49 @@ export default function UpcomingEventsSection({
         const totalPrice = unitPrice * selectedSpots;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-            <div className="relative w-full max-w-lg bg-[#131d2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="relative w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200">
                     {bookingModalEvent.category || "Event Pass"}
                   </span>
-                  <h3 className="text-xl font-extrabold text-white mt-2">
+                  <h3 className="text-xl font-bold font-serif text-slate-900 mt-2">
                     Book Tickets: {bookingModalEvent.title}
                   </h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
+                  <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#7E2248]" />
                     <span>{bookingModalEvent.location}, {bookingModalEvent.city}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setBookingModalEvent(null)}
-                  className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Event Availability Banner */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5 text-xs">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Users className="w-4 h-4 text-emerald-400" />
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-rose-50/60 border border-rose-100 text-xs">
+                <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                  <Users className="w-4 h-4 text-emerald-600" />
                   <span>Available Seats</span>
                 </div>
-                <span className="font-bold text-emerald-400">
+                <span className="font-bold text-emerald-700">
                   {remaining > 0 ? `${remaining} of ${capacity} spots open` : "Sold Out"}
                 </span>
               </div>
 
               {/* Quantity Stepper & Counter */}
-              <div className="p-4 rounded-2xl bg-[#0c1424] border border-white/10 space-y-3">
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                     Select Number of Seats
                   </span>
-                  <span className="text-[11px] text-slate-400">
-                    You can book up to {remaining} {remaining === 1 ? 'ticket' : 'tickets'}
+                  <span className="text-[11px] text-slate-500">
+                    Up to {remaining} {remaining === 1 ? 'ticket' : 'tickets'}
                   </span>
                 </div>
 
@@ -611,7 +611,7 @@ export default function UpcomingEventsSection({
                       type="button"
                       disabled={selectedSpots <= 1}
                       onClick={() => setSelectedSpots((prev) => Math.max(1, prev - 1))}
-                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-base transition cursor-pointer"
+                      className="w-10 h-10 rounded-xl bg-white hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed text-slate-800 flex items-center justify-center font-bold text-base transition border border-slate-200 cursor-pointer shadow-2xs"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
@@ -626,14 +626,14 @@ export default function UpcomingEventsSection({
                         if (isNaN(val)) setSelectedSpots(1);
                         else setSelectedSpots(Math.max(1, Math.min(maxSelectable, val)));
                       }}
-                      className="w-16 h-10 text-center font-extrabold text-lg text-white bg-white/5 border border-white/15 rounded-xl focus:outline-none focus:border-[#e06d53]"
+                      className="w-16 h-10 text-center font-extrabold text-lg text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-[#7E2248]"
                     />
 
                     <button
                       type="button"
                       disabled={selectedSpots >= remaining}
                       onClick={() => setSelectedSpots((prev) => Math.min(remaining, prev + 1))}
-                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-base transition cursor-pointer"
+                      className="w-10 h-10 rounded-xl bg-white hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed text-slate-800 flex items-center justify-center font-bold text-base transition border border-slate-200 cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -646,10 +646,10 @@ export default function UpcomingEventsSection({
                         key={n}
                         type="button"
                         onClick={() => setSelectedSpots(n)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
                           selectedSpots === n
-                            ? "bg-[#e06d53] text-white border-[#e06d53]"
-                            : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                            ? "bg-[#7E2248] text-white border-[#7E2248]"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-rose-200"
                         }`}
                       >
                         {n}
@@ -659,10 +659,10 @@ export default function UpcomingEventsSection({
                       <button
                         type="button"
                         onClick={() => setSelectedSpots(remaining)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
                           selectedSpots === remaining
-                            ? "bg-[#e06d53] text-white border-[#e06d53]"
-                            : "bg-white/5 text-[#fca5a5] border-white/10 hover:bg-white/10"
+                            ? "bg-[#7E2248] text-white border-[#7E2248]"
+                            : "bg-white text-[#7E2248] border-rose-200 hover:bg-rose-50"
                         }`}
                       >
                         All ({remaining})
@@ -673,24 +673,24 @@ export default function UpcomingEventsSection({
               </div>
 
               {/* Price Calculation Card */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-slate-400">
+              <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-slate-600">
                   <span>Price per ticket</span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-slate-900">
                     {unitPrice > 0 ? `₹${unitPrice.toLocaleString("en-IN")}` : "Free"}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-slate-400">
+                <div className="flex items-center justify-between text-slate-600">
                   <span>Quantity</span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-slate-900">
                     {selectedSpots} {selectedSpots === 1 ? "seat" : "seats"}
                   </span>
                 </div>
 
-                <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm">
-                  <span className="font-bold text-white">Total Amount</span>
-                  <span className="font-extrabold text-lg text-[#fca5a5]">
+                <div className="border-t border-rose-200/60 pt-2 flex items-center justify-between text-sm">
+                  <span className="font-bold text-slate-900">Total Amount</span>
+                  <span className="font-extrabold text-xl text-[#7E2248] font-serif">
                     {unitPrice > 0 ? `₹${totalPrice.toLocaleString("en-IN")}` : "Free Admission"}
                   </span>
                 </div>
@@ -702,7 +702,7 @@ export default function UpcomingEventsSection({
                   type="button"
                   disabled={isProcessingBooking}
                   onClick={() => setBookingModalEvent(null)}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
                 >
                   Close
                 </button>
@@ -721,7 +721,7 @@ export default function UpcomingEventsSection({
                       setBookingModalEvent(null);
                     }
                   }}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b34932] text-white text-xs font-extrabold shadow-lg shadow-[#e06d53]/30 transition transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-[#7E2248]/20 transition transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
                 >
                   {isProcessingBooking ? (
                     <>

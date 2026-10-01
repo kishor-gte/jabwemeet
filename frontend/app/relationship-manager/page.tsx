@@ -331,32 +331,34 @@ export default function RelationshipManagerPage() {
       };
 
   return (
-    <div className="min-h-screen bg-[#0b111e] text-slate-100 font-sans selection:bg-[#e06d53] selection:text-white flex flex-col">
+    <div className="min-h-screen bg-[#FDFBF9] text-slate-900 font-sans selection:bg-[#7E2248] selection:text-white flex flex-col">
       
       {toast && (
         <div className="fixed bottom-6 right-6 z-[9999] animate-in slide-in-from-bottom-4 duration-200">
-          <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/40 border-emerald-400/30' : 'bg-red-500 shadow-red-500/40 border-red-400/30'}`}>
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl text-white font-medium text-xs shadow-2xl border ${toast.type === 'success' ? 'bg-emerald-600 shadow-emerald-600/30 border-emerald-500' : 'bg-rose-600 shadow-rose-600/30 border-rose-500'}`}>
             {toast.type === 'success' ? <ShieldCheck className="w-4 h-4 shrink-0" /> : <div className="w-4 h-4 shrink-0 font-bold text-center leading-4">!</div>}
             <span>{toast.text}</span>
           </div>
         </div>
-      )}\n      {/* Mobile Topbar */}
-      <header className="lg:hidden sticky top-0 z-40 bg-[#0d1526]/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
+      )}
+
+      {/* Mobile Topbar */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-rose-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition"
+            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-rose-50 transition"
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#e06d53] to-[#b8432a] flex items-center justify-center font-extrabold text-white text-sm">
+            <div className="w-8 h-8 rounded-lg bg-[#7E2248] flex items-center justify-center font-extrabold text-white text-sm shadow-xs">
               J
             </div>
-            <span className="font-extrabold text-base tracking-tight text-white">
-              Jab<span className="text-[#e06d53]">We</span>Meet
+            <span className="font-serif font-bold text-base tracking-tight text-slate-900">
+              Jab<span className="text-[#7E2248]">We</span>Meet
             </span>
           </div>
         </div>
@@ -364,13 +366,13 @@ export default function RelationshipManagerPage() {
         <div className="flex items-center gap-2">
           {currentUser ? (
             <>
-              <span className="text-xs font-semibold text-slate-300 hidden sm:inline truncate max-w-[120px]">
+              <span className="text-xs font-semibold text-slate-700 hidden sm:inline truncate max-w-[120px]">
                 {currentUser.name}
               </span>
               <button
                 onClick={handleLogout}
                 title="Log out"
-                className="p-2 text-slate-400 hover:text-[#fca5a5] rounded-lg transition"
+                className="p-2 text-slate-500 hover:text-[#7E2248] rounded-lg transition"
                 aria-label="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -379,7 +381,7 @@ export default function RelationshipManagerPage() {
           ) : (
             <Link
               href="/login"
-              className="px-3 py-1 rounded-lg bg-white/10 text-white text-xs font-semibold"
+              className="px-3 py-1 rounded-lg bg-[#7E2248] text-white text-xs font-semibold"
             >
               Login
             </Link>
@@ -415,7 +417,7 @@ export default function RelationshipManagerPage() {
       {/* Main Content Area (Offset for Desktop Sidebar) */}
       <div className="lg:pl-72 flex-1 flex flex-col min-w-0">
         {/* Desktop Top Header Bar with breadcrumbs and back button */}
-        <div className="bg-[#0d1526]/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+        <div className="bg-white/80 backdrop-blur-md border-b border-rose-100 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <Link
               href={
@@ -425,22 +427,22 @@ export default function RelationshipManagerPage() {
                 currentUser?.role === 'HOST' ? '/host/dashboard' :
                 '/dashboard'
               }
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#7E2248] transition px-3 py-1.5 rounded-full bg-rose-50/70 hover:bg-rose-100/70 border border-rose-200"
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-[#e06d53]" />
+              <ArrowLeft className="w-3.5 h-3.5 text-[#7E2248]" />
               <span>Back to Dashboard</span>
             </Link>
-            <span className="text-slate-600 hidden sm:inline">/</span>
-            <span className="text-xs text-slate-400 hidden sm:inline">Premium Services</span>
-            <span className="text-slate-600 hidden sm:inline">/</span>
-            <span className="text-xs font-semibold text-white hidden sm:inline">Relationship Managers</span>
+            <span className="text-slate-300 hidden sm:inline">/</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">Premium Services</span>
+            <span className="text-slate-300 hidden sm:inline">/</span>
+            <span className="text-xs font-semibold text-slate-900 hidden sm:inline">Relationship Managers</span>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={handleConnectWithRM}
               disabled={isConnecting || isPending || !!assignedManager}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] disabled:opacity-60 text-white shadow-md shadow-amber-500/20 transition"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-[#7E2248] hover:bg-[#681938] disabled:opacity-60 text-white shadow-md shadow-[#7E2248]/20 transition cursor-pointer"
             >
               <HeartHandshake className="w-3.5 h-3.5" />
               {assignedManager
@@ -449,43 +451,43 @@ export default function RelationshipManagerPage() {
                 ? "Assigning RM..."
                 : "Connect with Relationship Manager"}
             </button>
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" />
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#7E2248]" />
               Matchmaking Network
             </span>
           </div>
         </div>
 
         {/* Hero Header */}
-        <header className="relative border-b border-white/10 bg-gradient-to-b from-[#131d2e] via-[#0d1526] to-[#0b111e] py-10 px-6 sm:px-8">
+        <header className="relative border-b border-rose-100 bg-gradient-to-b from-[#FAF3F6] via-[#FDFBF9] to-white py-12 px-6 sm:px-8">
           <div className="max-w-5xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 text-amber-300 text-xs font-semibold border border-amber-500/30">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 text-[#7E2248] text-xs font-semibold border border-rose-200">
+              <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
               <span>JabWeMeet Certified Matchmaking Network</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight font-serif">
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-serif">
               Verified Relationship Managers
             </h1>
 
-            <p className="text-sm text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm text-slate-600 max-w-2xl mx-auto leading-relaxed">
               Human-curated matchmaking for offline events. Certified Relationship Managers understand your values, pre-screen compatible peers, and arrange meaningful face-to-face introductions.
             </p>
 
             {/* Quick Metrics */}
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 100% Admin Verified
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
-                <HeartHandshake className="w-4 h-4 text-[#e06d53]" />
+                <HeartHandshake className="w-4 h-4 text-[#7E2248]" />
                 Offline Date Curation
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-amber-400" />
+                <Award className="w-4 h-4 text-amber-600" />
                 Values-First Matching
               </span>
             </div>
@@ -493,15 +495,15 @@ export default function RelationshipManagerPage() {
             {/* Action CTA */}
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
               {assignedManager ? (
-                <div className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-sm rounded-full shadow-lg flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Connected with {assignedManager.displayName || assignedManager.name}
+                <div className="w-full sm:w-auto px-6 py-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-sm rounded-full shadow-sm flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Connected with {assignedManager.displayName || assignedManager.name}
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={handleConnectWithRM}
                   disabled={isConnecting || isPending}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-amber-500/30 transition flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-lg shadow-[#7E2248]/25 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isConnecting ? (
                     <>
@@ -526,15 +528,15 @@ export default function RelationshipManagerPage() {
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8 flex-1">
           {/* PENDING WAITING STATE */}
           {isPending && !assignedManager && (
-            <div className="bg-gradient-to-br from-[#1c1917] to-[#131d2e] border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 text-center">
-              <div className="w-14 h-14 bg-amber-500/20 text-amber-300 rounded-full flex items-center justify-center mx-auto animate-pulse">
+            <div className="bg-amber-50/90 border border-amber-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4 text-center">
+              <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto animate-pulse">
                 <Clock className="w-7 h-7 animate-spin" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white">We are assigning you with a Relationship Manager</h3>
-              <p className="text-xs sm:text-sm text-amber-200 max-w-lg mx-auto leading-relaxed">
+              <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">We are assigning you with a Relationship Manager</h3>
+              <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
                 Please wait, your request has been broadcast to all verified Relationship Managers. The first manager to claim will be assigned to guide your dating journey and arrange hand-picked offline introductions.
               </p>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300 animate-pulse">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-100/80 border border-amber-300 text-xs font-semibold text-amber-900 animate-pulse">
                 ⏳ Assigning your Relationship Manager... Please wait.
               </div>
             </div>
@@ -542,12 +544,12 @@ export default function RelationshipManagerPage() {
 
           {/* ACTIVE ASSIGNED RELATIONSHIP MANAGER CARD */}
           {assignedManager && (
-            <div className="bg-gradient-to-br from-[#131d2e] to-[#0f172a] border border-[#e06d53]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-rose-100/40 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border-b border-white/10 pb-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border-b border-rose-100 pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#e06d53]/25 to-[#b8432a]/30 border border-[#e06d53]/40 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#7E2248] to-[#9B2C59] border border-rose-200 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
                     {assignedManager.profilePhoto || assignedManager.profileImage ? (
                       <img
                         src={
@@ -568,31 +570,31 @@ export default function RelationshipManagerPage() {
                       />
                     ) : null}
                     <span
-                      className={`avatar-fallback font-extrabold text-2xl text-[#fca5a5] ${
+                      className={`avatar-fallback font-extrabold text-2xl text-white ${
                         assignedManager.profilePhoto || assignedManager.profileImage ? "hidden" : "flex"
                       } items-center justify-center`}
                     >
                       {(assignedManager.displayName || assignedManager.name).charAt(0).toUpperCase()}
                     </span>
-                    <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#131d2e] rounded-full" title="Online & Connected" />
+                    <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" title="Online & Connected" />
                   </div>
 
                   <div>
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <span className="inline-block px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                      <span className="inline-block px-3 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 border border-emerald-200 text-emerald-800">
                         ✓ Connected with {assignedManager.displayName || assignedManager.name}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        <MapPin className="w-3.5 h-3.5 text-[#e06d53]" />
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                        <MapPin className="w-3.5 h-3.5 text-[#7E2248]" />
                         {assignedManager.city && assignedManager.city !== "N/A" ? assignedManager.city : "Pan-India"}
                       </span>
                     </div>
 
-                    <h3 className="text-xl sm:text-2xl font-bold text-white">
+                    <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">
                       Active Relationship Manager: {assignedManager.displayName || assignedManager.name}
                     </h3>
 
-                    <p className="text-xs text-slate-300 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       Your certified Relationship Manager is actively curating compatible introductions and organizing 1-on-1 offline date experiences for you.
                     </p>
                   </div>
@@ -600,16 +602,16 @@ export default function RelationshipManagerPage() {
 
                 {/* Manager Contact details */}
                 <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
-                  <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-left">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">RM Email</div>
-                    <div className="text-xs font-bold text-slate-200 truncate max-w-[180px]">
+                  <div className="px-4 py-2.5 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-left">
+                    <div className="text-[10px] text-slate-500 uppercase font-semibold">RM Email</div>
+                    <div className="text-xs font-bold text-slate-800 truncate max-w-[180px]">
                       {assignedManager.email}
                     </div>
                   </div>
                   {assignedManager.phone && (
-                    <div className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-left">
-                      <div className="text-[10px] text-slate-400 uppercase font-semibold">RM Phone</div>
-                      <div className="text-xs font-bold text-[#fca5a5]">
+                    <div className="px-4 py-2.5 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-left">
+                      <div className="text-[10px] text-slate-500 uppercase font-semibold">RM Phone</div>
+                      <div className="text-xs font-bold text-[#7E2248]">
                         {assignedManager.phone}
                       </div>
                     </div>
@@ -621,16 +623,16 @@ export default function RelationshipManagerPage() {
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
                 <Link
                   href="/messages"
-                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#e06d53] hover:bg-[#c95940] text-white text-xs font-bold rounded-xl shadow-lg shadow-[#e06d53]/30 transition"
+                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold rounded-2xl shadow-xs transition"
                 >
                   <MessageCircle className="w-4 h-4" /> Message {assignedManager.displayName || assignedManager.name}
                 </Link>
 
                 <Link
                   href="/dashboard"
-                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold rounded-xl transition"
+                  className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-[#FAF3F6] hover:bg-rose-100/70 border border-rose-200 text-slate-800 text-xs font-bold rounded-2xl transition"
                 >
-                  <Calendar className="w-4 h-4 text-amber-400" /> Member Dashboard
+                  <Calendar className="w-4 h-4 text-[#7E2248]" /> Member Dashboard
                 </Link>
               </div>
             </div>
@@ -638,19 +640,19 @@ export default function RelationshipManagerPage() {
 
           {/* Rejection Alert */}
           {!assignedManager && latestRequest?.status === "Rejected" && (
-            <div className="p-6 rounded-3xl bg-gradient-to-r from-rose-950/70 via-[#261517] to-[#131d2e] border border-rose-500/50 shadow-2xl shadow-rose-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="p-6 rounded-3xl bg-rose-50 border border-rose-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold text-xl shrink-0">
-                  <X className="w-8 h-8 text-rose-400" />
+                <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-xl shrink-0">
+                  <X className="w-8 h-8 text-rose-700" />
                 </div>
                 <div className="space-y-1.5">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-[11px] font-bold border border-rose-500/30">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100/70 text-rose-800 text-[11px] font-bold border border-rose-200">
                     Request Status Update
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-900 tracking-tight">
                     Previous Request Could Not Be Accommodated
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
                     Your previous request could not be accepted at this time due to capacity. You can broadcast a new request below to connect with an available Relationship Manager.
                   </p>
                 </div>
@@ -660,7 +662,7 @@ export default function RelationshipManagerPage() {
                   type="button"
                   onClick={handleConnectWithRM}
                   disabled={isConnecting}
-                  className="inline-flex w-full md:w-auto items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#e06d53] text-white text-xs font-bold shadow-md shadow-amber-500/20"
+                  className="inline-flex w-full md:w-auto items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 cursor-pointer"
                 >
                   Connect with Available RM
                 </button>
@@ -672,47 +674,47 @@ export default function RelationshipManagerPage() {
           {!assignedManager && !isPending && (
             <div className="space-y-8">
               {/* 3 Step Broadcast Flow */}
-              <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+              <div className="bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
                 <div className="text-center max-w-xl mx-auto space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-semibold border border-amber-500/30">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#7E2248] text-xs font-semibold border border-rose-200">
                     <Sparkles className="w-3.5 h-3.5" />
                     How Curated Matching Works
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  <h2 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 tracking-tight">
                     Instant Broadcast & Personal Pairing
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-400">
+                  <p className="text-xs sm:text-sm text-slate-500">
                     No directory browsing or waiting days for approvals. Connect directly with our certified Relationship Managers in 3 simple steps:
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
-                  <div className="bg-[#0b111e] border border-white/5 rounded-2xl p-5 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 font-extrabold flex items-center justify-center text-sm border border-amber-500/30">
+                  <div className="bg-[#FDFBF9] border border-rose-100 rounded-2xl p-5 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#7E2248] font-serif font-bold flex items-center justify-center text-sm border border-rose-200">
                       1
                     </div>
-                    <h3 className="text-base font-bold text-white">Click to Connect</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <h3 className="text-base font-serif font-bold text-slate-900">Click to Connect</h3>
+                    <p className="text-xs text-slate-600 leading-relaxed">
                       Click the "Connect with Relationship Manager" button. Your matchmaking request is immediately broadcast to all approved Relationship Managers.
                     </p>
                   </div>
 
-                  <div className="bg-[#0b111e] border border-white/5 rounded-2xl p-5 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#e06d53]/20 text-[#fca5a5] font-extrabold flex items-center justify-center text-sm border border-[#e06d53]/30">
+                  <div className="bg-[#FDFBF9] border border-rose-100 rounded-2xl p-5 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 font-serif font-bold flex items-center justify-center text-sm border border-amber-200">
                       2
                     </div>
-                    <h3 className="text-base font-bold text-white">First RM Claims You</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <h3 className="text-base font-serif font-bold text-slate-900">First RM Claims You</h3>
+                    <p className="text-xs text-slate-600 leading-relaxed">
                       The first available Relationship Manager accepts and claims your request. All other managers are automatically notified that you are paired.
                     </p>
                   </div>
 
-                  <div className="bg-[#0b111e] border border-white/5 rounded-2xl p-5 space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 font-extrabold flex items-center justify-center text-sm border border-emerald-500/30">
+                  <div className="bg-[#FDFBF9] border border-rose-100 rounded-2xl p-5 space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 font-serif font-bold flex items-center justify-center text-sm border border-emerald-200">
                       3
                     </div>
-                    <h3 className="text-base font-bold text-white">Curated Offline Dates</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <h3 className="text-base font-serif font-bold text-slate-900">Curated Offline Dates</h3>
+                    <p className="text-xs text-slate-600 leading-relaxed">
                       Your assigned manager contacts you directly to review your lifestyle and values, and arranges hand-picked 1-on-1 offline date introductions.
                     </p>
                   </div>
@@ -721,58 +723,58 @@ export default function RelationshipManagerPage() {
 
               {/* Core Features Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                <div className="bg-white border border-rose-100 rounded-2xl p-5 space-y-2 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-[#7E2248] flex items-center justify-center">
                     <Users className="w-5 h-5" />
                   </div>
-                  <h4 className="text-sm font-bold text-white">1-on-1 Dedicated RM</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                  <h4 className="text-sm font-serif font-bold text-slate-900">1-on-1 Dedicated RM</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
                     Personalized consultation with a certified relationship expert devoted to your portfolio.
                   </p>
                 </div>
 
-                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                <div className="bg-white border border-rose-100 rounded-2xl p-5 space-y-2 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-emerald-700 flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
-                  <h4 className="text-sm font-bold text-white">100% Vetted Members</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                  <h4 className="text-sm font-serif font-bold text-slate-900">100% Vetted Members</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
                     Zero fake profiles. Every introduction candidate is pre-screened for background and intent.
                   </p>
                 </div>
 
-                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
-                  <div className="w-9 h-9 rounded-xl bg-[#e06d53]/15 text-[#fca5a5] flex items-center justify-center">
+                <div className="bg-white border border-rose-100 rounded-2xl p-5 space-y-2 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-[#7E2248] flex items-center justify-center">
                     <HeartHandshake className="w-5 h-5" />
                   </div>
-                  <h4 className="text-sm font-bold text-white">Offline Venue Curation</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                  <h4 className="text-sm font-serif font-bold text-slate-900">Offline Venue Curation</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
                     Relaxed, private table bookings arranged seamlessly at JabWeMeet partner cafes.
                   </p>
                 </div>
 
-                <div className="bg-[#131d2e] border border-white/10 rounded-2xl p-5 space-y-2">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
+                <div className="bg-white border border-rose-100 rounded-2xl p-5 space-y-2 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-amber-700 flex items-center justify-center">
                     <Award className="w-5 h-5" />
                   </div>
-                  <h4 className="text-sm font-bold text-white">Values-First Matching</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                  <h4 className="text-sm font-serif font-bold text-slate-900">Values-First Matching</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
                     Introductions aligned with your long-term goals, mutual life visions, and personality traits.
                   </p>
                 </div>
               </div>
 
               {/* Bottom Large CTA Banner */}
-              <div className="relative overflow-hidden bg-gradient-to-r from-amber-500/15 via-[#1b283d] to-[#e06d53]/15 border border-amber-500/30 rounded-3xl p-8 sm:p-10 text-center space-y-5 shadow-2xl">
+              <div className="relative overflow-hidden bg-gradient-to-r from-rose-50 via-white to-amber-50 border border-rose-200 rounded-3xl p-8 sm:p-10 text-center space-y-5 shadow-sm">
                 <div className="max-w-2xl mx-auto space-y-3">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-amber-300 text-xs font-semibold">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/80 border border-rose-200 text-[#7E2248] text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
                     <span>Instant Certified Matchmaking Dispatch</span>
                   </div>
-                  <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-serif">
+                  <h2 className="text-2xl sm:text-4xl font-serif font-bold text-slate-900 tracking-tight">
                     Ready to Meet Someone Special?
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                     Click below to broadcast your request across all active Relationship Managers. The first manager to claim will be assigned to guide you and curate your offline introductions.
                   </p>
                 </div>
@@ -782,7 +784,7 @@ export default function RelationshipManagerPage() {
                     type="button"
                     onClick={handleConnectWithRM}
                     disabled={isConnecting || isPending}
-                    className="px-10 py-4 bg-gradient-to-r from-amber-500 to-[#e06d53] hover:from-amber-600 hover:to-[#c95940] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-2xl shadow-amber-500/40 transition inline-flex items-center justify-center gap-2.5 cursor-pointer"
+                    className="px-10 py-4 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-70 text-white font-bold text-sm rounded-full shadow-xl shadow-[#7E2248]/25 transition inline-flex items-center justify-center gap-2.5 cursor-pointer"
                   >
                     {isConnecting ? (
                       <>

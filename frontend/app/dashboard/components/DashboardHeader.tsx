@@ -11,7 +11,7 @@ import {
   Heart,
   Clock,
   UserCheck,
-  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 interface DashboardHeaderProps {
@@ -74,68 +74,70 @@ export default function DashboardHeader({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#162238] via-[#101a2c] to-[#0c1424] border border-white/10 p-6 sm:p-8 lg:p-10 shadow-2xl">
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FAF3F6] via-[#FDFBF9] to-white border border-rose-100 p-6 sm:p-8 lg:p-10 shadow-sm">
       {/* Background glow effects */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-[#e06d53]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-      <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-80 h-80 bg-rose-200/30 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+      <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-amber-100/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-4 max-w-3xl">
           {/* Dynamic Badges */}
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
             {user.isVerified !== false && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 Verified Account
               </span>
             )}
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-slate-300 border border-white/10">
-              <MapPin className="w-3.5 h-3.5 text-[#fca5a5]" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-slate-700 border border-rose-100 shadow-2xs">
+              <MapPin className="w-3.5 h-3.5 text-[#7E2248]" />
               {user.city} {localEventsCount > 0 ? `(${localEventsCount} nearby)` : ""}
             </span>
 
-            <span className="px-3 py-1 rounded-full bg-[#e06d53]/20 text-[#fca5a5] border border-[#e06d53]/30 uppercase tracking-wider text-[10px]">
+            <span className="px-3 py-1 rounded-full bg-rose-50 text-[#7E2248] border border-rose-200 uppercase tracking-wider text-[10px] font-bold">
               Role: {user.role}
             </span>
 
             {user.relationshipIntent && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[11px]">
-                <Heart className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-50/80 text-[#7E2248] border border-rose-200 text-[11px] font-semibold">
+                <Heart className="w-3 h-3 text-[#7E2248]" />
                 Intent: {user.relationshipIntent}
               </span>
             )}
 
             {userAge && (
-              <span className="px-3 py-1 rounded-full bg-white/5 text-slate-400 border border-white/5 text-[11px]">
+              <span className="px-3 py-1 rounded-full bg-white text-slate-600 border border-slate-200 text-[11px]">
                 Age: {userAge}
               </span>
             )}
 
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 text-slate-400 border border-white/5 text-[11px]">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-slate-500 border border-slate-200 text-[11px]">
               <Clock className="w-3 h-3 text-slate-400" />
               {daysSinceJoin === 0 ? "Joined today" : `Member for ${daysSinceJoin}d`}
             </span>
           </div>
 
           {/* Dynamic Greeting */}
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
-            {greeting}, <span className="text-[#fca5a5]">{firstName}</span> 👋
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            {greeting},{" "}
+            <span className="font-serif italic font-normal text-[#7E2248]">
+              {firstName}
+            </span>{" "}
+            👋
           </h1>
 
           {/* Dynamic Subtitle */}
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
             {getDynamicSubtitle()}
           </p>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          
-
           <button
             onClick={onExploreExperiences}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#e06d53] to-[#c95940] hover:from-[#c95940] hover:to-[#b8432a] text-white text-sm font-semibold shadow-lg shadow-[#e06d53]/30 transition transform hover:-translate-y-0.5 active:translate-y-0"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-[#7E2248]/20 transition transform hover:-translate-y-0.5 active:translate-y-0"
           >
             <Compass className="w-4 h-4" />
             <span>Explore Experiences</span>
@@ -143,9 +145,9 @@ export default function DashboardHeader({
 
           <button
             onClick={onBrowseEvents}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-semibold border border-white/10 transition transform hover:-translate-y-0.5 active:translate-y-0"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 text-xs font-bold uppercase tracking-wider transition transform hover:-translate-y-0.5 active:translate-y-0 shadow-2xs"
           >
-            <Calendar className="w-4 h-4 text-slate-400" />
+            <Calendar className="w-4 h-4 text-[#7E2248]" />
             <span>Browse Events ({totalEventsCount})</span>
           </button>
         </div>
@@ -153,4 +155,3 @@ export default function DashboardHeader({
     </div>
   );
 }
-

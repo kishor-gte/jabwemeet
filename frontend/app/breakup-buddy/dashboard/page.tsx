@@ -133,16 +133,16 @@ export default function BreakupBuddyDashboardPage() {
     const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
 
     return (
-      <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl px-3.5 sm:px-4 py-3 shadow-sm text-xs">
+      <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-rose-100 rounded-2xl px-3.5 sm:px-4 py-3 shadow-xs text-xs">
         <span className="text-slate-500 font-medium text-center sm:text-left">
-          Showing <span className="font-bold text-slate-800">{startIndex + 1}</span>–<span className="font-bold text-slate-800">{endIndex}</span> of <span className="font-bold text-slate-800">{totalItems}</span> {label}
+          Showing <span className="font-bold text-slate-900">{startIndex + 1}</span>–<span className="font-bold text-slate-900">{endIndex}</span> of <span className="font-bold text-slate-900">{totalItems}</span> {label}
         </span>
         <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
           <button
             type="button"
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
-            className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-slate-700 font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-rose-50/50 transition cursor-pointer"
           >
             ← Prev
           </button>
@@ -158,10 +158,10 @@ export default function BreakupBuddyDashboardPage() {
                 key={p}
                 type="button"
                 onClick={() => onPageChange(p)}
-                className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`w-7 h-7 rounded-xl text-xs font-bold transition cursor-pointer ${
                   currentPage === p
-                    ? "bg-teal-600 text-white shadow-sm"
-                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    ? "bg-[#7E2248] text-white shadow-sm shadow-[#7E2248]/20"
+                    : "bg-white text-slate-600 hover:bg-rose-50 border border-rose-200"
                 }`}
               >
                 {p}
@@ -172,7 +172,7 @@ export default function BreakupBuddyDashboardPage() {
             type="button"
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage >= totalPages}
-            className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-slate-700 font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-rose-50/50 transition cursor-pointer"
           >
             Next →
           </button>
@@ -631,7 +631,7 @@ export default function BreakupBuddyDashboardPage() {
       <div className="space-y-4 sm:space-y-6">
         <div className="flex justify-between items-end">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">
+            <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">
               Good Day, {displayName.split(' ')[0] || 'Buddy'} 👋
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">
@@ -642,7 +642,7 @@ export default function BreakupBuddyDashboardPage() {
 
         {actionMessage && (
           <div
-            className={`p-3.5 sm:p-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-sm ${
+            className={`p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs ${
               actionMessage.type === "success"
                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                 : "bg-red-50 text-red-800 border border-red-200"
@@ -662,11 +662,11 @@ export default function BreakupBuddyDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <button
             onClick={() => setActiveTab("Requests")}
-            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm text-center transition group text-left cursor-pointer"
+            className="bg-white hover:bg-rose-50/30 border border-rose-100 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
           >
             <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">New Requests</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl sm:text-3xl font-bold text-amber-600">{dashboardData.newRequests}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-amber-600">{dashboardData.newRequests}</p>
               <span className="text-xs font-bold text-amber-600 group-hover:translate-x-1 transition-transform">
                 View Requests →
               </span>
@@ -674,23 +674,23 @@ export default function BreakupBuddyDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("Accepted Users")}
-            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm text-center transition group text-left cursor-pointer"
+            className="bg-white hover:bg-rose-50/30 border border-rose-100 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
           >
             <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Accepted Users</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl sm:text-3xl font-bold text-teal-600">{acceptedUsers.length}</p>
-              <span className="text-xs font-bold text-teal-600 group-hover:translate-x-1 transition-transform">
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-[#7E2248]">{acceptedUsers.length}</p>
+              <span className="text-xs font-bold text-[#7E2248] group-hover:translate-x-1 transition-transform">
                 View Users →
               </span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab("History")}
-            className="bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm text-center transition group text-left cursor-pointer"
+            className="bg-white hover:bg-rose-50/30 border border-rose-100 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
           >
             <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Completed Sessions</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-800">{dashboardData.completedSessions}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-slate-900">{dashboardData.completedSessions}</p>
               <span className="text-xs font-bold text-slate-500 group-hover:translate-x-1 transition-transform">
                 View History →
               </span>
@@ -698,12 +698,12 @@ export default function BreakupBuddyDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("Earnings")}
-            className="bg-gradient-to-br from-teal-600 to-emerald-700 hover:from-teal-700 hover:to-emerald-800 text-white border border-teal-600 rounded-2xl p-4 sm:p-5 shadow-sm transition group text-left cursor-pointer"
+            className="bg-gradient-to-br from-[#7E2248] via-[#651535] to-[#450b20] hover:from-[#6d1a3c] hover:to-[#380819] text-white border border-[#7E2248]/30 rounded-3xl p-5 shadow-md shadow-[#7E2248]/20 transition-all group text-left cursor-pointer"
           >
-            <p className="text-teal-100 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Total Earnings</p>
+            <p className="text-rose-200 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Total Earnings</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl sm:text-3xl font-black">₹{earnings.totalEarnings || dashboardData.totalEarnings || 0}</p>
-              <span className="text-xs font-bold text-teal-200 group-hover:translate-x-1 transition-transform">
+              <p className="text-2xl sm:text-3xl font-black font-serif">₹{earnings.totalEarnings || dashboardData.totalEarnings || 0}</p>
+              <span className="text-xs font-bold text-rose-200 group-hover:translate-x-1 transition-transform">
                 View Payouts →
               </span>
             </div>
@@ -712,9 +712,9 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Quick Pending Requests on Dashboard */}
         {pendingRequests.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-800 font-serif text-base sm:text-lg">Action Needed: Pending Requests</h3>
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-rose-100/70 pb-3">
+              <h3 className="font-bold text-slate-900 font-serif text-base sm:text-lg">Action Needed: Pending Requests</h3>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                 {pendingRequests.length} Pending
               </span>
@@ -723,14 +723,14 @@ export default function BreakupBuddyDashboardPage() {
               {pendingRequests.slice(0, 3).map((req: any) => (
                 <div
                   key={req.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl gap-3"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#FDFBF9] border border-rose-100 rounded-2xl gap-3"
                 >
                   <div>
-                    <h4 className="font-bold text-slate-800 text-sm sm:text-base">{req.user?.name || "User"}</h4>
+                    <h4 className="font-bold text-slate-900 text-sm sm:text-base">{req.user?.name || "User"}</h4>
                     <p className="text-xs text-slate-500">
                       {req.sessionType || "1-on-1"} Session • Topic: "{req.topic || "General Discussion"}"
                     </p>
-                    <p className="text-[11px] text-teal-600 font-medium mt-0.5">
+                    <p className="text-[11px] text-[#7E2248] font-medium mt-0.5">
                       Requested {new Date(req.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -738,14 +738,14 @@ export default function BreakupBuddyDashboardPage() {
                     <button
                       disabled={actionLoadingId === req.id}
                       onClick={() => handleAcceptRequest(req.id)}
-                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition shadow-xs shadow-[#7E2248]/20 disabled:opacity-50 cursor-pointer text-center"
                     >
                       {actionLoadingId === req.id ? "Accepting..." : "✓ Accept"}
                     </button>
                     <button
                       disabled={actionLoadingId === req.id}
                       onClick={() => handleRejectRequest(req.id)}
-                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 text-xs font-bold transition disabled:opacity-50 cursor-pointer text-center"
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold transition disabled:opacity-50 cursor-pointer text-center"
                     >
                       ✕ Reject
                     </button>
@@ -806,10 +806,10 @@ export default function BreakupBuddyDashboardPage() {
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
             <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Booking Requests</h2>
+              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Booking Requests</h2>
               {pendingCount > 0 && (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 animate-pulse">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -825,7 +825,7 @@ export default function BreakupBuddyDashboardPage() {
           <button
             onClick={handleRefreshRequests}
             disabled={isRefreshingRequests}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-rose-50/50 border border-rose-200 text-slate-700 text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
           >
             <span className={`inline-block ${isRefreshingRequests ? "animate-spin" : ""}`}>🔄</span>
             <span>{isRefreshingRequests ? "Refreshing..." : "Refresh Requests"}</span>
@@ -834,7 +834,7 @@ export default function BreakupBuddyDashboardPage() {
 
         {actionMessage && (
           <div
-            className={`p-3.5 sm:p-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-sm animate-in fade-in ${
+            className={`p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs animate-in fade-in ${
               actionMessage.type === "success"
                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                 : "bg-red-50 text-red-800 border border-red-200"
@@ -855,20 +855,20 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* 4 KPI Summary Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-rose-200 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Received</span>
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#7E2248] flex items-center justify-center font-bold text-sm border border-rose-100">
                 📩
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-800">{totalRequestsCount}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-slate-900">{totalRequestsCount}</p>
               <p className="text-[11px] text-slate-400 mt-0.5">All-time booking inquiries</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-amber-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-amber-300 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending Action</span>
               <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm border border-amber-100">
@@ -876,41 +876,41 @@ export default function BreakupBuddyDashboardPage() {
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-2xl sm:text-3xl font-bold text-amber-600">{pendingCount}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-amber-600">{pendingCount}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {pendingCount > 0 ? "Awaiting your prompt response" : "All requests responded"}
               </p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-emerald-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-rose-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Accepted Clients</span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm border border-emerald-100">
+              <span className="text-[11px] font-bold text-[#7E2248] uppercase tracking-wider">Accepted Clients</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#7E2248] flex items-center justify-center font-bold text-sm border border-rose-100">
                 👥
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-2xl sm:text-3xl font-bold text-teal-600">{acceptedCount}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-[#7E2248]">{acceptedCount}</p>
               <p className="text-[11px] text-slate-400 mt-0.5">Confirmed active clients</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-rose-200 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Acceptance Rate</span>
-              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-xs border border-teal-100">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs border border-emerald-100">
                 📈
               </div>
             </div>
             <div className="mt-2.5">
               <div className="flex items-baseline gap-1.5">
-                <p className="text-2xl sm:text-3xl font-bold text-slate-800">{acceptanceRate}%</p>
+                <p className="text-2xl sm:text-3xl font-bold font-serif text-slate-900">{acceptanceRate}%</p>
                 <span className="text-[11px] font-medium text-emerald-600">index</span>
               </div>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
+              <div className="w-full h-1.5 bg-rose-50 rounded-full mt-1.5 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-[#7E2248] to-rose-400 rounded-full"
                   style={{ width: `${acceptanceRate}%` }}
                 />
               </div>
@@ -919,7 +919,7 @@ export default function BreakupBuddyDashboardPage() {
         </div>
 
         {/* Search, Filter & Sort Controls Toolbar */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
+        <div className="bg-white border border-rose-100 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="relative flex-1">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
@@ -931,7 +931,7 @@ export default function BreakupBuddyDashboardPage() {
                   setRequestsSearch(e.target.value);
                   setRequestsPage(1);
                 }}
-                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
               />
               {requestsSearch && (
                 <button
@@ -966,8 +966,8 @@ export default function BreakupBuddyDashboardPage() {
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                       isActive
-                        ? "bg-slate-900 text-white shadow-sm"
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                        ? "bg-[#7E2248] text-white shadow-xs"
+                        : "bg-rose-50/50 hover:bg-rose-100/60 text-slate-700 border border-rose-100"
                     }`}
                   >
                     <span>{f.label}</span>
@@ -977,7 +977,7 @@ export default function BreakupBuddyDashboardPage() {
                           ? "bg-white/20 text-white"
                           : f.highlight
                           ? "bg-amber-200 text-amber-900"
-                          : "bg-slate-200 text-slate-700"
+                          : "bg-white text-slate-700 border border-rose-100"
                       }`}
                     >
                       {f.count}
@@ -993,7 +993,7 @@ export default function BreakupBuddyDashboardPage() {
               <select
                 value={requestsSort}
                 onChange={(e) => setRequestsSort(e.target.value as any)}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-500 flex-1 sm:flex-none"
+                className="px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#7E2248] flex-1 sm:flex-none"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -1004,11 +1004,11 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Requests List */}
         {filteredRequests.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center text-slate-500 shadow-sm space-y-3">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-slate-200 shadow-2xs">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 sm:p-12 text-center text-slate-500 shadow-xs space-y-3">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rose-100 shadow-xs">
               📩
             </div>
-            <h3 className="font-bold text-slate-800 text-base sm:text-lg">
+            <h3 className="font-bold text-slate-900 text-base sm:text-lg font-serif">
               {requestsSearch || requestFilter !== "all"
                 ? "No matching booking requests found"
                 : "No booking requests received yet"}
@@ -1026,7 +1026,7 @@ export default function BreakupBuddyDashboardPage() {
                   setRequestFilter("all");
                   setRequestsPage(1);
                 }}
-                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition border border-slate-200 cursor-pointer"
+                className="mt-2 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#7E2248] text-xs font-bold transition border border-rose-200 cursor-pointer"
               >
                 Clear Search & Filters
               </button>
@@ -1060,10 +1060,10 @@ export default function BreakupBuddyDashboardPage() {
               return (
                 <div
                   key={req.id}
-                  className={`bg-white border rounded-2xl p-4 sm:p-6 shadow-sm transition-all flex flex-col justify-between gap-4 sm:gap-5 ${
+                  className={`bg-white border rounded-3xl p-5 sm:p-6 shadow-xs transition-all flex flex-col justify-between gap-4 sm:gap-5 ${
                     req.status === "Pending"
                       ? "border-amber-200/90 shadow-amber-500/5 hover:border-amber-300"
-                      : "border-slate-200/90 hover:border-slate-300 hover:shadow-md"
+                      : "border-rose-100 hover:border-rose-200 hover:shadow-md"
                   }`}
                 >
                   <div className="space-y-4">
@@ -1075,10 +1075,10 @@ export default function BreakupBuddyDashboardPage() {
                             <img
                               src={u.profileImage}
                               alt={clientName}
-                              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-slate-200 shadow-sm"
+                              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-rose-100 shadow-xs"
                             />
                           ) : (
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-indigo-600 text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-sm border border-teal-400/30">
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-[#7E2248] to-[#A03258] text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-xs border border-rose-200/40">
                               {initial}
                             </div>
                           )}
@@ -1092,14 +1092,14 @@ export default function BreakupBuddyDashboardPage() {
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                            <h3 className="font-bold text-sm sm:text-base text-slate-800">{clientName}</h3>
+                            <h3 className="font-bold text-sm sm:text-base font-serif text-slate-900">{clientName}</h3>
                             {age && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold">
+                              <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-[#7E2248] text-[10px] sm:text-[11px] font-semibold border border-rose-100">
                                 {age} yrs
                               </span>
                             )}
                             {u.gender && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold">
+                              <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-[#7E2248] text-[10px] sm:text-[11px] font-semibold border border-rose-100">
                                 {u.gender}
                               </span>
                             )}
@@ -1140,11 +1140,11 @@ export default function BreakupBuddyDashboardPage() {
                     </div>
 
                     {/* Middle Section: Session Format & Topic */}
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 sm:p-4 space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5 text-xs">
+                    <div className="bg-[#FDFBF9] border border-rose-100 rounded-2xl p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-100/70 pb-2.5 text-xs">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-600">Format:</span>
-                          <span className="px-2.5 py-0.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 font-bold text-xs flex items-center gap-1">
+                          <span className="px-2.5 py-0.5 rounded-lg bg-rose-50 border border-rose-200 text-[#7E2248] font-bold text-xs flex items-center gap-1">
                             {req.sessionType?.toLowerCase().includes("call")
                               ? "🎧"
                               : req.sessionType?.toLowerCase().includes("video")
@@ -1165,8 +1165,8 @@ export default function BreakupBuddyDashboardPage() {
                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                           Client Discussion Topic / Situation:
                         </span>
-                        <div className="bg-white rounded-lg p-3 border border-slate-200/70 text-xs text-slate-700 leading-relaxed italic relative">
-                          <span className="text-teal-500 font-serif text-base leading-none absolute -top-1 left-1.5 opacity-60">
+                        <div className="bg-white rounded-xl p-3 border border-rose-100 text-xs text-slate-700 leading-relaxed italic relative">
+                          <span className="text-[#7E2248] font-serif text-base leading-none absolute -top-1 left-1.5 opacity-60">
                             “
                           </span>
                           <p className="pl-3">
@@ -1187,7 +1187,7 @@ export default function BreakupBuddyDashboardPage() {
                           {u.phone && (
                             <a
                               href={`tel:${u.phone}`}
-                              className="inline-flex items-center gap-1 font-medium text-teal-700 hover:text-teal-800 transition"
+                              className="inline-flex items-center gap-1 font-medium text-[#7E2248] hover:text-[#681938] transition"
                             >
                               <span>📞</span> {u.phone}
                             </a>
@@ -1198,7 +1198,7 @@ export default function BreakupBuddyDashboardPage() {
                   </div>
 
                   {/* Card Footer Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                  <div className="pt-3 border-t border-rose-100/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                     {req.isClaimedByOther ? (
                       <div className="flex items-center justify-between w-full">
                         <span className="text-xs text-amber-700 font-semibold flex items-center gap-1.5">
@@ -1217,14 +1217,14 @@ export default function BreakupBuddyDashboardPage() {
                           <button
                             disabled={actionLoadingId === req.id}
                             onClick={() => handleRejectRequest(req.id)}
-                            className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 text-xs font-bold transition disabled:opacity-50 cursor-pointer text-center"
+                            className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-slate-600 hover:text-rose-700 text-xs font-bold transition disabled:opacity-50 cursor-pointer text-center"
                           >
                             {actionLoadingId === req.id ? "Processing..." : "✕ Decline"}
                           </button>
                           <button
                             disabled={actionLoadingId === req.id}
                             onClick={() => handleAcceptRequest(req.id)}
-                            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-bold transition shadow-sm hover:shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition shadow-xs shadow-[#7E2248]/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 text-center"
                           >
                             {actionLoadingId === req.id ? (
                               <span>Claiming...</span>
@@ -1328,11 +1328,11 @@ export default function BreakupBuddyDashboardPage() {
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
             <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Accepted Users</h2>
-              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Accepted Users</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-[#7E2248] border border-rose-200">
                 {totalAcceptedCount} {totalAcceptedCount === 1 ? "Client" : "Clients"}
               </span>
             </div>
@@ -1344,7 +1344,7 @@ export default function BreakupBuddyDashboardPage() {
             type="button"
             onClick={handleRefreshAccepted}
             disabled={isRefreshingAccepted}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-rose-200 text-slate-700 text-xs font-bold hover:bg-rose-50/50 transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
           >
             <span className={isRefreshingAccepted ? "animate-spin inline-block" : ""}>🔄</span>
             <span>{isRefreshingAccepted ? "Syncing..." : "Refresh"}</span>
@@ -1353,7 +1353,7 @@ export default function BreakupBuddyDashboardPage() {
 
         {actionMessage && (
           <div
-            className={`p-3.5 sm:p-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-sm ${
+            className={`p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between shadow-xs ${
               actionMessage.type === "success"
                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                 : "bg-red-50 text-red-800 border border-red-200"
@@ -1371,20 +1371,20 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* 4 KPI Summary Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-teal-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-rose-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wider">Accepted Clients</span>
-              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-sm border border-teal-100">
+              <span className="text-[11px] font-bold text-[#7E2248] uppercase tracking-wider">Accepted Clients</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#7E2248] flex items-center justify-center font-bold text-sm border border-rose-100">
                 👥
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-2xl sm:text-3xl font-bold text-teal-700">{totalAcceptedCount}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-[#7E2248]">{totalAcceptedCount}</p>
               <p className="text-[11px] text-slate-400 mt-0.5">Confirmed active relationships</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Voice Calls</span>
               <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm border border-emerald-100">
@@ -1392,12 +1392,12 @@ export default function BreakupBuddyDashboardPage() {
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-800">{callCount}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-slate-900">{callCount}</p>
               <p className="text-[11px] text-slate-400 mt-0.5">1-on-1 audio sessions</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Chat Discussions</span>
               <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-100">
@@ -1405,12 +1405,12 @@ export default function BreakupBuddyDashboardPage() {
               </div>
             </div>
             <div className="mt-2.5">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-800">{chatCount}</p>
+              <p className="text-2xl sm:text-3xl font-bold font-serif text-slate-900">{chatCount}</p>
               <p className="text-[11px] text-slate-400 mt-0.5">Live messaging threads</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:border-slate-300 transition">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client Readiness</span>
               <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs border border-emerald-100">
@@ -1419,7 +1419,7 @@ export default function BreakupBuddyDashboardPage() {
             </div>
             <div className="mt-2.5">
               <div className="flex items-baseline gap-1.5">
-                <p className="text-2xl sm:text-3xl font-bold text-slate-800">100%</p>
+                <p className="text-2xl sm:text-3xl font-bold font-serif text-slate-900">100%</p>
                 <span className="text-[11px] font-medium text-emerald-600">Connected</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">Ready for call or chat</p>
@@ -1428,7 +1428,7 @@ export default function BreakupBuddyDashboardPage() {
         </div>
 
         {/* Search, Filter & Sort Toolbar */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
+        <div className="bg-white border border-rose-100 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="relative flex-1">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
@@ -1440,7 +1440,7 @@ export default function BreakupBuddyDashboardPage() {
                   setAcceptedSearch(e.target.value);
                   setAcceptedPage(1);
                 }}
-                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
               />
               {acceptedSearch && (
                 <button
@@ -1475,14 +1475,14 @@ export default function BreakupBuddyDashboardPage() {
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                       isActive
-                        ? "bg-slate-900 text-white shadow-sm"
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                        ? "bg-[#7E2248] text-white shadow-xs"
+                        : "bg-rose-50/50 hover:bg-rose-100/60 text-slate-700 border border-rose-100"
                     }`}
                   >
                     <span>{f.label}</span>
                     <span
                       className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                        isActive ? "bg-white/20 text-white" : "bg-white text-slate-700 border border-rose-100"
                       }`}
                     >
                       {f.count}
@@ -1498,7 +1498,7 @@ export default function BreakupBuddyDashboardPage() {
               <select
                 value={acceptedSort}
                 onChange={(e) => setAcceptedSort(e.target.value as any)}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-500 flex-1 sm:flex-none"
+                className="px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#7E2248] flex-1 sm:flex-none"
               >
                 <option value="newest">Recently Accepted</option>
                 <option value="oldest">Oldest First</option>
@@ -1510,11 +1510,11 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Accepted Users Cards Grid */}
         {filtered.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center text-slate-500 shadow-sm space-y-3">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-slate-200 shadow-2xs">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 sm:p-12 text-center text-slate-500 shadow-xs space-y-3">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rose-100 shadow-xs">
               👥
             </div>
-            <h3 className="font-bold text-slate-800 text-base sm:text-lg">
+            <h3 className="font-bold text-slate-900 text-base sm:text-lg font-serif">
               {acceptedSearch || acceptedFormatFilter !== "all"
                 ? "No matching accepted clients found"
                 : "No accepted clients yet"}
@@ -1532,7 +1532,7 @@ export default function BreakupBuddyDashboardPage() {
                   setAcceptedFormatFilter("all");
                   setAcceptedPage(1);
                 }}
-                className="mt-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition border border-slate-200 cursor-pointer"
+                className="mt-2 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#7E2248] text-xs font-bold transition border border-rose-200 cursor-pointer"
               >
                 Clear Search & Filters
               </button>
@@ -1540,7 +1540,7 @@ export default function BreakupBuddyDashboardPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("Requests")}
-                className="mt-2 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                className="mt-2 px-5 py-2.5 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition shadow-xs shadow-[#7E2248]/20 cursor-pointer"
               >
                 Go to Requests Tab →
               </button>
@@ -1579,7 +1579,7 @@ export default function BreakupBuddyDashboardPage() {
               return (
                 <div
                   key={req.id}
-                  className="bg-white border border-slate-200/90 hover:border-teal-300 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  className="bg-white border border-rose-100 hover:border-rose-300 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-4">
                     {/* Header Row */}
@@ -1590,10 +1590,10 @@ export default function BreakupBuddyDashboardPage() {
                             <img
                               src={u.profileImage}
                               alt={clientName}
-                              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-slate-200 shadow-sm"
+                              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-cover border border-rose-100 shadow-xs"
                             />
                           ) : (
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-sm border border-teal-400/30">
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-[#7E2248] to-[#A03258] text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-xs border border-rose-200/40">
                               {initial}
                             </div>
                           )}
@@ -1604,7 +1604,7 @@ export default function BreakupBuddyDashboardPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <h3 className="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-1.5 truncate">
+                          <h3 className="font-bold text-sm sm:text-base font-serif text-slate-900 flex items-center gap-1.5 truncate">
                             {clientName}
                           </h3>
                           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-0.5 flex-wrap">
@@ -1625,11 +1625,11 @@ export default function BreakupBuddyDashboardPage() {
                     </div>
 
                     {/* Booking Details Box */}
-                    <div className="bg-slate-50 rounded-xl p-3 sm:p-4 border border-slate-200/70 text-xs space-y-3">
-                      <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200/60 pb-2.5">
+                    <div className="bg-[#FDFBF9] rounded-2xl p-4 border border-rose-100 text-xs space-y-3">
+                      <div className="flex flex-wrap justify-between items-center gap-2 border-b border-rose-100/70 pb-2.5">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-600">Format:</span>
-                          <span className="font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                          <span className="font-bold text-[#7E2248] bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
                             {req.sessionType?.toLowerCase().includes("call")
                               ? "🎧"
                               : req.sessionType?.toLowerCase().includes("video")
@@ -1648,8 +1648,8 @@ export default function BreakupBuddyDashboardPage() {
                         <span className="font-bold text-slate-500 text-[11px] uppercase tracking-wider block mb-1">
                           Discussion Topic / Care Reason:
                         </span>
-                        <div className="bg-white p-3 rounded-lg border border-slate-200/70 text-xs text-slate-700 italic relative leading-relaxed">
-                          <span className="text-teal-500 font-serif text-base leading-none absolute -top-1 left-1.5 opacity-60">
+                        <div className="bg-white p-3 rounded-xl border border-rose-100 text-xs text-slate-700 italic relative leading-relaxed">
+                          <span className="text-[#7E2248] font-serif text-base leading-none absolute -top-1 left-1.5 opacity-60">
                             “
                           </span>
                           <p className="pl-3">
@@ -1660,11 +1660,11 @@ export default function BreakupBuddyDashboardPage() {
                       </div>
 
                       {/* Timestamps */}
-                      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 gap-2">
+                      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-rose-100/70 gap-2">
                         <span className="flex items-center gap-1">
                           <span>📅</span> Requested: <strong>{reqDateStr}</strong>
                         </span>
-                        <span className="flex items-center gap-1 text-teal-700">
+                        <span className="flex items-center gap-1 text-[#7E2248]">
                           <span>✓</span> Connected: <strong>{acceptedDateStr}</strong>
                         </span>
                       </div>
@@ -1676,7 +1676,7 @@ export default function BreakupBuddyDashboardPage() {
                         {u.email && (
                           <a
                             href={`mailto:${u.email}`}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-medium transition"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-50/50 hover:bg-rose-100/60 border border-rose-100 text-slate-700 font-medium transition"
                           >
                             <span>✉️</span> {u.email}
                           </a>
@@ -1684,7 +1684,7 @@ export default function BreakupBuddyDashboardPage() {
                         {u.phone && (
                           <a
                             href={`tel:${u.phone}`}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-teal-700 font-medium transition"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-50/50 hover:bg-rose-100/60 border border-rose-100 text-[#7E2248] font-medium transition"
                           >
                             <span>📞</span> {u.phone}
                           </a>
@@ -1694,7 +1694,7 @@ export default function BreakupBuddyDashboardPage() {
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                  <div className="pt-3 border-t border-rose-100/70 flex items-center gap-2">
                     <button
                       onClick={() =>
                         setBuddyActiveCall({
@@ -1704,7 +1704,7 @@ export default function BreakupBuddyDashboardPage() {
                           callerName: displayName || user?.name || "Breakup Buddy",
                         })
                       }
-                      className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition shadow-sm hover:shadow-md text-center cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition shadow-xs shadow-[#7E2248]/20 text-center cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>📞</span> Call Client
                     </button>
@@ -1713,7 +1713,7 @@ export default function BreakupBuddyDashboardPage() {
                         setSelectedChatRequestId(req.id);
                         setActiveTab("Messages");
                       }}
-                      className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold transition border border-teal-200 text-center cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#7E2248] text-xs font-bold transition border border-rose-200 text-center cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>💬</span> Open Chat
                     </button>
@@ -1746,20 +1746,20 @@ export default function BreakupBuddyDashboardPage() {
 
     return (
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Manage Availability</h2>
+            <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Manage Availability</h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Set your weekly routine and active timeslots.</p>
           </div>
         </div>
 
         {/* 1. Status Card */}
-        <div className={`border rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
-          isAvailableForRequests ? "bg-white border-slate-200" : "bg-amber-50/50 border-amber-200"
+        <div className={`border rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+          isAvailableForRequests ? "bg-white border-rose-100" : "bg-amber-50/50 border-amber-200"
         }`}>
           <div>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 className="text-sm sm:text-base font-bold text-slate-800">Your Status</h3>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 font-serif">Your Status</h3>
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 ${
                 isAvailableForRequests
                   ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
@@ -1792,7 +1792,7 @@ export default function BreakupBuddyDashboardPage() {
                 });
               }}
               className={`w-14 h-7 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
-                isAvailableForRequests ? "bg-teal-500" : "bg-slate-300"
+                isAvailableForRequests ? "bg-[#7E2248]" : "bg-slate-300"
               }`}
               title={isAvailableForRequests ? "Click to set status to Unavailable" : "Click to set status to Available"}
             >
@@ -1806,22 +1806,22 @@ export default function BreakupBuddyDashboardPage() {
         </div>
 
         {/* 2. Weekly Schedule Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 sm:pb-4">
+        <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4 sm:space-y-6">
+          <div className="flex items-center justify-between border-b border-rose-100/70 pb-3 sm:pb-4">
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-800">Weekly Schedule</h3>
+              <h3 className="text-sm sm:text-base font-bold font-serif text-slate-900">Weekly Schedule</h3>
               <p className="text-xs text-slate-500 mt-0.5">Customize time slots for each day of the week.</p>
             </div>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-rose-100/60">
             {daysOrder.map((dayName) => {
               const dayObj = weeklySchedule.find((s: any) => s.day === dayName);
               const slots: string[] = dayObj?.slots || [];
 
               return (
                 <div key={dayName} className="py-3.5 sm:py-4 first:pt-0 last:pb-0 grid grid-cols-1 sm:grid-cols-4 items-start gap-2 sm:gap-4">
-                  <div className="font-bold text-slate-700 text-sm sm:pt-1.5">{dayName}</div>
+                  <div className="font-bold text-slate-800 text-sm sm:pt-1.5">{dayName}</div>
                   
                   <div className="sm:col-span-3 space-y-2">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -1831,7 +1831,7 @@ export default function BreakupBuddyDashboardPage() {
                         slots.map((slot, idx) => (
                           <div
                             key={idx}
-                            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 transition"
+                            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200/80 text-xs font-medium text-slate-700 shadow-2xs hover:border-rose-300 transition"
                           >
                             <span>{slot}</span>
                             <button
@@ -1856,18 +1856,18 @@ export default function BreakupBuddyDashboardPage() {
                       <button
                         type="button"
                         onClick={() => setAddingSlotDay(dayName)}
-                        className="text-xs font-semibold text-teal-600 hover:text-teal-700 transition cursor-pointer ml-1"
+                        className="text-xs font-semibold text-[#7E2248] hover:text-[#681938] transition cursor-pointer ml-1"
                       >
                         + Add Time Slot
                       </button>
                     </div>
 
                     {addingSlotDay === dayName && (
-                      <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-teal-200 p-2.5 rounded-xl animate-in fade-in max-w-full sm:max-w-md mt-2">
+                      <div className="flex flex-wrap items-center gap-2 bg-[#FDFBF9] border border-rose-200 p-3 rounded-2xl animate-in fade-in max-w-full sm:max-w-md mt-2 shadow-xs">
                         <select
                           value={slotStartTime}
                           onChange={(e) => setSlotStartTime(e.target.value)}
-                          className="px-2 py-1 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-800"
+                          className="px-2.5 py-1.5 rounded-xl bg-white border border-rose-200 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#7E2248]"
                         >
                           {["08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM", "10:00 PM"].map(t => (
                             <option key={t} value={t}>{t}</option>
@@ -1877,7 +1877,7 @@ export default function BreakupBuddyDashboardPage() {
                         <select
                           value={slotEndTime}
                           onChange={(e) => setSlotEndTime(e.target.value)}
-                          className="px-2 py-1 rounded bg-white border border-slate-200 text-xs font-semibold text-slate-800"
+                          className="px-2.5 py-1.5 rounded-xl bg-white border border-rose-200 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#7E2248]"
                         >
                           {["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM", "10:00 PM", "11:00 PM"].map(t => (
                             <option key={t} value={t}>{t}</option>
@@ -1896,7 +1896,7 @@ export default function BreakupBuddyDashboardPage() {
                             setWeeklySchedule(updatedSchedule);
                             setAddingSlotDay(null);
                           }}
-                          className="px-3 py-1 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition cursor-pointer ml-auto"
+                          className="px-3.5 py-1.5 rounded-xl bg-[#7E2248] text-white text-xs font-bold hover:bg-[#681938] transition cursor-pointer ml-auto shadow-xs"
                         >
                           Add
                         </button>
@@ -1915,12 +1915,12 @@ export default function BreakupBuddyDashboardPage() {
             })}
           </div>
 
-          <div className="pt-4 border-t border-slate-100">
+          <div className="pt-4 border-t border-rose-100/70">
             <button
               type="button"
               onClick={() => handleSaveAvailability()}
               disabled={savingAvailability}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#131d2e] hover:bg-slate-800 text-white font-bold text-sm shadow transition disabled:opacity-60 cursor-pointer text-center"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-sm shadow-xs shadow-[#7E2248]/20 transition disabled:opacity-60 cursor-pointer text-center"
             >
               {savingAvailability ? "Saving Schedule..." : "Save Schedule"}
             </button>
@@ -1987,7 +1987,7 @@ export default function BreakupBuddyDashboardPage() {
 
     const getRatingLabel = (rating: number) => {
       if (rating >= 5) return { label: "Excellent", color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-      if (rating >= 4) return { label: "Great", color: "bg-teal-50 text-teal-700 border-teal-200" };
+      if (rating >= 4) return { label: "Great", color: "bg-rose-50 text-[#7E2248] border-rose-200" };
       if (rating >= 3) return { label: "Good", color: "bg-sky-50 text-sky-700 border-sky-200" };
       if (rating >= 2) return { label: "Fair", color: "bg-amber-50 text-amber-700 border-amber-200" };
       return { label: "Needs Attention", color: "bg-rose-50 text-rose-700 border-rose-200" };
@@ -1996,10 +1996,10 @@ export default function BreakupBuddyDashboardPage() {
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
             <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Client Reviews & Ratings</h2>
+              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Client Reviews & Ratings</h2>
               <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                 ⭐ {totalReviews} {totalReviews === 1 ? "Review" : "Reviews"}
               </span>
@@ -2012,7 +2012,7 @@ export default function BreakupBuddyDashboardPage() {
           <button
             onClick={handleRefreshReviews}
             disabled={isRefreshingReviews}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-rose-50/50 border border-rose-200 text-slate-700 text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
           >
             <span className={`inline-block ${isRefreshingReviews ? "animate-spin" : ""}`}>🔄</span>
             <span>{isRefreshingReviews ? "Refreshing..." : "Refresh Reviews"}</span>
@@ -2022,36 +2022,36 @@ export default function BreakupBuddyDashboardPage() {
         {/* Analytics & Rating Breakdown Card */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
           {/* 1. Overall Score Card */}
-          <div className="lg:col-span-4 bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 text-white rounded-2xl p-5 sm:p-6 shadow-md flex flex-col justify-between border border-slate-700/50">
+          <div className="lg:col-span-4 bg-gradient-to-br from-[#7E2248] via-[#651535] to-[#450b20] text-white rounded-3xl p-5 sm:p-6 shadow-md flex flex-col justify-between border border-[#7E2248]/40">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Overall Rating</span>
-                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-200 border border-teal-400/30">
+                <span className="text-xs font-bold text-rose-200 uppercase tracking-wider">Overall Rating</span>
+                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-rose-100 border border-white/20">
                   {numAvg >= 4.5 ? "🌟 Top Rated" : "✨ Verified Feedback"}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-3 sm:mt-4">
-                <span className="text-4xl sm:text-5xl font-black tracking-tight">{avgRating}</span>
-                <span className="text-lg sm:text-xl text-slate-400 font-semibold">/ 5.0</span>
+                <span className="text-4xl sm:text-5xl font-black font-serif tracking-tight">{avgRating}</span>
+                <span className="text-lg sm:text-xl text-rose-200/70 font-semibold">/ 5.0</span>
               </div>
-              <div className="flex items-center gap-1 text-amber-400 text-base sm:text-lg mt-2">
+              <div className="flex items-center gap-1 text-amber-300 text-base sm:text-lg mt-2">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <span key={s} className={s <= Math.round(numAvg) ? "text-amber-400" : "text-slate-600"}>
+                  <span key={s} className={s <= Math.round(numAvg) ? "text-amber-300" : "text-white/30"}>
                     ★
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-300">
+            <div className="mt-5 pt-3 border-t border-white/15 flex items-center justify-between text-xs text-rose-100">
               <span>Based on <strong>{totalReviews}</strong> ratings</span>
-              <span className="text-teal-300 font-semibold">{satisfactionPercent}% Positive</span>
+              <span className="text-rose-200 font-semibold">{satisfactionPercent}% Positive</span>
             </div>
           </div>
 
           {/* 2. Rating Breakdown Bars */}
-          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-            <h3 className="font-bold text-slate-800 text-xs sm:text-sm mb-3">Rating Breakdown</h3>
+          <div className="lg:col-span-5 bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+            <h3 className="font-bold text-slate-900 font-serif text-xs sm:text-sm mb-3">Rating Breakdown</h3>
             <div className="space-y-2">
               {[5, 4, 3, 2, 1].map((star) => {
                 const count = starCounts[star] || 0;
@@ -2066,17 +2066,17 @@ export default function BreakupBuddyDashboardPage() {
                       setReviewsRatingFilter(isSelected ? "all" : star);
                       setReviewsPage(1);
                     }}
-                    className={`w-full flex items-center gap-2.5 sm:gap-3 text-xs p-1 rounded-lg transition text-left cursor-pointer group ${
-                      isSelected ? "bg-teal-50" : "hover:bg-slate-50"
+                    className={`w-full flex items-center gap-2.5 sm:gap-3 text-xs p-1.5 rounded-xl transition text-left cursor-pointer group ${
+                      isSelected ? "bg-rose-50 text-[#7E2248]" : "hover:bg-rose-50/40"
                     }`}
                   >
                     <span className="w-10 sm:w-12 font-bold text-slate-700 flex items-center gap-1 shrink-0">
                       {star} <span className="text-amber-400 text-xs">★</span>
                     </span>
-                    <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2.5 bg-rose-50 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          star >= 4 ? "bg-teal-500" : star === 3 ? "bg-sky-500" : "bg-amber-500"
+                          star >= 4 ? "bg-[#7E2248]" : star === 3 ? "bg-amber-500" : "bg-rose-400"
                         }`}
                         style={{ width: `${pct}%` }}
                       />
@@ -2092,40 +2092,40 @@ export default function BreakupBuddyDashboardPage() {
 
           {/* 3. Performance Insights */}
           <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-2.5 sm:gap-3">
-            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-sm">
+            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-xs">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center text-lg shrink-0">
                 🎯
               </div>
               <div>
-                <p className="text-lg sm:text-xl font-black text-emerald-800">{satisfactionPercent}%</p>
+                <p className="text-lg sm:text-xl font-black text-emerald-800 font-serif">{satisfactionPercent}%</p>
                 <p className="text-[11px] text-emerald-700 font-semibold">Satisfaction Rate</p>
               </div>
             </div>
 
-            <div className="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-teal-100 border border-teal-200 text-teal-700 flex items-center justify-center text-lg shrink-0">
+            <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 text-[#7E2248] flex items-center justify-center text-lg shrink-0">
                 💬
               </div>
               <div>
-                <p className="text-lg sm:text-xl font-black text-teal-800">{reviewsWithComments}</p>
-                <p className="text-[11px] text-teal-700 font-semibold">Detailed Comments</p>
+                <p className="text-lg sm:text-xl font-black text-[#7E2248] font-serif">{reviewsWithComments}</p>
+                <p className="text-[11px] text-[#7E2248] font-semibold">Detailed Comments</p>
               </div>
             </div>
 
-            <div className="bg-sky-50/70 border border-sky-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-sky-100 border border-sky-200 text-sky-700 flex items-center justify-center text-lg shrink-0">
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center text-lg shrink-0">
                 🛡️
               </div>
               <div>
-                <p className="text-lg sm:text-xl font-black text-sky-800">100%</p>
-                <p className="text-[11px] text-sky-700 font-semibold">Verified Feedback</p>
+                <p className="text-lg sm:text-xl font-black text-amber-800 font-serif">100%</p>
+                <p className="text-[11px] text-amber-700 font-semibold">Verified Feedback</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Toolbar: Star Filter Pills, Search Bar, and Sort */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-rose-100 rounded-2xl p-3 shadow-xs">
           {/* Star Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0 -mx-1 px-1">
             {[
@@ -2143,8 +2143,8 @@ export default function BreakupBuddyDashboardPage() {
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
                   reviewsRatingFilter === tab.id
-                    ? "bg-teal-600 text-white shadow-sm"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
+                    ? "bg-[#7E2248] text-white shadow-xs"
+                    : "bg-[#FDFBF9] hover:bg-rose-50 text-slate-600 border border-rose-200"
                 }`}
               >
                 {tab.label}
@@ -2163,7 +2163,7 @@ export default function BreakupBuddyDashboardPage() {
                   setReviewsSearch(e.target.value);
                   setReviewsPage(1);
                 }}
-                className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
               />
               <span className="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
               {reviewsSearch && (
@@ -2185,7 +2185,7 @@ export default function BreakupBuddyDashboardPage() {
                 setReviewsSort(e.target.value as any);
                 setReviewsPage(1);
               }}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold focus:outline-none focus:border-teal-500 cursor-pointer flex-1 sm:flex-none"
+              className="px-3 py-1.5 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-700 text-xs font-bold focus:outline-none focus:border-[#7E2248] cursor-pointer flex-1 sm:flex-none"
             >
               <option value="newest">🕒 Newest First</option>
               <option value="highest">⭐ Highest Rating</option>
@@ -2196,21 +2196,21 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Reviews Cards List */}
         {totalReviews === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center text-slate-500 shadow-sm space-y-3">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 sm:p-12 text-center text-slate-500 shadow-xs space-y-3">
             <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-2xl mx-auto border border-amber-200 shadow-inner">
               ⭐
             </div>
-            <h3 className="font-bold text-slate-800 text-base">No Client Reviews Yet</h3>
+            <h3 className="font-bold text-slate-900 text-base font-serif">No Client Reviews Yet</h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
               When clients complete their hourly passes or voice consultation sessions with you, their ratings and thoughtful reviews will appear here.
             </p>
           </div>
         ) : filteredReviews.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center text-slate-500 shadow-sm space-y-3">
-            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl mx-auto text-slate-400">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 sm:p-12 text-center text-slate-500 shadow-xs space-y-3">
+            <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-xl mx-auto text-slate-400 border border-rose-100">
               🔍
             </div>
-            <h3 className="font-bold text-slate-800 text-base">No matching reviews found</h3>
+            <h3 className="font-bold text-slate-900 text-base font-serif">No matching reviews found</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
               We couldn't find any reviews matching your current filters or search term.
             </p>
@@ -2220,7 +2220,7 @@ export default function BreakupBuddyDashboardPage() {
                 setReviewsRatingFilter("all");
                 setReviewsPage(1);
               }}
-              className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm cursor-pointer inline-block mt-2"
+              className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition shadow-xs shadow-[#7E2248]/20 cursor-pointer inline-block mt-2"
             >
               Clear All Filters
             </button>
@@ -2243,12 +2243,12 @@ export default function BreakupBuddyDashboardPage() {
                 return (
                   <div
                     key={rev.id}
-                    className="bg-white border border-slate-200 hover:border-teal-300 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 group"
+                    className="bg-white border border-rose-100 hover:border-rose-300 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 group"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-teal-100 to-emerald-200 text-teal-800 font-black text-sm flex items-center justify-center shrink-0 border border-teal-200 shadow-sm overflow-hidden">
+                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-rose-100 to-rose-200 text-[#7E2248] font-black text-sm flex items-center justify-center shrink-0 border border-rose-200 shadow-xs overflow-hidden">
                             {u.profileImage ? (
                               <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
                             ) : (
@@ -2256,7 +2256,7 @@ export default function BreakupBuddyDashboardPage() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-bold text-slate-800 text-sm truncate">
+                            <h4 className="font-bold text-slate-900 font-serif text-sm truncate">
                               {u.name || "Client"}
                             </h4>
                             <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap">
@@ -2286,9 +2286,9 @@ export default function BreakupBuddyDashboardPage() {
                       </div>
 
                       {/* Comment Body */}
-                      <div className="mt-3.5 pt-2.5 border-t border-slate-100">
+                      <div className="mt-3.5 pt-2.5 border-t border-rose-100/60">
                         {rev.comment && rev.comment.trim().length > 0 ? (
-                          <div className="relative pl-3 border-l-2 border-teal-400/60">
+                          <div className="relative pl-3 border-l-2 border-[#7E2248]/60">
                             <p className="text-slate-700 text-xs leading-relaxed font-normal italic">
                               "{rev.comment}"
                             </p>
@@ -2302,8 +2302,8 @@ export default function BreakupBuddyDashboardPage() {
                     </div>
 
                     {/* Footer Tags */}
-                    <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                      <span className="font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100/60">
+                    <div className="pt-2.5 border-t border-rose-100/60 flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="font-medium text-[#7E2248] bg-rose-50 px-2 py-0.5 rounded border border-rose-100/60">
                         🤝 Consultation Feedback
                       </span>
                       <span className="text-slate-400 font-semibold">Public Review</span>
@@ -2338,14 +2338,14 @@ export default function BreakupBuddyDashboardPage() {
 
     return (
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Earnings & Subscriptions</h2>
+            <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Earnings & Subscriptions</h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Real-time revenue from user subscriptions and consultations</p>
           </div>
           <button
             onClick={fetchData}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-rose-200 text-slate-700 hover:bg-rose-50/50 text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             🔄 Refresh Earnings
           </button>
@@ -2353,44 +2353,44 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Highlight Summary Banner */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <div className="bg-gradient-to-br from-teal-600 via-emerald-600 to-emerald-700 rounded-2xl p-5 sm:p-6 text-white shadow-sm flex flex-col justify-between">
+          <div className="bg-gradient-to-br from-[#7E2248] via-[#651535] to-[#450b20] rounded-3xl p-5 sm:p-6 text-white shadow-md border border-[#7E2248]/40 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-teal-100 text-xs font-bold uppercase tracking-wider">Total Revenue</span>
+              <span className="text-rose-200 text-xs font-bold uppercase tracking-wider">Total Revenue</span>
               <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-base">💰</span>
             </div>
             <div className="mt-3 sm:mt-4">
-              <h3 className="text-2xl sm:text-4xl font-black tracking-tight">₹{earnings.totalEarnings || 0}</h3>
-              <p className="text-[11px] sm:text-xs text-teal-100 mt-1">✓ Credited from client passes</p>
+              <h3 className="text-2xl sm:text-4xl font-black font-serif tracking-tight">₹{earnings.totalEarnings || 0}</h3>
+              <p className="text-[11px] sm:text-xs text-rose-200 mt-1">✓ Credited from client passes</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Paid Packages</span>
-              <span className="w-8 h-8 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center text-base">📦</span>
+              <span className="w-8 h-8 rounded-xl bg-rose-50 text-[#7E2248] border border-rose-100 flex items-center justify-center text-base">📦</span>
             </div>
             <div className="mt-3 sm:mt-4">
-              <h3 className="text-2xl sm:text-4xl font-black text-slate-800">{allEarningsSessions.length}</h3>
+              <h3 className="text-2xl sm:text-4xl font-black font-serif text-slate-900">{allEarningsSessions.length}</h3>
               <p className="text-[11px] sm:text-xs text-slate-400 mt-1">Completed transactions</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Paying Clients</span>
-              <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-base">👥</span>
+              <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center text-base">👥</span>
             </div>
             <div className="mt-3 sm:mt-4">
-              <h3 className="text-2xl sm:text-4xl font-black text-slate-800">{uniqueClientsCount}</h3>
+              <h3 className="text-2xl sm:text-4xl font-black font-serif text-slate-900">{uniqueClientsCount}</h3>
               <p className="text-[11px] sm:text-xs text-slate-400 mt-1">Active subscribers</p>
             </div>
           </div>
         </div>
 
         {/* Transactions / Subscriptions Feed */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="font-bold text-slate-800 font-serif text-base sm:text-lg">Subscription & Payment History</h3>
+        <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-rose-100/70 pb-3">
+            <h3 className="font-bold text-slate-900 font-serif text-base sm:text-lg">Subscription & Payment History</h3>
             <span className="text-xs font-semibold text-slate-400">
               {allEarningsSessions.length} Transactions
             </span>
@@ -2398,10 +2398,10 @@ export default function BreakupBuddyDashboardPage() {
 
           {allEarningsSessions.length === 0 ? (
             <div className="p-8 sm:p-12 text-center text-slate-500 space-y-3">
-              <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
+              <div className="w-14 h-14 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rose-100 shadow-xs">
                 💳
               </div>
-              <h4 className="font-bold text-slate-800 text-base">No Subscription Earnings Yet</h4>
+              <h4 className="font-bold text-slate-900 text-base font-serif">No Subscription Earnings Yet</h4>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 When users purchase hourly packages or passes for your profile, the payments and pass details will appear here automatically!
               </p>
@@ -2414,20 +2414,20 @@ export default function BreakupBuddyDashboardPage() {
                   return (
                     <div
                       key={sess.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-xl gap-3 transition"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#FDFBF9] hover:bg-rose-50/20 border border-rose-100 rounded-2xl gap-3 transition"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-800 font-bold text-sm flex items-center justify-center shrink-0 border border-teal-200">
+                        <div className="w-10 h-10 rounded-full bg-rose-100 text-[#7E2248] font-bold text-sm flex items-center justify-center shrink-0 border border-rose-200">
                           {u.name ? u.name[0].toUpperCase() : "U"}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-slate-800 text-xs sm:text-sm">{u.name || "Client Subscriber"}</span>
+                            <span className="font-bold text-slate-900 font-serif text-xs sm:text-sm">{u.name || "Client Subscriber"}</span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                               ✓ PAID
                             </span>
                           </div>
-                          <p className="text-xs text-slate-600 font-medium mt-0.5">
+                          <p className="text-xs text-[#7E2248] font-medium mt-0.5">
                             {sess.sessionType || "Hourly Unlimited Subscription Pass"}
                           </p>
                           <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap">
@@ -2438,8 +2438,8 @@ export default function BreakupBuddyDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="text-left sm:text-right sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 flex sm:flex-col justify-between items-center sm:items-end">
-                        <div className="text-lg sm:text-xl font-black text-emerald-600 tracking-tight">
+                      <div className="text-left sm:text-right sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-rose-100/70 flex sm:flex-col justify-between items-center sm:items-end">
+                        <div className="text-lg sm:text-xl font-black text-emerald-600 font-serif tracking-tight">
                           +₹{sess.amountEarned}
                         </div>
                         <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
@@ -2501,11 +2501,11 @@ export default function BreakupBuddyDashboardPage() {
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
             <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Session & Package History</h2>
-              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Session & Package History</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-[#7E2248] border border-rose-200">
                 {history.length} Completed
               </span>
             </div>
@@ -2517,7 +2517,7 @@ export default function BreakupBuddyDashboardPage() {
           <button
             onClick={handleRefreshHistory}
             disabled={isRefreshingHistory}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-rose-50/50 border border-rose-200 text-slate-700 text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
           >
             <span className={`inline-block ${isRefreshingHistory ? "animate-spin" : ""}`}>🔄</span>
             <span>{isRefreshingHistory ? "Refreshing..." : "Refresh History"}</span>
@@ -2526,32 +2526,32 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* 3 Summary Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-lg font-bold">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-rose-50 border border-rose-100 text-[#7E2248] flex items-center justify-center text-lg font-bold">
               📜
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-black text-slate-800">{history.length}</p>
+              <p className="text-xl sm:text-2xl font-black font-serif text-slate-900">{history.length}</p>
               <p className="text-xs text-slate-500 font-semibold">Completed Passes</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center text-lg font-bold">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center text-lg font-bold">
               ⏱️
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-black text-sky-600">{totalHours} hrs</p>
+              <p className="text-xl sm:text-2xl font-black font-serif text-sky-600">{totalHours} hrs</p>
               <p className="text-xs text-slate-500 font-semibold">Total Delivered</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-lg font-bold">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-lg font-bold">
               💰
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-black text-emerald-600">₹{totalRevenue}</p>
+              <p className="text-xl sm:text-2xl font-black font-serif text-emerald-600">₹{totalRevenue}</p>
               <p className="text-xs text-slate-500 font-semibold">Package Revenue</p>
             </div>
           </div>
@@ -2559,7 +2559,7 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Filters & Search Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl overflow-x-auto no-scrollbar -mx-1 px-1">
+          <div className="flex items-center gap-1.5 bg-rose-50/50 p-1.5 rounded-2xl border border-rose-100 overflow-x-auto no-scrollbar -mx-1 px-1">
             {(
               [
                 { id: "all", label: "All Completed" },
@@ -2570,9 +2570,9 @@ export default function BreakupBuddyDashboardPage() {
               <button
                 key={tab.id}
                 onClick={() => { setHistoryFilter(tab.id); setHistoryPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
                   historyFilter === tab.id
-                    ? "bg-white text-teal-800 shadow-sm"
+                    ? "bg-[#7E2248] text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -2587,18 +2587,18 @@ export default function BreakupBuddyDashboardPage() {
               placeholder="Search by client, plan, or city..."
               value={historySearch}
               onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-teal-500 shadow-sm transition"
+              className="w-full px-3.5 py-2 rounded-xl bg-[#FDFBF9] border border-rose-200 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] shadow-xs transition"
             />
           </div>
         </div>
 
         {/* History Cards */}
         {filteredHistory.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center text-slate-500 shadow-sm space-y-3">
-            <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-2xl mx-auto border border-teal-100">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 sm:p-12 text-center text-slate-500 shadow-xs space-y-3">
+            <div className="w-14 h-14 bg-rose-50 text-[#7E2248] rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rose-100">
               📜
             </div>
-            <h3 className="font-bold text-slate-800 text-base">
+            <h3 className="font-bold text-slate-900 text-base font-serif">
               {historySearch ? "No matching history found" : "No Completed Passes or Sessions Yet"}
             </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -2645,10 +2645,10 @@ export default function BreakupBuddyDashboardPage() {
               return (
                 <div
                   key={h.id}
-                  className="bg-white border border-slate-200 hover:border-teal-300 rounded-2xl p-4 sm:p-5 shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="bg-white border border-rose-100 hover:border-rose-300 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-teal-100 text-teal-800 font-black text-sm sm:text-base flex items-center justify-center shrink-0 border border-teal-200 shadow-sm overflow-hidden">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-rose-100 to-rose-200 text-[#7E2248] font-black text-sm sm:text-base flex items-center justify-center shrink-0 border border-rose-200 shadow-xs overflow-hidden">
                       {u.profileImage ? (
                         <img src={u.profileImage} alt={u.name} className="w-full h-full object-cover" />
                       ) : (
@@ -2658,16 +2658,16 @@ export default function BreakupBuddyDashboardPage() {
 
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-800 text-xs sm:text-sm">{u.name || "Client Subscriber"}</span>
+                        <span className="font-bold text-slate-900 font-serif text-xs sm:text-sm">{u.name || "Client Subscriber"}</span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                           ✓ COMPLETED
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-100">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-[#7E2248] border border-rose-100">
                           ⏱️ {h.durationMinutes || 60}m
                         </span>
                       </div>
 
-                      <p className="text-xs font-semibold text-teal-700">
+                      <p className="text-xs font-semibold text-[#7E2248]">
                         📦 {h.sessionType || "Hourly Unlimited Subscription Pass"}
                       </p>
 
@@ -2679,13 +2679,13 @@ export default function BreakupBuddyDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 md:gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 justify-between md:justify-end">
-                    <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 sm:p-3 text-xs space-y-1 text-slate-600 min-w-0 sm:min-w-[200px]">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 md:gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-rose-100/70 justify-between md:justify-end">
+                    <div className="bg-[#FDFBF9] border border-rose-100 rounded-2xl p-3 text-xs space-y-1 text-slate-600 min-w-0 sm:min-w-[200px]">
                       <div className="flex items-center justify-between gap-2 text-[11px]">
                         <span className="text-slate-400 font-medium">🚀 Started:</span>
                         <span className="font-bold text-slate-700 text-right">{formattedStart}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-2 text-[11px] border-t border-slate-200/60 pt-1">
+                      <div className="flex items-center justify-between gap-2 text-[11px] border-t border-rose-100/70 pt-1">
                         <span className="text-slate-400 font-medium">🏁 Ended:</span>
                         <span className="font-bold text-emerald-700 text-right">{formattedEnd}</span>
                       </div>
@@ -2693,7 +2693,7 @@ export default function BreakupBuddyDashboardPage() {
 
                     <div className="text-left sm:text-right shrink-0 flex sm:flex-col justify-between items-center sm:items-end">
                       <span className="text-[11px] font-semibold text-slate-400 block">Package Amount</span>
-                      <div className="text-lg sm:text-xl font-black text-emerald-600 tracking-tight">
+                      <div className="text-lg sm:text-xl font-black text-emerald-600 font-serif tracking-tight">
                         ₹{h.amountEarned || 0}
                       </div>
                     </div>
@@ -2725,11 +2725,11 @@ export default function BreakupBuddyDashboardPage() {
 
     return (
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-rose-100 pb-4">
           <div>
             <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Call Logs & History</h2>
-              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Call Logs & History</h2>
+              <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-[#7E2248] border border-rose-200">
                 {totalCalls} Total
               </span>
             </div>
@@ -2741,7 +2741,7 @@ export default function BreakupBuddyDashboardPage() {
           <button
             onClick={handleRefreshCallLogs}
             disabled={isRefreshingLogs}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-rose-50/50 border border-rose-200 text-slate-700 text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
           >
             <span className={`inline-block ${isRefreshingLogs ? "animate-spin" : ""}`}>🔄</span>
             <span>{isRefreshingLogs ? "Refreshing..." : "Refresh Log"}</span>
@@ -2750,22 +2750,22 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-lg font-bold">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-rose-50 border border-rose-100 text-[#7E2248] flex items-center justify-center text-lg font-bold">
               📞
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-slate-800">{totalCalls}</p>
+              <p className="text-xl sm:text-2xl font-bold font-serif text-slate-900">{totalCalls}</p>
               <p className="text-xs text-slate-500 font-semibold">Total Calls</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-lg font-bold">
+          <div className="bg-white border border-rose-100 rounded-3xl p-5 shadow-xs flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-lg font-bold">
               📵
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-rose-600">{missedCalls}</p>
+              <p className="text-xl sm:text-2xl font-bold font-serif text-rose-600">{missedCalls}</p>
               <p className="text-xs text-slate-500 font-semibold">Missed Calls</p>
             </div>
           </div>
@@ -2773,11 +2773,11 @@ export default function BreakupBuddyDashboardPage() {
 
         {/* Call Log List */}
         {callLogs.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-8 sm:p-12 text-center text-slate-500 shadow-sm space-y-3">
-            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-2xl mx-auto">
+          <div className="bg-white border border-rose-100 rounded-3xl p-8 sm:p-12 text-center text-slate-500 shadow-xs space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-[#7E2248] text-2xl mx-auto">
               📞
             </div>
-            <h3 className="font-bold text-slate-800 text-base">No Call History Yet</h3>
+            <h3 className="font-bold text-slate-900 text-base font-serif">No Call History Yet</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               Call history details will appear here when you or your clients start voice calls.
             </p>
@@ -2792,18 +2792,18 @@ export default function BreakupBuddyDashboardPage() {
                 return (
                   <div
                     key={log.id}
-                    className={`bg-white border rounded-xl p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
-                      isMissed ? "border-rose-200 bg-rose-50/30" : "border-slate-200 hover:border-teal-200"
+                    className={`bg-white border rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                      isMissed ? "border-rose-200 bg-rose-50/20" : "border-rose-100 hover:border-rose-300"
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-teal-100 text-teal-800 font-bold text-sm flex items-center justify-center shrink-0 border border-teal-200">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-rose-100 text-[#7E2248] font-bold text-sm flex items-center justify-center shrink-0 border border-rose-200">
                         {u.name ? u.name[0].toUpperCase() : "U"}
                       </div>
 
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-800 text-xs sm:text-sm">{u.name || "User"}</span>
+                          <span className="font-bold text-slate-900 font-serif text-xs sm:text-sm">{u.name || "User"}</span>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                               isMissed
@@ -2813,7 +2813,7 @@ export default function BreakupBuddyDashboardPage() {
                           >
                             {isMissed ? "MISSED CALL" : log.status}
                           </span>
-                          <span className="text-[10px] font-semibold text-slate-500 px-2 py-0.5 rounded bg-slate-100">
+                          <span className="text-[10px] font-semibold text-slate-500 px-2 py-0.5 rounded-md bg-rose-50/50 border border-rose-100">
                             {log.type}
                           </span>
                         </div>
@@ -2836,7 +2836,7 @@ export default function BreakupBuddyDashboardPage() {
                           callerName: displayName || user?.name || "Breakup Buddy",
                         })
                       }
-                      className="w-full sm:w-auto px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                      className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition shadow-xs shadow-[#7E2248]/20 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                     >
                       📞 Call User
                     </button>
@@ -2916,11 +2916,11 @@ export default function BreakupBuddyDashboardPage() {
     return (
       <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
         {/* Header Bar */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="p-1.5 sm:p-2 bg-teal-50 text-teal-600 rounded-xl text-base sm:text-lg font-bold">⚙️</span>
-              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-800">Profile & Account Settings</h2>
+              <span className="p-1.5 sm:p-2 bg-rose-50 text-[#7E2248] rounded-2xl text-base sm:text-lg font-bold border border-rose-100">⚙️</span>
+              <h2 className="text-xl sm:text-2xl font-bold font-serif text-slate-900">Profile & Account Settings</h2>
             </div>
             <p className="text-slate-500 text-xs sm:text-sm mt-1">
               Customize your public consultant card, consultation specialties, and manage verification details.
@@ -2930,7 +2930,7 @@ export default function BreakupBuddyDashboardPage() {
             type="button"
             onClick={handleSaveProfile}
             disabled={saving}
-            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-md shadow-teal-600/20 transition disabled:opacity-60 cursor-pointer"
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-2xl bg-[#7E2248] hover:bg-[#681938] active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-sm shadow-[#7E2248]/20 transition disabled:opacity-60 cursor-pointer"
           >
             {saving ? (
               <>
@@ -2951,9 +2951,9 @@ export default function BreakupBuddyDashboardPage() {
         {/* Notification Toast */}
         {settingsMessage && (
           <div
-            className={`p-3.5 sm:p-4 rounded-xl border flex items-center justify-between gap-3 text-xs sm:text-sm font-medium animate-in slide-in-from-top-2 ${
+            className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs sm:text-sm font-medium animate-in slide-in-from-top-2 ${
               settingsMessage.type === "success"
-                ? "bg-teal-50 border-teal-200 text-teal-800"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                 : "bg-rose-50 border-rose-200 text-rose-800"
             }`}
           >
@@ -2972,7 +2972,7 @@ export default function BreakupBuddyDashboardPage() {
         )}
 
         {/* Sub-Tab Navigation Bar with Horizontal Touch Scroll */}
-        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-slate-200 pb-1 overflow-x-auto no-scrollbar -mx-1 px-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-rose-100 pb-1 overflow-x-auto no-scrollbar -mx-1 px-1">
           {[
             { id: "profile", label: "Public Profile", icon: "👤" },
             { id: "specialties", label: "Specialties & Services", icon: "🎯" },
@@ -2982,10 +2982,10 @@ export default function BreakupBuddyDashboardPage() {
               key={tab.id}
               type="button"
               onClick={() => setSettingsActiveTab(tab.id as any)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer shrink-0 ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-2xl font-bold text-xs sm:text-sm transition cursor-pointer shrink-0 ${
                 settingsActiveTab === tab.id
-                  ? "bg-teal-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  ? "bg-[#7E2248] text-white shadow-sm"
+                  : "text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/60"
               }`}
             >
               <span>{tab.icon}</span>
@@ -2999,14 +2999,14 @@ export default function BreakupBuddyDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
             <div className="lg:col-span-7 space-y-4 sm:space-y-6">
               {/* Photo & Display Name Card */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
+              <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5">
                 <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
                   <span>📸</span> Avatar & Identity
                 </h3>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 pt-1">
                   <div className="relative group shrink-0">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xl sm:text-2xl border-2 border-teal-200 overflow-hidden shadow-inner">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-rose-100 text-[#7E2248] flex items-center justify-center font-bold text-xl sm:text-2xl border-2 border-rose-200 overflow-hidden shadow-xs">
                       {profilePhoto && (profilePhoto.startsWith("http") || profilePhoto.startsWith("data:")) ? (
                         <img
                           src={profilePhoto}
@@ -3026,10 +3026,10 @@ export default function BreakupBuddyDashboardPage() {
                       value={profilePhoto}
                       onChange={(e) => setProfilePhoto(e.target.value)}
                       placeholder="https://example.com/avatar.jpg"
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                     />
                     <div className="flex items-center gap-3">
-                      <label className="text-xs text-teal-600 hover:text-teal-700 font-bold cursor-pointer inline-flex items-center gap-1">
+                      <label className="text-xs text-[#7E2248] hover:text-[#681938] font-bold cursor-pointer inline-flex items-center gap-1">
                         <span>📁 Choose image...</span>
                         <input
                           type="file"
@@ -3063,14 +3063,14 @@ export default function BreakupBuddyDashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1 sm:pt-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      What people call you (Display Alias / Nickname) <span className="text-teal-600">*</span>
+                      What people call you (Display Alias / Nickname) <span className="text-[#7E2248]">*</span>
                     </label>
                     <input
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="e.g., Buddy Sam, Listener Alex, Hope..."
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
                       🔒 This is the only name shown to users. Your original legal name is kept 100% private.
@@ -3084,14 +3084,14 @@ export default function BreakupBuddyDashboardPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="e.g., Mumbai, India or Remote"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Bio & Intro Card */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
+              <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
                     <span>✍️</span> About Me / Short Bio
@@ -3111,17 +3111,17 @@ export default function BreakupBuddyDashboardPage() {
                   onChange={(e) => setShortBio(e.target.value)}
                   placeholder="Introduce yourself warmly. Mention your listening style, empathy, and how you support people going through breakups..."
                   rows={4}
-                  className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-teal-500 focus:bg-white transition resize-none leading-relaxed"
+                  className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition resize-none leading-relaxed"
                 />
               </div>
 
               {/* Languages Spoken Card */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
+              <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
                     <span>🗣️</span> Languages Spoken
                   </h3>
-                  <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-bold text-[#7E2248] bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
                     {languages.length} Selected
                   </span>
                 </div>
@@ -3136,8 +3136,8 @@ export default function BreakupBuddyDashboardPage() {
                         onClick={() => toggleArrayItem(lang, languages, setLanguages)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
                           isSelected
-                            ? "bg-teal-600 text-white shadow-sm ring-2 ring-teal-500/20"
-                            : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"
+                            ? "bg-[#7E2248] text-white shadow-sm ring-2 ring-rose-200"
+                            : "bg-rose-50/40 text-slate-600 border border-rose-100 hover:bg-rose-50"
                         }`}
                       >
                         {isSelected ? "✓" : "+"} {lang}
@@ -3149,7 +3149,7 @@ export default function BreakupBuddyDashboardPage() {
                     .map((customLang) => (
                       <span
                         key={customLang}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-teal-600 text-white shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#7E2248] text-white shadow-sm"
                       >
                         ✓ {customLang}
                         <button
@@ -3169,12 +3169,12 @@ export default function BreakupBuddyDashboardPage() {
                     value={customLanguageInput}
                     onChange={(e) => setCustomLanguageInput(e.target.value)}
                     placeholder="Add other language..."
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white transition"
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                   <button
                     type="submit"
                     disabled={!customLanguageInput.trim()}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition disabled:opacity-40 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold transition disabled:opacity-40 cursor-pointer"
                   >
                     + Add
                   </button>
@@ -3189,18 +3189,18 @@ export default function BreakupBuddyDashboardPage() {
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                     👁️ Client View Preview
                   </span>
-                  <span className="text-[11px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] text-[#7E2248] font-bold bg-rose-50 border border-rose-100 px-2.5 py-0.5 rounded-full">
                     Live Simulator
                   </span>
                 </div>
 
-                <div className="bg-white border-2 border-teal-500/30 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden bg-gradient-to-b from-teal-50/20 via-white to-white">
-                  <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-600"></div>
+                <div className="bg-white border-2 border-rose-200/80 rounded-3xl p-4 sm:p-6 shadow-xl relative overflow-hidden bg-gradient-to-b from-rose-50/30 via-white to-white">
+                  <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-[#7E2248] via-rose-500 to-[#7E2248]"></div>
 
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="relative shrink-0">
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg sm:text-xl border border-teal-200 overflow-hidden shadow-sm">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-rose-100 text-[#7E2248] flex items-center justify-center font-bold text-lg sm:text-xl border border-rose-200 overflow-hidden shadow-xs">
                           {profilePhoto && (profilePhoto.startsWith("http") || profilePhoto.startsWith("data:")) ? (
                             <img src={profilePhoto} alt={displayName || "Buddy"} className="w-full h-full object-cover" />
                           ) : (
@@ -3212,7 +3212,7 @@ export default function BreakupBuddyDashboardPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <h4 className="font-bold text-slate-900 text-sm sm:text-base truncate">{displayName || "Your Display Name"}</h4>
-                          <span className="text-teal-600 text-sm shrink-0" title="Verified Breakup Buddy">
+                          <span className="text-[#7E2248] text-sm shrink-0" title="Verified Breakup Buddy">
                             ✓
                           </span>
                         </div>
@@ -3239,7 +3239,7 @@ export default function BreakupBuddyDashboardPage() {
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {(languages.length > 0 ? languages : ["English", "Hindi"]).map((l) => (
-                        <span key={l} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] sm:text-[11px] font-medium rounded-md">
+                        <span key={l} className="px-2 py-0.5 bg-rose-50 text-slate-700 text-[10px] sm:text-[11px] font-medium rounded-md border border-rose-100/60">
                           {l}
                         </span>
                       ))}
@@ -3252,7 +3252,7 @@ export default function BreakupBuddyDashboardPage() {
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {(areasOfExpertise.length > 0 ? areasOfExpertise.slice(0, 3) : ["Breakup Recovery", "Moving On", "Emotional Healing"]).map((a) => (
-                        <span key={a} className="px-2 py-0.5 bg-teal-50 text-teal-800 text-[10px] sm:text-[11px] font-bold rounded-md border border-teal-100">
+                        <span key={a} className="px-2 py-0.5 bg-rose-50 text-[#7E2248] text-[10px] sm:text-[11px] font-bold rounded-lg border border-rose-200">
                           {a}
                         </span>
                       ))}
@@ -3262,17 +3262,17 @@ export default function BreakupBuddyDashboardPage() {
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
                       {sessionTypes.includes("Chat") && (
-                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg text-[11px]">
+                        <span className="px-2 py-0.5 bg-rose-50 text-[#7E2248] border border-rose-200 font-bold rounded-lg text-[11px]">
                           💬 Chat
                         </span>
                       )}
                       {sessionTypes.includes("Audio Call") && (
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[11px]">
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-lg text-[11px]">
                           📞 Voice
                         </span>
                       )}
                     </div>
-                    <span className="text-teal-600 font-bold text-xs">Available Now</span>
+                    <span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">Available Now</span>
                   </div>
                 </div>
               </div>
@@ -3283,7 +3283,7 @@ export default function BreakupBuddyDashboardPage() {
         {/* TAB 2: Specialties & Services */}
         {settingsActiveTab === "specialties" && (
           <div className="space-y-4 sm:space-y-6">
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+            <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
@@ -3293,7 +3293,7 @@ export default function BreakupBuddyDashboardPage() {
                     Enable the communication modes through which users can book sessions with you.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full self-start sm:self-auto">
+                <span className="text-xs font-bold text-[#7E2248] bg-rose-50 border border-rose-100 px-3 py-1 rounded-full self-start sm:self-auto">
                   {sessionTypes.length} Active Formats
                 </span>
               </div>
@@ -3318,7 +3318,7 @@ export default function BreakupBuddyDashboardPage() {
                       onClick={() => toggleArrayItem(type.id, sessionTypes, setSessionTypes)}
                       className={`p-4 sm:p-5 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
                         isChecked
-                          ? "border-teal-500 bg-teal-50/40 shadow-sm"
+                          ? "border-[#7E2248] bg-rose-50/40 shadow-xs"
                           : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
@@ -3329,7 +3329,7 @@ export default function BreakupBuddyDashboardPage() {
                         </div>
                         <div
                           className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-xs shrink-0 ${
-                            isChecked ? "bg-teal-600 text-white" : "border border-slate-300 bg-slate-50"
+                            isChecked ? "bg-[#7E2248] text-white" : "border border-slate-300 bg-slate-50"
                           }`}
                         >
                           {isChecked && "✓"}
@@ -3352,7 +3352,7 @@ export default function BreakupBuddyDashboardPage() {
             </div>
 
             {/* Categorized Areas of Expertise */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-6">
+            <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 sm:pb-4">
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
@@ -3362,7 +3362,7 @@ export default function BreakupBuddyDashboardPage() {
                     Pick topics where you feel most confident offering understanding and guidance.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full self-start sm:self-auto">
+                <span className="text-xs font-bold text-[#7E2248] bg-rose-50 border border-rose-100 px-3 py-1 rounded-full self-start sm:self-auto">
                   {areasOfExpertise.length} Topics Selected
                 </span>
               </div>
@@ -3382,7 +3382,7 @@ export default function BreakupBuddyDashboardPage() {
                             onClick={() => toggleArrayItem(item.name, areasOfExpertise, setAreasOfExpertise)}
                             className={`p-3 sm:p-3.5 rounded-xl border transition cursor-pointer flex items-start justify-between gap-2.5 ${
                               isSelected
-                                ? "border-teal-500 bg-teal-50/50 shadow-sm"
+                                ? "border-[#7E2248] bg-rose-50/50 shadow-xs"
                                 : "border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-300"
                             }`}
                           >
@@ -3392,7 +3392,7 @@ export default function BreakupBuddyDashboardPage() {
                             </div>
                             <div
                               className={`w-4 h-4 rounded flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5 ${
-                                isSelected ? "bg-teal-600 text-white" : "border border-slate-300 bg-white"
+                                isSelected ? "bg-[#7E2248] text-white" : "border border-slate-300 bg-white"
                               }`}
                             >
                               {isSelected && "✓"}
@@ -3411,24 +3411,24 @@ export default function BreakupBuddyDashboardPage() {
         {/* TAB 3: Account & Verification */}
         {settingsActiveTab === "account" && (
           <div className="space-y-4 sm:space-y-6">
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs">
               <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2 mb-3 sm:mb-4">
                 <span>🛡️</span> Consultant Verification Status
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="p-3.5 sm:p-4 rounded-xl bg-teal-50 border border-teal-100 flex items-center gap-3">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base sm:text-lg font-bold">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-50 border border-rose-200/80 flex items-center gap-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7E2248] text-white flex items-center justify-center text-base sm:text-lg font-bold">
                     ✓
                   </div>
                   <div>
-                    <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider block">
+                    <span className="text-[10px] text-[#7E2248] font-bold uppercase tracking-wider block">
                       Account Status
                     </span>
-                    <span className="text-xs sm:text-sm font-bold text-teal-900">Verified & Active</span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-900">Verified & Active</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base sm:text-lg font-bold">
                     🛡️
                   </div>
@@ -3440,7 +3440,7 @@ export default function BreakupBuddyDashboardPage() {
                   </div>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-3">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-base sm:text-lg font-bold">
                     🔒
                   </div>
@@ -3455,12 +3455,12 @@ export default function BreakupBuddyDashboardPage() {
             </div>
 
             {/* Registered Details */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
+            <div className="bg-white border border-rose-100 rounded-3xl p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4">
               <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
                 <span>📋</span> Registered Account Details
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
-                <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                   <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                     Registered Email ID
                   </span>
@@ -3472,7 +3472,7 @@ export default function BreakupBuddyDashboardPage() {
                   </div>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                   <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                     Registered Mobile Number
                   </span>
@@ -3487,7 +3487,7 @@ export default function BreakupBuddyDashboardPage() {
             </div>
 
             {/* Platform Ethics */}
-            <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-6 shadow-md space-y-3">
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#4a1228] text-white rounded-3xl p-4 sm:p-6 shadow-md space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-base sm:text-lg">🤝</span>
                 <h4 className="font-bold text-xs sm:text-sm">JabWeMeet Breakup Buddy Community Pledge</h4>
@@ -3495,7 +3495,7 @@ export default function BreakupBuddyDashboardPage() {
               <p className="text-xs text-slate-300 leading-relaxed">
                 As a verified Breakup Buddy on JabWeMeet, you play a vital role in supporting members during their most vulnerable moments. All conversations must maintain absolute confidentiality, kindness, empathy, and active listening. Never request or share private off-platform contact details.
               </p>
-              <div className="pt-1 flex items-center gap-1.5 text-xs text-teal-400 font-bold">
+              <div className="pt-1 flex items-center gap-1.5 text-xs text-rose-300 font-bold">
                 <span>✓ Adheres to JabWeMeet Consultant Guidelines</span>
               </div>
             </div>
@@ -3506,7 +3506,7 @@ export default function BreakupBuddyDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-800 font-sans selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen flex bg-[#FDFBF9] text-slate-800 font-sans selection:bg-[#7E2248] selection:text-white">
       {/* Mobile Offcanvas Drawer Backdrop */}
       {mobileNavOpen && (
         <div
@@ -3522,10 +3522,10 @@ export default function BreakupBuddyDashboardPage() {
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/30">
           <div>
-            <h1 className="text-xl font-bold font-serif text-slate-800 tracking-tight">
-              JabWe<span className="text-teal-500">Meet</span>
+            <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">
+              JabWe<span className="text-[#7E2248]">Meet</span>
             </h1>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Buddy Portal</p>
           </div>
@@ -3547,10 +3547,10 @@ export default function BreakupBuddyDashboardPage() {
                   setActiveTab(item.id);
                   setMobileNavOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
                   activeTab === item.id
-                    ? 'bg-teal-50 text-teal-700 shadow-2xs font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-rose-50 text-[#7E2248] border border-rose-200/80 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50'
                 }`}
               >
                 <span className="text-base">{item.icon}</span>
@@ -3558,7 +3558,7 @@ export default function BreakupBuddyDashboardPage() {
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeTab === item.id ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
+                      activeTab === item.id ? 'bg-[#7E2248] text-white' : 'bg-rose-100/70 text-[#7E2248]'
                     }`}
                   >
                     {item.badge}
@@ -3569,10 +3569,10 @@ export default function BreakupBuddyDashboardPage() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="p-4 border-t border-rose-100 bg-rose-50/30">
           <button
             onClick={handleLogout}
-            className="block w-full text-center py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer border border-red-100"
+            className="block w-full text-center py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-2xl transition cursor-pointer border border-rose-200/60"
           >
             Log Out
           </button>
@@ -3580,23 +3580,23 @@ export default function BreakupBuddyDashboardPage() {
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex shadow-sm z-10">
-        <div className="p-6 border-b border-slate-100">
-          <h1 className="text-xl font-bold font-serif text-slate-800 tracking-tight">
-            JabWe<span className="text-teal-500">Meet</span>
+      <div className="w-64 bg-white border-r border-rose-100 flex-col hidden md:flex shadow-xs z-10">
+        <div className="p-6 border-b border-rose-100">
+          <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">
+            JabWe<span className="text-[#7E2248]">Meet</span>
           </h1>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Buddy Portal</p>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
-          <nav className="space-y-1 px-3">
+          <nav className="space-y-1.5 px-3">
             {navTabs.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-bold transition-all cursor-pointer ${
                   activeTab === item.id
-                    ? 'bg-teal-50 text-teal-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    ? 'bg-rose-50 text-[#7E2248] border border-rose-200/80 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-[#7E2248] hover:bg-rose-50/50'
                 }`}
               >
                 <span className="text-base grayscale opacity-80">{item.icon}</span>
@@ -3604,7 +3604,7 @@ export default function BreakupBuddyDashboardPage() {
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeTab === item.id ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-700'
+                      activeTab === item.id ? 'bg-[#7E2248] text-white' : 'bg-rose-100/70 text-[#7E2248]'
                     }`}
                   >
                     {item.badge}
@@ -3614,8 +3614,8 @@ export default function BreakupBuddyDashboardPage() {
             ))}
           </nav>
         </div>
-        <div className="p-4 border-t border-slate-100">
-          <button onClick={handleLogout} className="block w-full text-center py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer">
+        <div className="p-4 border-t border-rose-100">
+          <button onClick={handleLogout} className="block w-full text-center py-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-2xl transition cursor-pointer border border-rose-200/60">
             Log Out
           </button>
         </div>
@@ -3624,22 +3624,22 @@ export default function BreakupBuddyDashboardPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Header */}
-        <header className="h-16 border-b border-slate-200 bg-white/90 backdrop-blur-md flex items-center justify-between px-3.5 sm:px-6 z-10 shadow-sm shrink-0">
+        <header className="h-16 border-b border-rose-100 bg-white/95 backdrop-blur-md flex items-center justify-between px-3.5 sm:px-6 z-10 shadow-xs shrink-0">
           <div className="flex items-center gap-2.5">
             {/* Mobile Hamburger Menu Toggle */}
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-rose-50 transition cursor-pointer"
               title="Open Navigation Menu"
             >
               <span className="text-xl leading-none">☰</span>
             </button>
 
-            <div className="md:hidden font-bold font-serif text-slate-800 text-base">
-              JabWe<span className="text-teal-500">Meet</span>
+            <div className="md:hidden font-bold font-serif text-slate-900 text-base">
+              JabWe<span className="text-[#7E2248]">Meet</span>
             </div>
-            <div className="hidden md:block text-sm text-slate-500 font-bold uppercase tracking-wider">
+            <div className="hidden md:block text-sm text-[#7E2248] font-bold uppercase tracking-wider font-serif">
               {activeTab}
             </div>
           </div>
@@ -3656,12 +3656,12 @@ export default function BreakupBuddyDashboardPage() {
                     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
                   }
                 }}
-                className="text-slate-500 hover:text-slate-800 transition relative p-2 rounded-full hover:bg-slate-100 cursor-pointer"
+                className="text-slate-500 hover:text-[#7E2248] transition relative p-2 rounded-full hover:bg-rose-50 cursor-pointer"
                 title="Notifications"
               >
                 <span className="text-lg sm:text-xl">🔔</span>
                 {notifications.filter((n) => !n.read).length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 px-1.5 py-0.5 min-w-[16px] text-[9px] font-extrabold text-white bg-red-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-bounce">
+                  <span className="absolute top-0.5 right-0.5 px-1.5 py-0.5 min-w-[16px] text-[9px] font-extrabold text-white bg-[#7E2248] rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-bounce">
                     {notifications.filter((n) => !n.read).length}
                   </span>
                 )}
@@ -3669,11 +3669,11 @@ export default function BreakupBuddyDashboardPage() {
 
               {/* Notifications Dropdown Menu */}
               {showNotificationsDropdown && (
-                <div className="fixed sm:absolute top-16 sm:top-auto right-2 sm:right-0 sm:mt-2 w-[calc(100vw-1rem)] sm:w-80 md:w-96 max-w-sm bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                  <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="fixed sm:absolute top-16 sm:top-auto right-2 sm:right-0 sm:mt-2 w-[calc(100vw-1rem)] sm:w-80 md:w-96 max-w-sm bg-white border border-rose-100 rounded-3xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-3.5 sm:p-4 border-b border-rose-100 flex items-center justify-between bg-rose-50/40">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800 text-xs sm:text-sm">Notifications</span>
-                      <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[10px] font-bold">
+                      <span className="font-bold text-slate-900 text-xs sm:text-sm font-serif">Notifications</span>
+                      <span className="px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248] text-[10px] font-bold">
                         {notifications.length} Total
                       </span>
                     </div>
@@ -3681,14 +3681,14 @@ export default function BreakupBuddyDashboardPage() {
                       <button
                         type="button"
                         onClick={() => setNotifications([])}
-                        className="text-[11px] text-slate-400 hover:text-rose-500 font-bold transition cursor-pointer"
+                        className="text-[11px] text-slate-400 hover:text-rose-600 font-bold transition cursor-pointer"
                       >
                         Clear All
                       </button>
                     )}
                   </div>
 
-                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                  <div className="max-h-72 overflow-y-auto divide-y divide-rose-50">
                     {notifications.length === 0 ? (
                       <div className="p-8 text-center text-slate-400 text-xs italic">
                         No notifications yet.
@@ -3698,11 +3698,11 @@ export default function BreakupBuddyDashboardPage() {
                         <div
                           key={notif.id}
                           onClick={() => handleNotificationClick(notif)}
-                          className={`p-3.5 hover:bg-teal-50/50 transition cursor-pointer flex gap-3 items-start ${
-                            !notif.read ? "bg-slate-50/80" : ""
+                          className={`p-3.5 hover:bg-rose-50/50 transition cursor-pointer flex gap-3 items-start ${
+                            !notif.read ? "bg-rose-50/30" : ""
                           }`}
                         >
-                          <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xs shrink-0 border border-teal-200 mt-0.5">
+                          <div className="w-7 h-7 rounded-full bg-rose-100 text-[#7E2248] flex items-center justify-center font-bold text-xs shrink-0 border border-rose-200 mt-0.5">
                             💬
                           </div>
                           <div className="flex-1 min-w-0">
@@ -3722,12 +3722,12 @@ export default function BreakupBuddyDashboardPage() {
 
             <div
               onClick={() => setActiveTab("Settings")}
-              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer bg-slate-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-slate-100 transition border border-slate-200 shadow-2xs"
+              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer bg-rose-50/50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-rose-100/60 transition border border-rose-200 shadow-2xs"
             >
-              <div className="w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold shrink-0">
+              <div className="w-6 h-6 rounded-full bg-rose-100 text-[#7E2248] flex items-center justify-center text-xs font-bold shrink-0 border border-rose-200">
                 {displayName ? displayName[0].toUpperCase() : 'B'}
               </div>
-              <span className="text-xs sm:text-sm font-bold text-slate-700 max-w-[90px] sm:max-w-none truncate">
+              <span className="text-xs sm:text-sm font-bold text-slate-800 max-w-[90px] sm:max-w-none truncate">
                 {displayName || 'Buddy'}
               </span>
             </div>
@@ -3751,7 +3751,7 @@ export default function BreakupBuddyDashboardPage() {
         </main>
 
         {/* Mobile Bottom Quick Navigation Bar */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 z-30 flex items-center justify-around shadow-lg">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-rose-100 px-2 py-1.5 z-30 flex items-center justify-around shadow-lg">
           {[
             { id: 'Dashboard', icon: '🏠', label: 'Home' },
             { id: 'Requests', icon: '📩', label: 'Requests', badge: requests.filter((r) => r.status === 'Pending').length },
@@ -3765,13 +3765,13 @@ export default function BreakupBuddyDashboardPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition relative cursor-pointer ${
-                  isActive ? "text-teal-600 font-extrabold" : "text-slate-500 font-medium hover:text-slate-800"
+                  isActive ? "text-[#7E2248] font-black" : "text-slate-500 font-medium hover:text-[#7E2248]"
                 }`}
               >
                 <span className="text-lg relative">
                   {tab.icon}
                   {tab.badge !== undefined && tab.badge > 0 && (
-                    <span className="absolute -top-1 -right-2 px-1 text-[9px] font-black text-white bg-amber-500 rounded-full">
+                    <span className="absolute -top-1 -right-2 px-1 text-[9px] font-black text-white bg-[#7E2248] rounded-full">
                       {tab.badge}
                     </span>
                   )}

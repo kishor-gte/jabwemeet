@@ -96,15 +96,15 @@ export default function EventTravelPreferencesSection({
   };
 
   return (
-    <div id="section-events" className="rounded-3xl bg-[#131d2e] border border-white/10 p-6 sm:p-8 space-y-7 shadow-xl">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <div id="section-events" className="rounded-3xl bg-white border border-rose-100 p-6 sm:p-8 space-y-7 shadow-sm">
+      <div className="flex items-center justify-between border-b border-rose-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] shadow-xs">
             <Ticket className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Event & Travel Preferences</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-lg font-serif font-bold text-slate-900">Event & Travel Preferences</h3>
+            <p className="text-xs text-slate-500">
               Customize your JabWeMeet offline invites, group outings, and singles trips.
             </p>
           </div>
@@ -114,14 +114,14 @@ export default function EventTravelPreferencesSection({
       {/* Preferred Event Formats */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <CalendarDays className="w-3.5 h-3.5 text-[#e06d53]" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <CalendarDays className="w-3.5 h-3.5 text-[#7E2248]" />
             <span>Preferred Event Experiences</span>
-            <span className="text-slate-400 font-normal">
+            <span className="text-slate-500 font-normal">
               ({data.eventFormats.length} selected)
             </span>
           </label>
-          <span className="text-[11px] text-slate-400">Select all that interest you</span>
+          <span className="text-[11px] text-slate-500">Select all that interest you</span>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -132,10 +132,10 @@ export default function EventTravelPreferencesSection({
                 key={format}
                 type="button"
                 onClick={() => toggleArrayItem("eventFormats", format)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-sky-600 text-white shadow-md shadow-sky-600/25 border border-sky-500"
-                    : "bg-[#0b111e] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white"
+                    ? "bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
+                    : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3" />}
@@ -147,9 +147,9 @@ export default function EventTravelPreferencesSection({
       </div>
 
       {/* Preferred Group Size */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
-        <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-amber-400" />
+      <div className="space-y-3 pt-3 border-t border-rose-100">
+        <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-amber-600" />
           <span>Preferred Event Crowd Size</span>
         </label>
 
@@ -161,14 +161,14 @@ export default function EventTravelPreferencesSection({
                 key={size}
                 type="button"
                 onClick={() => onChange("eventSize", size)}
-                className={`p-3 rounded-xl border text-left transition text-xs font-medium flex items-center justify-between ${
+                className={`p-3.5 rounded-2xl border text-left transition text-xs font-medium flex items-center justify-between cursor-pointer ${
                   isSelected
-                    ? "bg-amber-500/15 border-amber-500 text-white"
-                    : "bg-[#0b111e] border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                    ? "bg-rose-50 border-[#7E2248] text-[#7E2248] shadow-xs"
+                    : "bg-[#FDFBF9] border-rose-200 text-slate-600 hover:text-slate-900 hover:border-rose-300"
                 }`}
               >
                 <span>{size}</span>
-                {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0 ml-2" />}
+                {isSelected && <Check className="w-4 h-4 text-[#7E2248] shrink-0 ml-2" />}
               </button>
             );
           })}
@@ -176,12 +176,12 @@ export default function EventTravelPreferencesSection({
       </div>
 
       {/* Preferred Days & Timing */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
+      <div className="space-y-3 pt-3 border-t border-rose-100">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-emerald-400" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-emerald-600" />
             <span>Best Days for Offline Events</span>
-            <span className="text-slate-400 font-normal">
+            <span className="text-slate-500 font-normal">
               ({data.preferredDays.length} selected)
             </span>
           </label>
@@ -195,10 +195,10 @@ export default function EventTravelPreferencesSection({
                 key={day}
                 type="button"
                 onClick={() => toggleArrayItem("preferredDays", day)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500"
-                    : "bg-[#0b111e] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white"
+                    ? "bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
+                    : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3" />}
@@ -210,16 +210,16 @@ export default function EventTravelPreferencesSection({
       </div>
 
       {/* First Meeting / Date Setting */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
-        <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-          <Coffee className="w-3.5 h-3.5 text-rose-400" />
+      <div className="space-y-3 pt-3 border-t border-rose-100">
+        <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+          <Coffee className="w-3.5 h-3.5 text-[#7E2248]" />
           <span>Ideal First Meetup Setting</span>
         </label>
 
         <select
           value={data.firstMeetingPreference}
           onChange={(e) => onChange("firstMeetingPreference", e.target.value)}
-          className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#e06d53] transition"
+          className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
         >
           <option value="">Select your preferred first meeting setting</option>
           {FIRST_MEETING_OPTIONS.map((opt) => (
@@ -231,12 +231,12 @@ export default function EventTravelPreferencesSection({
       </div>
 
       {/* Travel & Trip Styles */}
-      <div className="space-y-3 pt-3 border-t border-white/5">
+      <div className="space-y-3 pt-3 border-t border-rose-100">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Plane className="w-3.5 h-3.5 text-indigo-400" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Plane className="w-3.5 h-3.5 text-[#7E2248]" />
             <span>Travel & Singles Trip Vibe</span>
-            <span className="text-slate-400 font-normal">
+            <span className="text-slate-500 font-normal">
               ({data.travelStyle.length} selected)
             </span>
           </label>
@@ -250,10 +250,10 @@ export default function EventTravelPreferencesSection({
                 key={style}
                 type="button"
                 onClick={() => toggleArrayItem("travelStyle", style)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25 border border-indigo-500"
-                    : "bg-[#0b111e] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white"
+                    ? "bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
+                    : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3" />}
@@ -265,13 +265,13 @@ export default function EventTravelPreferencesSection({
 
         {/* Trip Budget */}
         <div className="pt-2 text-xs">
-          <label className="block text-slate-300 font-semibold mb-1.5">
+          <label className="block text-slate-700 font-semibold mb-1.5">
             Preferred Trip Budget Tier
           </label>
           <select
             value={data.tripBudgetPreference}
             onChange={(e) => onChange("tripBudgetPreference", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#e06d53] transition"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
           >
             <option value="">Select trip budget preference</option>
             {BUDGET_PREFERENCES.map((b) => (

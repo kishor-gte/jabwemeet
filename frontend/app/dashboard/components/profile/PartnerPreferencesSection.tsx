@@ -94,15 +94,15 @@ export default function PartnerPreferencesSection({
   };
 
   return (
-    <div id="section-partner" className="rounded-3xl bg-[#131d2e] border border-white/10 p-6 sm:p-8 space-y-7 shadow-xl">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <div id="section-partner" className="rounded-3xl bg-white border border-rose-100 p-6 sm:p-8 space-y-7 shadow-sm">
+      <div className="flex items-center justify-between border-b border-rose-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] shadow-xs">
             <Heart className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Partner & Matching Preferences</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-lg font-serif font-bold text-slate-900">Partner & Matching Preferences</h3>
+            <p className="text-xs text-slate-500">
               Set your criteria for matchmaking algorithms, curated table assignments, and Relationship Managers.
             </p>
           </div>
@@ -111,7 +111,7 @@ export default function PartnerPreferencesSection({
 
       {/* Age Range & Demographics */}
       <div className="space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-[#e06d53] flex items-center gap-1.5">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#7E2248] flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5" />
           <span>Basic Criteria</span>
         </h4>
@@ -119,37 +119,37 @@ export default function PartnerPreferencesSection({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           {/* Min Age */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Minimum Age *</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Minimum Age *</label>
             <input
               type="number"
               min={18}
               max={80}
               value={data.minAge || ""}
               onChange={(e) => onChange("minAge", parseInt(e.target.value) || 18)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
           </div>
 
           {/* Max Age */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Maximum Age *</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Maximum Age *</label>
             <input
               type="number"
               min={18}
               max={80}
               value={data.maxAge || ""}
               onChange={(e) => onChange("maxAge", parseInt(e.target.value) || 35)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
           </div>
 
           {/* Preferred Gender */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Looking to Meet *</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Looking to Meet *</label>
             <select
               value={data.preferredGender}
               onChange={(e) => onChange("preferredGender", e.target.value)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="Women">Women</option>
               <option value="Men">Men</option>
@@ -160,11 +160,11 @@ export default function PartnerPreferencesSection({
 
           {/* Preferred Height */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Height Preference</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Height Preference</label>
             <select
               value={data.preferredHeight}
               onChange={(e) => onChange("preferredHeight", e.target.value)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="No preference">No preference</option>
               <option value="5'0&quot; to 5'4&quot;">5'0" to 5'4"</option>
@@ -177,7 +177,7 @@ export default function PartnerPreferencesSection({
         </div>
 
         {ageError && (
-          <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center gap-2 text-rose-300 text-xs">
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{ageError}</span>
           </div>
@@ -185,13 +185,13 @@ export default function PartnerPreferencesSection({
 
         {/* Location Preference */}
         <div className="pt-2 text-xs">
-          <label className="block text-slate-300 font-semibold mb-1.5">
+          <label className="block text-slate-700 font-semibold mb-1.5">
             Geographic Scope / Distance
           </label>
           <select
             value={data.preferredLocation}
             onChange={(e) => onChange("preferredLocation", e.target.value)}
-            className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+            className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
           >
             <option value="Same City Only">Same City Only (Primary location)</option>
             <option value="Nearby Cities (within 2-3 hours drive)">
@@ -207,8 +207,8 @@ export default function PartnerPreferencesSection({
       </div>
 
       {/* Partner Lifestyle Compatibility */}
-      <div className="space-y-4 pt-4 border-t border-white/5">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-[#e06d53] flex items-center gap-1.5">
+      <div className="space-y-4 pt-4 border-t border-rose-100">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#7E2248] flex items-center gap-1.5">
           <UserCheck className="w-3.5 h-3.5" />
           <span>Partner Lifestyle Expectations</span>
         </h4>
@@ -216,11 +216,11 @@ export default function PartnerPreferencesSection({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           {/* Smoking */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Smoking Habit</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Smoking Habit</label>
             <select
               value={data.smokingPreference}
               onChange={(e) => onChange("smokingPreference", e.target.value)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="Non-smoker preferred">Non-smoker preferred</option>
               <option value="Occasional / Social is fine">Occasional / Social is fine</option>
@@ -230,11 +230,11 @@ export default function PartnerPreferencesSection({
 
           {/* Drinking */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Alcohol Habit</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Alcohol Habit</label>
             <select
               value={data.drinkingPreference}
               onChange={(e) => onChange("drinkingPreference", e.target.value)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="Non-drinker preferred">Non-drinker preferred</option>
               <option value="Social / Occasional is fine">Social / Occasional is fine</option>
@@ -245,11 +245,11 @@ export default function PartnerPreferencesSection({
 
           {/* Dietary */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Dietary Compatibility</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Dietary Compatibility</label>
             <select
               value={data.dietaryPreference}
               onChange={(e) => onChange("dietaryPreference", e.target.value)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="No preference / Any diet">No preference / Any diet</option>
               <option value="Vegetarian preferred">Vegetarian preferred</option>
@@ -260,11 +260,11 @@ export default function PartnerPreferencesSection({
 
           {/* Pets */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1.5">Pet Friendliness</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Pet Friendliness</label>
             <select
               value={data.petPreference}
               onChange={(e) => onChange("petPreference", e.target.value)}
-              className="w-full bg-[#0b111e] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#e06d53]"
+              className="w-full bg-[#FDFBF9] border border-rose-200 rounded-xl px-4 py-2.5 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="Must love pets">Must love pets</option>
               <option value="Comfortable with pets">Comfortable with pets</option>
@@ -276,14 +276,14 @@ export default function PartnerPreferencesSection({
       </div>
 
       {/* Core Qualities & Values (Max 5) */}
-      <div className="space-y-3 pt-4 border-t border-white/5">
+      <div className="space-y-3 pt-4 border-t border-rose-100">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
             <span>Top Qualities You Value in a Partner</span>
             <span
               className={`font-semibold text-[11px] ${
-                data.coreQualities.length === 5 ? "text-amber-400" : "text-slate-400"
+                data.coreQualities.length === 5 ? "text-[#7E2248]" : "text-slate-500"
               }`}
             >
               ({data.coreQualities.length} / 5 selected)
@@ -303,12 +303,12 @@ export default function PartnerPreferencesSection({
                 type="button"
                 disabled={isDisabled}
                 onClick={() => toggleQuality(quality)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-rose-600 text-white shadow-md shadow-rose-600/25 border border-rose-500"
+                    ? "bg-[#7E2248] text-white shadow-xs border border-[#7E2248]"
                     : isDisabled
-                    ? "bg-white/5 text-slate-400 border border-white/5 cursor-not-allowed opacity-40"
-                    : "bg-[#0b111e] text-slate-300 border border-white/10 hover:border-white/20 hover:text-white"
+                    ? "bg-rose-50/40 text-slate-400 border border-rose-100 cursor-not-allowed opacity-40"
+                    : "bg-[#FDFBF9] text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3" />}
@@ -320,21 +320,21 @@ export default function PartnerPreferencesSection({
       </div>
 
       {/* Private Deal Breakers */}
-      <div className="space-y-3 pt-5 border-t border-white/5 bg-rose-950/20 -mx-6 sm:-mx-8 p-6 sm:p-8 rounded-b-3xl border-t border-rose-900/30">
+      <div className="space-y-3 pt-5 border-t border-rose-100 bg-rose-50/50 -mx-6 sm:-mx-8 p-6 sm:p-8 rounded-b-3xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-            <span className="text-xs font-bold text-rose-300 uppercase tracking-wider">
+            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="text-xs font-serif font-bold text-rose-900 uppercase tracking-wider">
               Confidential Deal Breakers
             </span>
           </div>
-          <div className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
-            <Lock className="w-3 h-3 text-emerald-400" />
+          <div className="inline-flex items-center gap-1 text-[11px] text-slate-600 bg-white px-3 py-1 rounded-full border border-rose-200 shadow-2xs">
+            <Lock className="w-3 h-3 text-emerald-600" />
             <span>Strictly Private — Never Shown on Public Profile</span>
           </div>
         </div>
 
-        <p className="text-xs text-slate-300">
+        <p className="text-xs text-slate-600">
           Select attributes that are definite deal-breakers for you. JabWeMeet's matchmaking engine and Relationship Managers will filter out profiles matching these traits before introducing anyone to you.
         </p>
 
@@ -346,13 +346,13 @@ export default function PartnerPreferencesSection({
                 key={breaker}
                 type="button"
                 onClick={() => toggleDealBreaker(breaker)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer ${
                   isSelected
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/50"
-                    : "bg-[#0b111e] text-slate-400 border border-white/10 hover:border-white/20 hover:text-slate-300"
+                    ? "bg-rose-100 text-rose-900 border border-rose-300 font-semibold shadow-2xs"
+                    : "bg-white text-slate-600 border border-rose-200 hover:border-rose-300 hover:text-slate-900"
                 }`}
               >
-                {isSelected ? <Check className="w-3.5 h-3.5 text-rose-400" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />}
+                {isSelected ? <Check className="w-3.5 h-3.5 text-rose-700" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />}
                 <span>{breaker}</span>
               </button>
             );
