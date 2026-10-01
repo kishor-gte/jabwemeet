@@ -32,9 +32,10 @@ function RegisterContent() {
   const [gender, setGender] = useState("");
   const [intent, setIntent] = useState("Relationship");
 
-  // Breakup Buddy extra state
-  const [idType, setIdType] = useState("");
+  // Identity & Document state (used for USER, BREAKUP_BUDDY, MATCHMAKER, HOST)
+  const [idType, setIdType] = useState("Aadhaar");
   const [idDocument, setIdDocument] = useState("");
+  const [govIdPreview, setGovIdPreview] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState("");
 
   // Matchmaker document state
@@ -125,6 +126,28 @@ function RegisterContent() {
       return;
     }
 
+    // Member (USER) Aadhaar / ID Validation
+    if (role === "USER") {
+      const cleanDoc = idDocument.replace(/\s+/g, "");
+      if (!cleanDoc) {
+        setError(`Please enter your ${idType || "Aadhaar"} number.`);
+        return;
+      }
+      if (idType === "Aadhaar" && (cleanDoc.length !== 12 || !/^\d{12}$/.test(cleanDoc))) {
+        setError("Please enter a valid 12-digit Aadhaar Number.");
+        return;
+      }
+      const gov = document.getElementById("reg_govIdProof") as HTMLInputElement;
+      if (!gov?.files?.[0]) {
+        setError(`Please upload a clear photo of your chosen ID document (${idType || "Aadhaar Card"}).`);
+        return;
+      }
+      if (gov.files[0].size > 5 * 1024 * 1024) {
+        setError("Document photo size cannot exceed 5MB.");
+        return;
+      }
+    }
+
     setError("");
     setLoading(true);
 
@@ -132,7 +155,24 @@ function RegisterContent() {
       let reqBody: BodyInit;
       let reqHeaders: HeadersInit = {};
 
-      if (role === "MATCHMAKER" || role === "HOST") {
+      const gov = document.getElementById("reg_govIdProof") as HTMLInputElement;
+      const addr = document.getElementById("reg_addressProof") as HTMLInputElement;
+      const edu = document.getElementById("reg_eduCertificate") as HTMLInputElement;
+      const work = document.getElementById("reg_workExperience") as HTMLInputElement;
+
+      const maxSizeBytes = 5 * 1024 * 1024;
+      if (
+        (gov?.files?.[0] && gov.files[0].size > maxSizeBytes) ||
+        (addr?.files?.[0] && addr.files[0].size > maxSizeBytes) ||
+        (edu?.files?.[0] && edu.files[0].size > maxSizeBytes) ||
+        (work?.files?.[0] && work.files[0].size > maxSizeBytes)
+      ) {
+        setError("Document file size cannot exceed 5MB.");
+        setLoading(false);
+        return;
+      }
+
+      if (role === "USER" || role === "MATCHMAKER" || role === "HOST") {
         const formData = new FormData();
         formData.append("name", name.trim());
         formData.append("email", email.trim());
@@ -141,23 +181,11 @@ function RegisterContent() {
         formData.append("confirmPassword", confirmPassword);
         formData.append("role", role);
         if (city.trim()) formData.append("city", city.trim());
-
-        const gov = document.getElementById("reg_govIdProof") as HTMLInputElement;
-        const addr = document.getElementById("reg_addressProof") as HTMLInputElement;
-        const edu = document.getElementById("reg_eduCertificate") as HTMLInputElement;
-        const work = document.getElementById("reg_workExperience") as HTMLInputElement;
-
-        const maxSizeBytes = 5 * 1024 * 1024;
-        if (
-          (gov?.files?.[0] && gov.files[0].size > maxSizeBytes) ||
-          (addr?.files?.[0] && addr.files[0].size > maxSizeBytes) ||
-          (edu?.files?.[0] && edu.files[0].size > maxSizeBytes) ||
-          (work?.files?.[0] && work.files[0].size > maxSizeBytes)
-        ) {
-          setError("Document file size cannot exceed 5MB.");
-          setLoading(false);
-          return;
-        }
+        if (dob) formData.append("dateOfBirth", dob);
+        if (gender) formData.append("gender", gender);
+        if (intent) formData.append("relationshipIntent", intent);
+        if (idType) formData.append("idType", idType);
+        if (idDocument) formData.append("idDocument", idDocument.trim());
 
         if (gov?.files?.[0]) formData.append("govIdProof", gov.files[0]);
         if (addr?.files?.[0]) formData.append("addressProof", addr.files[0]);
@@ -173,7 +201,7 @@ function RegisterContent() {
           phone: phone.trim(),
           password,
           confirmPassword,
-          dateOfBirth: role === "BREAKUP_BUDDY" || role === "HOST" || role === "CAFE" ? (dob || undefined) : dob,
+          dateOfBirth: role === "BREAKUP_BUDDY" || role === "CAFE" ? (dob || undefined) : dob,
           city: role === "BREAKUP_BUDDY" ? undefined : city,
           gender,
           relationshipIntent: intent,
@@ -566,6 +594,135 @@ function RegisterContent() {
                       <option value="Friendship">Friendship</option>
                       <option value="Social Connections">Social Connections</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Identity & Aadhaar Verification Section for Members */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#e06d53]" />
+                    <h4 className="font-semibold text-white">Identity Verification (Aadhaar / Govt ID) *</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    JabWeMeet is a verified community. Please provide your government ID details and upload a clear photo of your chosen document to ensure offline safety for all members.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        ID Document Type *
+                      </label>
+                      <select
+                        value={idType}
+                        onChange={(e) => {
+                          setIdType(e.target.value);
+                          setIdDocument("");
+                        }}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#131d2e] border border-white/10 text-white focus:outline-none focus:border-[#e06d53]"
+                      >
+                        <option value="Aadhaar">Aadhaar Card (Recommended)</option>
+                        <option value="PAN">PAN Card</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Voter ID">Voter ID</option>
+                        <option value="Driving License">Driving License</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        {idType === "Aadhaar" ? "12-Digit Aadhaar Number *" : `${idType} Number *`}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={idDocument}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          if (idType === "Aadhaar") {
+                            val = val.replace(/\D/g, "").slice(0, 12);
+                            val = val.replace(/(\d{4})(?=\d)/g, "$1 ");
+                          }
+                          setIdDocument(val);
+                        }}
+                        placeholder={
+                          idType === "Aadhaar" 
+                            ? "e.g. 5432 1234 5678" 
+                            : idType === "PAN" 
+                            ? "e.g. ABCDE1234F" 
+                            : `Enter ${idType} Number`
+                        }
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Upload Photo of Document */}
+                  <div>
+                    <label className="flex items-center justify-between text-slate-300 font-semibold mb-1.5">
+                      <span>Photo of Chosen Document ({idType || "Aadhaar"}) *</span>
+                      {mmGovId && <span className="text-emerald-400 font-normal text-[10px]">✓ Selected</span>}
+                    </label>
+
+                    <div className="relative border-2 border-dashed border-white/15 hover:border-[#e06d53]/50 rounded-2xl p-4 text-center transition bg-black/20">
+                      <input
+                        type="file"
+                        id="reg_govIdProof"
+                        required
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setMmGovId(file.name);
+                            if (file.type.startsWith("image/")) {
+                              setGovIdPreview(URL.createObjectURL(file));
+                            } else {
+                              setGovIdPreview(null);
+                            }
+                          } else {
+                            setMmGovId("");
+                            setGovIdPreview(null);
+                          }
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+
+                      {govIdPreview ? (
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={govIdPreview} 
+                            alt="ID Preview" 
+                            className="w-16 h-12 rounded-lg object-cover border border-white/20"
+                          />
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{mmGovId}</p>
+                            <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 size={12} /> Photo ready for verification
+                            </p>
+                          </div>
+                          <span className="text-[11px] text-[#e06d53] font-semibold">Change</span>
+                        </div>
+                      ) : mmGovId ? (
+                        <div className="flex items-center justify-between">
+                          <div className="text-left">
+                            <p className="text-xs font-bold text-white truncate">{mmGovId}</p>
+                            <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 size={12} /> Document attached
+                            </p>
+                          </div>
+                          <span className="text-[11px] text-[#e06d53] font-semibold">Change</span>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          <div className="text-2xl mb-1">📄</div>
+                          <p className="text-xs font-semibold text-slate-300">
+                            Click or drag to upload photo of your {idType || "Aadhaar Card"}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            Clear front photo or scan • JPG, PNG, or PDF up to 5MB
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </>

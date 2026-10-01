@@ -352,6 +352,7 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
 
         role: normalizedRole,
         isVerified: false,
+        identityVerified: false,
         isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
 
         idType: idType ? String(idType).trim() : null,

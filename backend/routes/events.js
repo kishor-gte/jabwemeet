@@ -26,16 +26,39 @@ const razorpay = new Razorpay({
   key_secret: razorpayConfig.key_secret,
 });
 
+// GET /api/events/cities - List distinct cities with active events
+router.get('/cities', async (req, res) => {
+  try {
+    const events = await prisma.event.findMany({
+      select: { city: true },
+      distinct: ['city'],
+    });
+    const cities = Array.from(new Set(events.map(e => e.city?.trim()).filter(Boolean)));
+    return res.json({ success: true, cities });
+  } catch (error) {
+    console.error('Error fetching event cities:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch event cities' });
+  }
+});
+
 // GET /api/events - List active events
 router.get('/', async (req, res) => {
   try {
     const { category, city } = req.query;
     const filter = {};
     if (category && category !== 'All') {
-      filter.category = { equals: category, mode: 'insensitive' };
+      filter.category = { contains: category, mode: 'insensitive' };
     }
     if (city && city !== 'All') {
-      filter.city = { equals: city, mode: 'insensitive' };
+      const c = String(city).trim();
+      if (/bengaluru|bangalore|banglore/i.test(c)) {
+        filter.OR = [
+          { city: { contains: 'bang', mode: 'insensitive' } },
+          { city: { contains: 'beng', mode: 'insensitive' } },
+        ];
+      } else {
+        filter.city = { contains: c, mode: 'insensitive' };
+      }
     }
 
     const events = await prisma.event.findMany({
