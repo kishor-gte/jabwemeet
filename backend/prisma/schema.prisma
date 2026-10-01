@@ -6,171 +6,155 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
-  USER
-  ADMIN
-  MATCHMAKER
-  BREAKUP_BUDDY
-  HOST
-  CAFE
-}
-
 model User {
-  id                 String   @id @default(cuid())
-  name               String
-  email              String   @unique
-  phone              String   @unique
-  password           String
-  dateOfBirth        DateTime?
-  city               String?
-  gender             String?
-  relationshipIntent String?
-  role               Role      @default(USER)
-  cafeProfile        CafeProfile?
-  isVerified         Boolean   @default(true)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  status             String?   @default("ACTIVE")
-  staffRole          String?   @default("SUPER_ADMIN")
-  identityVerified   Boolean?  @default(false)
-  mobileVerified     Boolean?  @default(true)
-  lastActiveAt       DateTime? @default(now())
-
-  // Breakup Buddy User Limits (Free Tier & Packages)
-  bbPackageId             String?
-  bbPackageStatus         String?   @default("NONE") // NONE, ACTIVE, EXHAUSTED
-  bbSessionsRemaining     Int       @default(0)
-  bbCallMinutesRemaining  Int       @default(5)  // 5 mins free initial
-  bbChatMinutesRemaining  Int       @default(15) // 15 mins free initial
-  bbPackageExpiresAt      DateTime?
-  internalNotes      String?
-  events             Event[]
-
-  // Breakup Buddy Fields
-  idType             String?
-  idDocument         String?
-  profilePhoto       String?
-  displayName        String?
-  shortBio           String?
-  languages          String[]  @default([])
-  areasOfExpertise   String[]  @default([])
-  sessionTypes       String[]  @default([])
-  availableDays          String[]  @default([])
-  availableTimeStart     String?
-  availableTimeEnd     String?
-  isAvailableForRequests Boolean   @default(true)
-  weeklySchedule         Json?
-  blockedDates           String[]  @default([])
-
-  // Matchmaker Fields
-  isApproved         Boolean   @default(false)
-  govIdProof         String?
-  addressProof       String?
-  eduCertificate     String?
-  workExperience     String?
-  profileImage       String?
-  assignedManagerId  String?
-  assignedManager    User?    @relation("AssignedClients", fields: [assignedManagerId], references: [id])
-  assignedClients    User[]   @relation("AssignedClients")
-  
-  matchmakingRequests  MatchmakingRequest[]
-  suggestedMatches     MatchSuggestion[] @relation("ClientSuggestions")
-  madeSuggestions      MatchSuggestion[] @relation("MatchmakerSuggestions")
-  suggestedAsProfile   MatchSuggestion[] @relation("SuggestedProfile")
-  clientAppointments   Appointment[]     @relation("ClientAppointments")
-  matchmakerAppointments Appointment[]   @relation("MatchmakerAppointments")
-  clientConversations  Conversation[]    @relation("ClientConversations")
-  matchmakerConversations Conversation[] @relation("MatchmakerConversations")
-  sentMessages         Message[]
-  connectionMessages   ConnectionMessage[]
-
-  // Breakup Buddy Relations
-  buddyRequestsSent      BuddyRequest[]  @relation("BuddyRequestsUser")
-  buddyRequestsReceived  BuddyRequest[]  @relation("BuddyRequestsBuddy")
-  buddySessionsAsUser    BuddySession[]  @relation("BuddySessionsUser")
-  buddySessionsAsBuddy   BuddySession[]  @relation("BuddySessionsBuddy")
-  buddyReviewsGiven      BuddyReview[]   @relation("BuddyReviewsUser")
-  buddyReviewsReceived   BuddyReview[]   @relation("BuddyReviewsBuddy")
-  buddyMessagesSent      BuddyMessage[]
-  callLogsSent           CallLog[]       @relation("CallLogsCaller")
-  callLogsReceived       CallLog[]       @relation("CallLogsReceiver")
-
-  // Event Bookings / Reservations
-  eventBookings          EventBooking[]
-
-  // Host Subscription & Payments
-  hostSubscriptions      HostSubscription[]
-  hostPayments           HostPayment[]
+  id                                 String               @id @default(cuid())
+  name                               String
+  email                              String               @unique
+  phone                              String               @unique
+  password                           String
+  dateOfBirth                        DateTime?
+  city                               String?
+  gender                             String?
+  relationshipIntent                 String?
+  role                               Role                 @default(USER)
+  isVerified                         Boolean              @default(true)
+  createdAt                          DateTime             @default(now())
+  updatedAt                          DateTime             @updatedAt
+  addressProof                       String?
+  areasOfExpertise                   String[]             @default([])
+  assignedManagerId                  String?
+  availableDays                      String[]             @default([])
+  availableTimeEnd                   String?
+  availableTimeStart                 String?
+  displayName                        String?
+  eduCertificate                     String?
+  govIdProof                         String?
+  idDocument                         String?
+  idType                             String?
+  isApproved                         Boolean              @default(false)
+  languages                          String[]             @default([])
+  profileImage                       String?
+  profilePhoto                       String?
+  sessionTypes                       String[]             @default([])
+  shortBio                           String?
+  workExperience                     String?
+  status                             String?              @default("ACTIVE")
+  staffRole                          String?              @default("SUPER_ADMIN")
+  identityVerified                   Boolean?             @default(false)
+  mobileVerified                     Boolean?             @default(true)
+  lastActiveAt                       DateTime?            @default(now())
+  internalNotes                      String?
+  isAvailableForRequests             Boolean              @default(true)
+  weeklySchedule                     Json?
+  blockedDates                       String[]             @default([])
+  bbCallMinutesRemaining             Int                  @default(5)
+  bbChatMinutesRemaining             Int                  @default(15)
+  bbPackageExpiresAt                 DateTime?
+  bbPackageId                        String?
+  bbPackageStatus                    String?              @default("NONE")
+  bbSessionsRemaining                Int                  @default(0)
+  clientAppointments                 Appointment[]        @relation("ClientAppointments")
+  matchmakerAppointments             Appointment[]        @relation("MatchmakerAppointments")
+  buddyMessagesSent                  BuddyMessage[]
+  buddyRequestsReceived              BuddyRequest[]       @relation("BuddyRequestsBuddy")
+  buddyRequestsSent                  BuddyRequest[]       @relation("BuddyRequestsUser")
+  buddyReviewsReceived               BuddyReview[]        @relation("BuddyReviewsBuddy")
+  buddyReviewsGiven                  BuddyReview[]        @relation("BuddyReviewsUser")
+  buddySessionsAsBuddy               BuddySession[]       @relation("BuddySessionsBuddy")
+  buddySessionsAsUser                BuddySession[]       @relation("BuddySessionsUser")
+  cafeProfile                        CafeProfile?
+  callLogsSent                       CallLog[]            @relation("CallLogsCaller")
+  callLogsReceived                   CallLog[]            @relation("CallLogsReceiver")
+  connectionMessages                 ConnectionMessage[]
+  clientConversations                Conversation[]       @relation("ClientConversations")
+  matchmakerConversations            Conversation[]       @relation("MatchmakerConversations")
+  events                             Event[]
+  eventBookings                      EventBooking[]
+  EventRegistration                  EventRegistration[]
+  hostPayments                       HostPayment[]
+  hostSubscriptions                  HostSubscription[]
+  Invoice                            Invoice[]
+  suggestedMatches                   MatchSuggestion[]    @relation("ClientSuggestions")
+  madeSuggestions                    MatchSuggestion[]    @relation("MatchmakerSuggestions")
+  suggestedAsProfile                 MatchSuggestion[]    @relation("SuggestedProfile")
+  matchmakingRequests                MatchmakingRequest[]
+  sentMessages                       Message[]
+  Payment                            Payment[]
+  Refund                             Refund[]
+  Report_Report_reportedUserIdToUser Report[]             @relation("Report_reportedUserIdToUser")
+  Report_Report_reporterIdToUser     Report[]             @relation("Report_reporterIdToUser")
+  Subscription                       Subscription[]
+  SupportTicket                      SupportTicket[]
+  assignedManager                    User?                @relation("AssignedClients", fields: [assignedManagerId], references: [id])
+  assignedClients                    User[]               @relation("AssignedClients")
 
   @@index([email])
   @@index([phone])
 }
 
 model MatchmakingRequest {
-  id           String   @id @default(cuid())
-  clientId     String
-  client       User     @relation(fields: [clientId], references: [id])
-  lookingFor   String?
-  status       String   @default("New")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(cuid())
+  clientId   String
+  lookingFor String?
+  status     String   @default("New")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  client     User     @relation(fields: [clientId], references: [id])
 }
 
 model MatchSuggestion {
-  id                   String   @id @default(cuid())
-  matchmakerId         String
-  matchmaker           User     @relation("MatchmakerSuggestions", fields: [matchmakerId], references: [id])
-  clientId             String
-  client               User     @relation("ClientSuggestions", fields: [clientId], references: [id])
-  suggestedProfileId   String
-  suggestedProfile     User     @relation("SuggestedProfile", fields: [suggestedProfileId], references: [id])
-  status               String    @default("Pending") // Overall status
-  clientStatus         String    @default("Pending") // Pending, Approved, Rejected
-  suggestedStatus      String    @default("Pending") // Pending, Approved, Rejected
-  meetingDate          DateTime?
-  meetingLocation      String?
-  meetingVenue         String?
-  meetingMessage       String?
-  createdAt            DateTime  @default(now())
-
-  updatedAt            DateTime  @updatedAt
-  connectionMessages   ConnectionMessage[]
-
+  id                 String              @id @default(cuid())
+  matchmakerId       String
+  clientId           String
+  suggestedProfileId String
+  status             String              @default("Pending")
+  createdAt          DateTime            @default(now())
+  clientStatus       String              @default("Pending")
+  meetingDate        DateTime?
+  meetingLocation    String?
+  meetingMessage     String?
+  meetingVenue       String?
+  suggestedStatus    String              @default("Pending")
+  updatedAt          DateTime            @updatedAt
+  connectionMessages ConnectionMessage[]
+  client             User                @relation("ClientSuggestions", fields: [clientId], references: [id])
+  matchmaker         User                @relation("MatchmakerSuggestions", fields: [matchmakerId], references: [id])
+  suggestedProfile   User                @relation("SuggestedProfile", fields: [suggestedProfileId], references: [id])
 }
 
 model Appointment {
   id           String   @id @default(cuid())
   clientId     String
-  client       User     @relation("ClientAppointments", fields: [clientId], references: [id])
   matchmakerId String
-  matchmaker   User     @relation("MatchmakerAppointments", fields: [matchmakerId], references: [id])
   date         DateTime
   time         String
   type         String
   mode         String
   status       String   @default("Scheduled")
   createdAt    DateTime @default(now())
+  client       User     @relation("ClientAppointments", fields: [clientId], references: [id])
+  matchmaker   User     @relation("MatchmakerAppointments", fields: [matchmakerId], references: [id])
 }
 
 model Conversation {
   id           String    @id @default(cuid())
   clientId     String
-  client       User      @relation("ClientConversations", fields: [clientId], references: [id])
   matchmakerId String
+  updatedAt    DateTime  @updatedAt
+  client       User      @relation("ClientConversations", fields: [clientId], references: [id])
   matchmaker   User      @relation("MatchmakerConversations", fields: [matchmakerId], references: [id])
   messages     Message[]
-  updatedAt    DateTime  @updatedAt
 }
 
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
   senderId       String
-  sender         User         @relation(fields: [senderId], references: [id])
   content        String
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation(fields: [senderId], references: [id])
 }
 
 model PasswordReset {
@@ -186,35 +170,45 @@ model PasswordReset {
 }
 
 model Event {
-  id           String         @id @default(cuid())
-  title        String
-  description  String
-  category     String
-  location     String
-  city         String
-  date         DateTime
-  endDate      DateTime?
-  price        Float?         @default(0)
-  maxAttendees Int?           @default(50)
-  ageRange     String?
-  itinerary    String?
-  hostId       String?
-  host         User?          @relation(fields: [hostId], references: [id])
-  bookings     EventBooking[]
-  createdAt    DateTime       @default(now())
+  id                 String              @id @default(cuid())
+  title              String
+  description        String
+  category           String
+  location           String
+  city               String
+  date               DateTime
+  price              Float?              @default(0)
+  maxAttendees       Int?                @default(50)
+  createdAt          DateTime            @default(now())
+  ageRange           String?
+  endDate            DateTime?
+  hostId             String?
+  itinerary          String?
+  coverImage         String?
+  address            String?
+  mapLocation        String?
+  rules              String?
+  participationRules String?
+  dressCode          String?
+  status             String?             @default("PUBLISHED") @db.VarChar(50)
+  faqs               Json?               @default("[]")
+  host               User?               @relation(fields: [hostId], references: [id])
+  bookings           EventBooking[]
+  EventRegistration  EventRegistration[]
+  Report             Report[]
 }
 
 model EventBooking {
   id          String   @id @default(cuid())
   eventId     String
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status      String   @default("CONFIRMED") // CONFIRMED, CHECKED_IN, CANCELLED
+  status      String   @default("CONFIRMED")
   spots       Int      @default(1)
   totalAmount Float?   @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -222,120 +216,116 @@ model EventBooking {
 }
 
 model BuddyRequest {
-  id               String   @id @default(cuid())
-  userId           String
-  user             User     @relation("BuddyRequestsUser", fields: [userId], references: [id])
-  buddyId          String
-  buddy            User     @relation("BuddyRequestsBuddy", fields: [buddyId], references: [id])
-  topic            String?
-  sessionType      String?  
-  status                String   @default("Pending") 
-  timeUsedSeconds       Int      @default(0)
-  chatLimitSeconds      Int      @default(900)
-  voiceCallSeconds      Int      @default(0)
-  voiceCallLimitSeconds Int      @default(300)
-  createdAt             DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  packageStartedAt      DateTime?
+  id                    String          @id @default(cuid())
+  userId                String
+  buddyId               String
+  topic                 String?
+  sessionType           String?
+  status                String          @default("Pending")
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  chatLimitSeconds      Int             @default(900)
+  timeUsedSeconds       Int             @default(0)
+  voiceCallLimitSeconds Int             @default(300)
+  voiceCallSeconds      Int             @default(0)
   packageExpiresAt      DateTime?
   packageName           String?
   packagePrice          Float?
-  
-  messages         BuddyMessage[]
-  presences        BuddyPresence[]
-  callLogs         CallLog[]
+  packageStartedAt      DateTime?
+  messages              BuddyMessage[]
+  presences             BuddyPresence[]
+  buddy                 User            @relation("BuddyRequestsBuddy", fields: [buddyId], references: [id])
+  user                  User            @relation("BuddyRequestsUser", fields: [userId], references: [id])
+  callLogs              CallLog[]
 }
 
 model BuddyMessage {
-  id               String   @id @default(cuid())
-  requestId        String
-  request          BuddyRequest @relation(fields: [requestId], references: [id])
-  senderId         String
-  sender           User     @relation(fields: [senderId], references: [id])
-  senderRole       String
-  text             String
-  createdAt        DateTime @default(now())
+  id         String       @id @default(cuid())
+  requestId  String
+  senderId   String
+  senderRole String
+  text       String
+  createdAt  DateTime     @default(now())
+  request    BuddyRequest @relation(fields: [requestId], references: [id])
+  sender     User         @relation(fields: [senderId], references: [id])
 }
 
 model BuddyPresence {
-  id               String   @id @default(cuid())
-  requestId        String
-  request          BuddyRequest @relation(fields: [requestId], references: [id])
-  role             String   // "USER" or "BUDDY"
-  lastSeen         DateTime @default(now())
+  id        String       @id @default(cuid())
+  requestId String
+  role      String
+  lastSeen  DateTime     @default(now())
+  request   BuddyRequest @relation(fields: [requestId], references: [id])
 
   @@unique([requestId, role])
 }
 
 model BuddySession {
-  id               String   @id @default(cuid())
-  userId           String
-  user             User     @relation("BuddySessionsUser", fields: [userId], references: [id])
-  buddyId          String
-  buddy            User     @relation("BuddySessionsBuddy", fields: [buddyId], references: [id])
-  scheduledAt      DateTime
-  durationMinutes  Int      @default(30)
-  sessionType      String
-  status           String   @default("Scheduled") 
-  amountEarned     Float    @default(0.0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  buddyId         String
+  scheduledAt     DateTime
+  durationMinutes Int      @default(30)
+  sessionType     String
+  status          String   @default("Scheduled")
+  amountEarned    Float    @default(0.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  buddy           User     @relation("BuddySessionsBuddy", fields: [buddyId], references: [id])
+  user            User     @relation("BuddySessionsUser", fields: [userId], references: [id])
 }
 
 model BuddyReview {
-  id               String   @id @default(cuid())
-  userId           String
-  user             User     @relation("BuddyReviewsUser", fields: [userId], references: [id])
-  buddyId          String
-  buddy            User     @relation("BuddyReviewsBuddy", fields: [buddyId], references: [id])
-  rating           Int
-  comment          String?
-  createdAt        DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  buddyId   String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  buddy     User     @relation("BuddyReviewsBuddy", fields: [buddyId], references: [id])
+  user      User     @relation("BuddyReviewsUser", fields: [userId], references: [id])
 }
 
 model ConnectionMessage {
-  id             String          @id @default(cuid())
-  suggestionId   String
-  suggestion     MatchSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User            @relation(fields: [senderId], references: [id])
-  content        String
-  isRead         Boolean         @default(false)
-  createdAt      DateTime        @default(now())
+  id           String          @id @default(cuid())
+  suggestionId String
+  senderId     String
+  content      String
+  isRead       Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  sender       User            @relation(fields: [senderId], references: [id])
+  suggestion   MatchSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
 }
-
 
 model CallLog {
-  id           String       @id @default(cuid())
-  requestId    String
-  request      BuddyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  callerId     String
-  caller       User         @relation("CallLogsCaller", fields: [callerId], references: [id])
-  receiverId   String
-  receiver     User         @relation("CallLogsReceiver", fields: [receiverId], references: [id])
-  callerRole   String       // "USER" or "BUDDY"
-  status       String       // "MISSED", "COMPLETED", "REJECTED", "BUSY"
-  durationSec  Int          @default(0)
-  startedAt    DateTime     @default(now())
-  endedAt      DateTime?
-  createdAt    DateTime     @default(now())
+  id          String       @id @default(cuid())
+  requestId   String
+  callerId    String
+  receiverId  String
+  callerRole  String
+  status      String
+  durationSec Int          @default(0)
+  startedAt   DateTime     @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime     @default(now())
+  caller      User         @relation("CallLogsCaller", fields: [callerId], references: [id])
+  receiver    User         @relation("CallLogsReceiver", fields: [receiverId], references: [id])
+  request     BuddyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }
-
-
 
 model HostSubscription {
   id                String   @id @default(cuid())
   hostId            String
-  host              User     @relation(fields: [hostId], references: [id])
-  plan              String   // STARTER, BASIC, PRO, UNLIMITED
+  plan              String
   maxEvents         Int
   eventsUsed        Int      @default(0)
   expiresAt         DateTime
   razorpayOrderId   String?
   razorpayPaymentId String?
   amountPaid        Float    @default(0)
-  status            String   @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  status            String   @default("ACTIVE")
   createdAt         DateTime @default(now())
+  host              User     @relation(fields: [hostId], references: [id])
 
   @@index([hostId])
 }
@@ -343,162 +333,377 @@ model HostSubscription {
 model HostPayment {
   id                String   @id @default(cuid())
   hostId            String
-  host              User     @relation(fields: [hostId], references: [id])
   razorpayOrderId   String   @unique
   razorpayPaymentId String?
   razorpaySignature String?
   plan              String
   amount            Float
-  status            String   @default("CREATED") // CREATED, PAID, FAILED
+  status            String   @default("CREATED")
   createdAt         DateTime @default(now())
+  host              User     @relation(fields: [hostId], references: [id])
 
   @@index([hostId])
 }
 
-
-
-
 model CafeProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id])
-  cafeName       String
-  description    String?
-  phone          String?
-  address        String?
-  city           String?
-  pincode        String?
-  openingTime    String?
-  closingTime    String?
-  fssaiNumber    String?
-  gstNumber      String?
-    bankName       String?
-    bankAccount    String?
-    bankIfsc       String?
-    currency       String   @default("INR")
-    timezone       String   @default("Asia/Kolkata")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  menuItems      MenuItem[]
-  reservations   CafeReservation[]
-  orders         CafeOrder[]
-  staff          CafeStaff[]
-  offers         CafeOffer[]
-  customers      CafeCustomer[]
-  reviews        CafeReview[]
-  transactions   CafeTransaction[]
-  notifications  CafeNotification[]
-}
-model MenuItem {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  name           String
-  category       String
-  description    String?
-  price          Float
-  discount       Float    @default(0)
-  isVeg          Boolean  @default(true)
-  prepTime       String?
-  isAvailable    Boolean  @default(true)
-  image          String?
-  createdAt      DateTime @default(now())
-}
-model CafeReservation {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  customerName   String
-  guests         Int
-  date           String
-  time           String
-  table          String?
-  status         String   @default("Pending")
-  createdAt      DateTime @default(now())
-}
-model CafeOrder {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  customerName   String?
-  totalAmount    Float
-  status         String   @default("New")
-  items          CafeOrderItem[]
-  createdAt      DateTime @default(now())
-}
-model CafeOrderItem {
-  id             String   @id @default(cuid())
-  orderId        String
-  order          CafeOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  itemName       String
-  quantity       Int
-  price          Float
-}
-model CafeStaff {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  name           String
-  role           String
-  status         String   @default("Active")
-}
-model CafeOffer {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  name           String
-  code           String
-  type           String
-  value          String
-  minOrder       Int?
-  startDate      String?
-  endDate        String?
-  status         String   @default("Active")
-  createdAt      DateTime @default(now())
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  cafeName      String
+  description   String?
+  phone         String?
+  address       String?
+  city          String?
+  pincode       String?
+  openingTime   String?
+  closingTime   String?
+  fssaiNumber   String?
+  gstNumber     String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  bankAccount   String?
+  bankIfsc      String?
+  bankName      String?
+  currency      String             @default("INR")
+  timezone      String             @default("Asia/Kolkata")
+  customers     CafeCustomer[]
+  notifications CafeNotification[]
+  offers        CafeOffer[]
+  orders        CafeOrder[]
+  user          User               @relation(fields: [userId], references: [id])
+  reservations  CafeReservation[]
+  reviews       CafeReview[]
+  staff         CafeStaff[]
+  transactions  CafeTransaction[]
+  menuItems     MenuItem[]
 }
 
+model MenuItem {
+  id          String      @id @default(cuid())
+  cafeId      String
+  name        String
+  category    String
+  description String?
+  price       Float
+  discount    Float       @default(0)
+  isVeg       Boolean     @default(true)
+  prepTime    String?
+  isAvailable Boolean     @default(true)
+  image       String?
+  createdAt   DateTime    @default(now())
+  cafe        CafeProfile @relation(fields: [cafeId], references: [id])
+}
+
+model CafeReservation {
+  id           String      @id @default(cuid())
+  cafeId       String
+  customerName String
+  guests       Int
+  date         String
+  time         String
+  table        String?
+  status       String      @default("Pending")
+  createdAt    DateTime    @default(now())
+  cafe         CafeProfile @relation(fields: [cafeId], references: [id])
+}
+
+model CafeOrder {
+  id           String          @id @default(cuid())
+  cafeId       String
+  customerName String?
+  totalAmount  Float
+  status       String          @default("New")
+  createdAt    DateTime        @default(now())
+  cafe         CafeProfile     @relation(fields: [cafeId], references: [id])
+  items        CafeOrderItem[]
+}
+
+model CafeOrderItem {
+  id       String    @id @default(cuid())
+  orderId  String
+  itemName String
+  quantity Int
+  price    Float
+  order    CafeOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model CafeStaff {
+  id     String      @id @default(cuid())
+  cafeId String
+  name   String
+  role   String
+  status String      @default("Active")
+  cafe   CafeProfile @relation(fields: [cafeId], references: [id])
+}
+
+model CafeOffer {
+  id        String      @id @default(cuid())
+  cafeId    String
+  name      String
+  code      String
+  type      String
+  value     String
+  minOrder  Int?
+  startDate String?
+  endDate   String?
+  status    String      @default("Active")
+  createdAt DateTime    @default(now())
+  cafe      CafeProfile @relation(fields: [cafeId], references: [id])
+}
 
 model CafeCustomer {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  name           String
-  contact        String?
-  visits         Int      @default(1)
-  totalSpent     Float    @default(0)
-  lastVisit      DateTime @default(now())
-  createdAt      DateTime @default(now())
+  id         String      @id @default(cuid())
+  cafeId     String
+  name       String
+  contact    String?
+  visits     Int         @default(1)
+  totalSpent Float       @default(0)
+  lastVisit  DateTime    @default(now())
+  createdAt  DateTime    @default(now())
+  cafe       CafeProfile @relation(fields: [cafeId], references: [id])
 }
 
 model CafeReview {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  customerName   String
-  rating         Int
-  text           String?
-  reply          String?
-  isReplied      Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  id           String      @id @default(cuid())
+  cafeId       String
+  customerName String
+  rating       Int
+  text         String?
+  reply        String?
+  isReplied    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  cafe         CafeProfile @relation(fields: [cafeId], references: [id])
 }
 
 model CafeTransaction {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
-  orderId        String?
-  customerName   String?
-  amount         Float
-  method         String   @default("Cash") // UPI, Card, Cash
-  status         String   @default("Completed") // Completed, Pending
-  createdAt      DateTime @default(now())
+  id           String      @id @default(cuid())
+  cafeId       String
+  orderId      String?
+  customerName String?
+  amount       Float
+  method       String      @default("Cash")
+  status       String      @default("Completed")
+  createdAt    DateTime    @default(now())
+  cafe         CafeProfile @relation(fields: [cafeId], references: [id])
 }
 
 model CafeNotification {
-  id             String   @id @default(cuid())
-  cafeId         String
-  cafe           CafeProfile @relation(fields: [cafeId], references: [id])
+  id        String      @id @default(cuid())
+  cafeId    String
+  message   String
+  isRead    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  cafe      CafeProfile @relation(fields: [cafeId], references: [id])
+}
+
+model AuditLog {
+  id         String    @id
+  staffId    String?
+  staffName  String?
+  action     String
+  targetType String
+  targetId   String?
+  ipAddress  String?
+  userAgent  String?
+  beforeData Json?
+  afterData  Json?
+  reason     String?
+  createdAt  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([createdAt(sort: Desc)], map: "idx_audit_created")
+  @@index([targetType, targetId], map: "idx_audit_target")
+}
+
+model Coupon {
+  id                String    @id
+  code              String    @unique @db.VarChar(50)
+  discountType      String?   @default("PERCENTAGE") @db.VarChar(50)
+  discountAmount    Float
+  applicableService String?   @default("ALL") @db.VarChar(50)
+  minOrderAmount    Float?    @default(0)
+  maxUses           Int?      @default(100)
+  usedCount         Int?      @default(0)
+  perUserLimit      Int?      @default(1)
+  startDate         DateTime? @default(now()) @db.Timestamp(6)
+  expiryDate        DateTime? @db.Timestamp(6)
+  isActive          Boolean?  @default(true)
+  createdAt         DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model DateFeedback {
+  id          String   @id
+  matchId     String
+  userId      String
+  gender      String?
+  rating      Int
+  feedback    String
+  createdAt   DateTime @default(now())
+  sentiment   String?  @default("NEUTRAL")
+  isPublished Boolean? @default(false)
+
+  @@index([matchId], map: "idx_date_feedback_match")
+  @@index([userId], map: "idx_date_feedback_user")
+}
+
+model EventRegistration {
+  id            String    @id
+  eventId       String
+  userId        String
+  ticketCode    String    @unique
+  qrCode        String?
+  paymentStatus String?   @default("PAID") @db.VarChar(50)
+  status        String?   @default("CONFIRMED") @db.VarChar(50)
+  checkedIn     Boolean?  @default(false)
+  checkedInAt   DateTime? @db.Timestamp(6)
+  createdAt     DateTime? @default(now()) @db.Timestamp(6)
+  Event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([eventId], map: "idx_event_reg_event")
+  @@index([userId], map: "idx_event_reg_user")
+}
+
+model Invoice {
+  id            String    @id
+  userId        String
+  paymentId     String?
+  invoiceNumber String    @unique
+  amount        Float
+  taxAmount     Float?    @default(0)
+  status        String?   @default("PAID") @db.VarChar(50)
+  createdAt     DateTime? @default(now()) @db.Timestamp(6)
+  Payment       Payment?  @relation(fields: [paymentId], references: [id], onUpdate: NoAction)
+  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model NotificationAnnouncement {
+  id             String    @id
+  title          String
   message        String
-  isRead         Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  type           String?   @default("ANNOUNCEMENT") @db.VarChar(50)
+  targetAudience String?   @default("All Users") @db.VarChar(100)
+  sentBy         String?
+  recipientCount Int?      @default(0)
+  sentAt         DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model Payment {
+  id          String    @id
+  userId      String
+  type        String    @db.VarChar(50)
+  amount      Float
+  currency    String?   @default("INR") @db.VarChar(10)
+  status      String?   @default("SUCCESS") @db.VarChar(50)
+  gateway     String?   @default("Razorpay") @db.VarChar(50)
+  referenceId String?
+  description String?
+  createdAt   DateTime? @default(now()) @db.Timestamp(6)
+  Invoice     Invoice[]
+  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Refund      Refund[]
+
+  @@index([userId], map: "idx_payment_user")
+}
+
+model Refund {
+  id          String    @id
+  paymentId   String?
+  userId      String
+  amount      Float
+  reason      String
+  status      String?   @default("PENDING") @db.VarChar(50)
+  processedBy String?
+  processedAt DateTime? @db.Timestamp(6)
+  createdAt   DateTime? @default(now()) @db.Timestamp(6)
+  Payment     Payment?  @relation(fields: [paymentId], references: [id], onUpdate: NoAction)
+  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_refund_user")
+}
+
+model Report {
+  id                               String    @id
+  reporterId                       String?
+  reportedUserId                   String?
+  reportedEventId                  String?
+  category                         String    @db.VarChar(50)
+  reason                           String
+  details                          String?
+  status                           String?   @default("OPEN") @db.VarChar(50)
+  internalNotes                    String?
+  resolvedBy                       String?
+  resolvedAt                       DateTime? @db.Timestamp(6)
+  createdAt                        DateTime? @default(now()) @db.Timestamp(6)
+  Event                            Event?    @relation(fields: [reportedEventId], references: [id], onUpdate: NoAction)
+  User_Report_reportedUserIdToUser User?     @relation("Report_reportedUserIdToUser", fields: [reportedUserId], references: [id], onUpdate: NoAction)
+  User_Report_reporterIdToUser     User?     @relation("Report_reporterIdToUser", fields: [reporterId], references: [id], onUpdate: NoAction)
+}
+
+model ServicePackage {
+  id              String         @id
+  type            String         @db.VarChar(50)
+  name            String         @db.VarChar(100)
+  price           Float
+  billingCycle    String?        @default("MONTHLY") @db.VarChar(50)
+  durationDays    Int?           @default(30)
+  durationHours   Int?           @default(1)
+  sessionLimit    Int?           @default(4)
+  callLimit       Int?           @default(8)
+  chatLimit       Int?           @default(100)
+  description     String?
+  features        Json?          @default("[]")
+  isActive        Boolean?       @default(true)
+  createdAt       DateTime?      @default(now()) @db.Timestamp(6)
+  durationMinutes Int?           @default(0)
+  Subscription    Subscription[]
+}
+
+model Subscription {
+  id             String          @id
+  userId         String
+  packageId      String?
+  serviceType    String          @db.VarChar(50)
+  amount         Float
+  billingCycle   String?         @default("MONTHLY") @db.VarChar(50)
+  status         String?         @default("ACTIVE") @db.VarChar(50)
+  startDate      DateTime?       @default(now()) @db.Timestamp(6)
+  expiryDate     DateTime        @db.Timestamp(6)
+  autoRenewal    Boolean?        @default(true)
+  createdAt      DateTime?       @default(now()) @db.Timestamp(6)
+  ServicePackage ServicePackage? @relation(fields: [packageId], references: [id], onUpdate: NoAction)
+  User           User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "idx_subscription_user")
+}
+
+model SupportTicket {
+  id              String    @id
+  userId          String
+  ticketNumber    String    @unique
+  category        String    @db.VarChar(50)
+  subject         String
+  description     String
+  priority        String?   @default("MEDIUM") @db.VarChar(50)
+  status          String?   @default("OPEN") @db.VarChar(50)
+  assignedStaffId String?
+  replies         Json?     @default("[]")
+  createdAt       DateTime? @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime? @default(now()) @db.Timestamp(6)
+  User            User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model SystemSetting {
+  key       String    @id @db.VarChar(100)
+  category  String    @db.VarChar(50)
+  value     Json
+  updatedBy String?
+  updatedAt DateTime? @default(now()) @db.Timestamp(6)
+}
+
+enum Role {
+  USER
+  ADMIN
+  MATCHMAKER
+  BREAKUP_BUDDY
+  HOST
+  CAFE
 }

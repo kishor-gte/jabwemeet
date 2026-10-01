@@ -137,19 +137,19 @@ export default function AdminDatesSchedulingPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white transition"
+            className="p-2 rounded-xl bg-white border border-rose-200 text-slate-700 hover:text-slate-900 hover:bg-rose-50 transition shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-1">
-              <Calendar className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-semibold mb-1">
+              <Calendar className="w-3.5 h-3.5 text-[#7E2248]" />
               Curated Meetings Desk
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
               Curated Date Scheduling & Progress
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               Live tracking and status management for ongoing, completed, and scheduled dates.
             </p>
           </div>
@@ -158,9 +158,9 @@ export default function AdminDatesSchedulingPage() {
         <button
           onClick={fetchDates}
           disabled={loading}
-          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center gap-2 self-start sm:self-auto transition"
+          className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-xs font-semibold text-slate-700 flex items-center gap-2 self-start sm:self-auto transition shadow-xs"
         >
-          <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+          <RotateCcw className={`w-3.5 h-3.5 text-[#7E2248] ${loading ? "animate-spin" : ""}`} /> Refresh
         </button>
       </div>
 
@@ -168,59 +168,59 @@ export default function AdminDatesSchedulingPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div
           onClick={() => setActiveTab("ALL")}
-          className={`cursor-pointer bg-[#0f172a] border ${
-            activeTab === "ALL" ? "border-purple-500 ring-1 ring-purple-500" : "border-white/10"
-          } rounded-2xl p-4 transition hover:border-purple-500/50`}
+          className={`cursor-pointer bg-white border ${
+            activeTab === "ALL" ? "border-[#7E2248] ring-1 ring-[#7E2248]" : "border-rose-100"
+          } rounded-3xl p-4 transition hover:border-rose-300 shadow-xs`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">All Dates</span>
-            <Calendar className="w-4 h-4 text-purple-400" />
+            <span className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">All Dates</span>
+            <Calendar className="w-4 h-4 text-[#7E2248]" />
           </div>
-          <div className="text-2xl font-black text-white mt-1">{countAll}</div>
+          <div className="text-2xl font-serif font-black text-slate-900 mt-1">{countAll}</div>
         </div>
 
         <div
           onClick={() => setActiveTab("ONGOING")}
-          className={`cursor-pointer bg-[#0f172a] border ${
-            activeTab === "ONGOING" ? "border-emerald-500 ring-1 ring-emerald-500" : "border-white/10"
-          } rounded-2xl p-4 transition hover:border-emerald-500/50`}
+          className={`cursor-pointer bg-white border ${
+            activeTab === "ONGOING" ? "border-emerald-600 ring-1 ring-emerald-600" : "border-rose-100"
+          } rounded-3xl p-4 transition hover:border-emerald-300 shadow-xs`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider">Ongoing / Today</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] text-emerald-700 uppercase font-bold tracking-wider">Ongoing / Today</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           </div>
-          <div className="text-2xl font-black text-emerald-400 mt-1">{countOngoing}</div>
+          <div className="text-2xl font-serif font-black text-emerald-700 mt-1">{countOngoing}</div>
         </div>
 
         <div
           onClick={() => setActiveTab("DONE")}
-          className={`cursor-pointer bg-[#0f172a] border ${
-            activeTab === "DONE" ? "border-blue-500 ring-1 ring-blue-500" : "border-white/10"
-          } rounded-2xl p-4 transition hover:border-blue-500/50`}
+          className={`cursor-pointer bg-white border ${
+            activeTab === "DONE" ? "border-blue-600 ring-1 ring-blue-600" : "border-rose-100"
+          } rounded-3xl p-4 transition hover:border-blue-300 shadow-xs`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-blue-400 uppercase font-bold tracking-wider">Done / Completed</span>
-            <CheckCircle2 className="w-4 h-4 text-blue-400" />
+            <span className="text-[11px] text-blue-700 uppercase font-bold tracking-wider">Done / Completed</span>
+            <CheckCircle2 className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-blue-400 mt-1">{countDone}</div>
+          <div className="text-2xl font-serif font-black text-blue-700 mt-1">{countDone}</div>
         </div>
 
         <div
           onClick={() => setActiveTab("SCHEDULED")}
-          className={`cursor-pointer bg-[#0f172a] border ${
-            activeTab === "SCHEDULED" ? "border-amber-500 ring-1 ring-amber-500" : "border-white/10"
-          } rounded-2xl p-4 transition hover:border-amber-500/50`}
+          className={`cursor-pointer bg-white border ${
+            activeTab === "SCHEDULED" ? "border-amber-600 ring-1 ring-amber-600" : "border-rose-100"
+          } rounded-3xl p-4 transition hover:border-amber-300 shadow-xs`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-amber-400 uppercase font-bold tracking-wider">Scheduled</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+            <span className="text-[11px] text-amber-700 uppercase font-bold tracking-wider">Scheduled</span>
+            <Clock className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-2xl font-black text-amber-400 mt-1">{countScheduled}</div>
+          <div className="text-2xl font-serif font-black text-amber-700 mt-1">{countScheduled}</div>
         </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-white border border-rose-100 rounded-3xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-xs">
         {/* Status Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
           {[
@@ -235,14 +235,14 @@ export default function AdminDatesSchedulingPage() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 flex items-center gap-1.5 ${
                 activeTab === tab.id
-                  ? "bg-[#e06d53] text-white shadow-md shadow-[#e06d53]/20"
-                  : "bg-[#131d2e] text-slate-300 hover:text-white border border-white/5 hover:border-white/10"
+                  ? "bg-[#7E2248] text-white shadow-xs font-bold"
+                  : "bg-rose-50 text-slate-700 hover:text-slate-900 border border-rose-100"
               }`}
             >
               <span>{tab.label}</span>
               <span
                 className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  activeTab === tab.id ? "bg-black/25 text-white" : "bg-white/10 text-slate-400"
+                  activeTab === tab.id ? "bg-black/20 text-white" : "bg-white text-slate-600 border border-rose-200"
                 }`}
               >
                 {tab.count}
@@ -259,16 +259,16 @@ export default function AdminDatesSchedulingPage() {
             placeholder="Search participant, matchmaker, venue..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-[#131d2e] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#e06d53]"
+            className="w-full pl-9 pr-3 py-2 bg-[#FAF3F6]/50 border border-rose-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
           />
         </div>
       </div>
 
       {/* Dates Table */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
               <tr>
                 <th className="px-5 py-3.5">Matched Couple</th>
                 <th className="px-4 py-3.5">Relationship Manager</th>
@@ -278,16 +278,16 @@ export default function AdminDatesSchedulingPage() {
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-medium">
+            <tbody className="divide-y divide-rose-50 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-500 animate-pulse">
+                  <td colSpan={6} className="text-center py-12 text-slate-400 animate-pulse">
                     Loading dates schedule...
                   </td>
                 </tr>
               ) : filteredDates.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                  <td colSpan={6} className="text-center py-12 text-slate-400 italic">
                     {dates.length === 0
                       ? "No dates scheduled in the database yet."
                       : `No ${activeTab.toLowerCase()} dates found matching your filter.`}
@@ -301,16 +301,16 @@ export default function AdminDatesSchedulingPage() {
                   const isUpdating = updatingId === d.id;
 
                   return (
-                    <tr key={d.id} className="hover:bg-white/[0.02] transition">
+                    <tr key={d.id} className="hover:bg-rose-50/30 transition">
                       {/* Matched Couple */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           {/* Member 1 */}
                           <div>
-                            <div className="font-bold text-white text-sm">
+                            <div className="font-bold text-slate-900 text-sm">
                               {d.client?.name || "Client Member"}
                             </div>
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                               {d.client?.phone && <span>{d.client.phone}</span>}
                               {d.client?.gender && <span>• {d.client.gender}</span>}
                               {d.client?.city && <span>• {d.client.city}</span>}
@@ -320,16 +320,16 @@ export default function AdminDatesSchedulingPage() {
                           {/* Heart icon separator if matched pair */}
                           {d.partner ? (
                             <>
-                              <div className="w-6 h-6 rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 shrink-0">
-                                <Heart className="w-3.5 h-3.5 fill-pink-500/30" />
+                              <div className="w-6 h-6 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-[#7E2248] shrink-0">
+                                <Heart className="w-3.5 h-3.5 fill-rose-200" />
                               </div>
 
                               {/* Member 2 */}
                               <div>
-                                <div className="font-bold text-pink-300 text-sm">
+                                <div className="font-bold text-[#7E2248] text-sm">
                                   {d.partner.name || "Matched Partner"}
                                 </div>
-                                <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                                <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
                                   {d.partner.phone && <span>{d.partner.phone}</span>}
                                   {d.partner.gender && <span>• {d.partner.gender}</span>}
                                   {d.partner.city && <span>• {d.partner.city}</span>}
@@ -337,7 +337,7 @@ export default function AdminDatesSchedulingPage() {
                               </div>
                             </>
                           ) : (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-slate-400">
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-rose-50 text-slate-600 border border-rose-100">
                               Direct Consultation
                             </span>
                           )}
@@ -345,27 +345,27 @@ export default function AdminDatesSchedulingPage() {
                       </td>
 
                       {/* Relationship Manager / Matchmaker */}
-                      <td className="px-4 py-4 text-purple-300 font-semibold">
+                      <td className="px-4 py-4 text-[#7E2248] font-semibold">
                         <div className="flex items-center gap-1.5">
-                          <HeartHandshake className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <HeartHandshake className="w-3.5 h-3.5 text-[#7E2248] shrink-0" />
                           <span>{d.matchmaker?.name || "Senior Matchmaker"}</span>
                         </div>
                       </td>
 
                       {/* Scheduled Date & Time */}
-                      <td className="px-4 py-4 text-slate-200">
-                        <div className="font-bold text-white">
+                      <td className="px-4 py-4 text-slate-700">
+                        <div className="font-bold text-slate-900">
                           {new Date(d.date).toLocaleDateString("en-IN", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
                           })}
                         </div>
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Clock className="w-3 h-3 text-slate-500" />
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-slate-400" />
                           <span>{d.time || "Scheduled Time"}</span>
                           {isOngoing && (
-                            <span className="ml-1 px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-bold uppercase">
+                            <span className="ml-1 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 text-[9px] font-bold uppercase border border-emerald-200">
                               Today
                             </span>
                           )}
@@ -375,12 +375,12 @@ export default function AdminDatesSchedulingPage() {
                       {/* Venue & Location */}
                       <td className="px-4 py-4">
                         <div className="flex items-start gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-[#e06d53] shrink-0 mt-0.5" />
+                          <MapPin className="w-3.5 h-3.5 text-[#7E2248] shrink-0 mt-0.5" />
                           <div>
-                            <div className="font-semibold text-slate-200 capitalize">
+                            <div className="font-semibold text-slate-800 capitalize">
                               {d.venue || d.mode || "Venue Table"}
                             </div>
-                            <div className="text-[10px] text-slate-400 capitalize">
+                            <div className="text-[10px] text-slate-500 capitalize">
                               {d.location || "City Location"}
                             </div>
                           </div>
@@ -392,16 +392,16 @@ export default function AdminDatesSchedulingPage() {
                         <span
                           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                             isOngoing
-                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : isDone
-                              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
                               : isCancelled
-                              ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                              : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
                           }`}
                         >
-                          {isOngoing && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                          {isDone && <Check className="w-3 h-3 text-blue-400" />}
+                          {isOngoing && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                          {isDone && <Check className="w-3 h-3 text-blue-600" />}
                           {d.status}
                         </span>
                       </td>
@@ -414,7 +414,7 @@ export default function AdminDatesSchedulingPage() {
                               onClick={() => handleUpdateStatus(d.id, "Ongoing")}
                               disabled={isUpdating}
                               title="Mark as Ongoing"
-                              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 border border-emerald-500/20 transition flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-1"
                             >
                               <Play className="w-3 h-3" /> Ongoing
                             </button>
@@ -425,7 +425,7 @@ export default function AdminDatesSchedulingPage() {
                               onClick={() => handleUpdateStatus(d.id, "Done")}
                               disabled={isUpdating}
                               title="Mark as Done"
-                              className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-semibold hover:bg-blue-500/20 border border-blue-500/20 transition flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 border border-blue-200 transition flex items-center gap-1"
                             >
                               <Check className="w-3 h-3" /> Mark Done
                             </button>
@@ -436,7 +436,7 @@ export default function AdminDatesSchedulingPage() {
                               onClick={() => handleUpdateStatus(d.id, "Cancelled")}
                               disabled={isUpdating}
                               title="Cancel Date"
-                              className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 border border-red-500/20 transition flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold hover:bg-rose-100 border border-rose-200 transition flex items-center gap-1"
                             >
                               <Ban className="w-3 h-3" /> Cancel
                             </button>
@@ -447,7 +447,7 @@ export default function AdminDatesSchedulingPage() {
                               onClick={() => handleUpdateStatus(d.id, "Ongoing")}
                               disabled={isUpdating}
                               title="Reopen as Ongoing"
-                              className="px-2.5 py-1 rounded-lg bg-white/5 text-slate-400 text-xs font-semibold hover:bg-white/10 transition"
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 text-slate-600 text-xs font-semibold hover:bg-rose-100 border border-rose-200 transition"
                             >
                               Reopen
                             </button>

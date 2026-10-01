@@ -124,21 +124,21 @@ export default function AdminManagementPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Top Banner Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-[#121c2e] via-[#0f1728] to-[#121c2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-900 via-[#7E2248] to-rose-950 border border-rose-200/20 rounded-3xl p-6 sm:p-8 shadow-md shadow-[#7E2248]/10 relative overflow-hidden">
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-rose-100 text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
             Security & Governance
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <ShieldCheck className="w-7 h-7 text-red-500" />
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-white tracking-tight flex items-center gap-2.5">
+            <ShieldCheck className="w-7 h-7 text-rose-200" />
             Admin Management
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+          <p className="text-xs sm:text-sm text-rose-100/90 mt-1 max-w-xl">
             Super Administrator accounts with full platform governance. Account status changes (including deactivation) are permanent and recorded in the audit trail.
           </p>
         </div>
-        <div className="relative z-10 inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-xl text-xs font-bold w-fit">
+        <div className="relative z-10 inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-rose-100 px-4 py-2 rounded-xl text-xs font-bold w-fit">
           <Lock className="w-3.5 h-3.5" />
           Single Role Architecture: SUPER_ADMIN Only
         </div>
@@ -146,51 +146,51 @@ export default function AdminManagementPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
+        <div className="p-5 rounded-3xl bg-white border border-rose-100 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Administrators</span>
-            <Users className="w-4 h-4 text-slate-500" />
+            <span className="text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500">Total Administrators</span>
+            <Users className="w-4 h-4 text-slate-400" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-white mt-2">{admins.length}</p>
-          <span className="text-[11px] text-slate-500">Authorized platform accounts</span>
+          <p className="text-2xl sm:text-3xl font-serif font-black text-slate-900 mt-2">{admins.length}</p>
+          <span className="text-[11px] text-slate-400">Authorized platform accounts</span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
+        <div className="p-5 rounded-3xl bg-white border border-rose-100 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Active Admins</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-[11px] font-serif font-bold uppercase tracking-wider text-emerald-700">Active Admins</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-emerald-400 mt-2">{activeCount}</p>
-          <span className="text-[11px] text-slate-500">Granted active platform access</span>
+          <p className="text-2xl sm:text-3xl font-serif font-black text-emerald-700 mt-2">{activeCount}</p>
+          <span className="text-[11px] text-slate-400">Granted active platform access</span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
+        <div className="p-5 rounded-3xl bg-white border border-rose-100 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">Deactivated / Suspended</span>
-            <AlertTriangle className="w-4 h-4 text-rose-400" />
+            <span className="text-[11px] font-serif font-bold uppercase tracking-wider text-rose-700">Deactivated / Suspended</span>
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-rose-400 mt-2">{inactiveCount}</p>
-          <span className="text-[11px] text-slate-500">Access revoked accounts</span>
+          <p className="text-2xl sm:text-3xl font-serif font-black text-rose-700 mt-2">{inactiveCount}</p>
+          <span className="text-[11px] text-slate-400">Access revoked accounts</span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#0f172a] border border-white/10 shadow-lg">
+        <div className="p-5 rounded-3xl bg-white border border-rose-100 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">Privilege Model</span>
-            <Shield className="w-4 h-4 text-red-400" />
+            <span className="text-[11px] font-serif font-bold uppercase tracking-wider text-[#7E2248]">Privilege Model</span>
+            <Shield className="w-4 h-4 text-[#7E2248]" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-red-400 mt-2">SUPER_ADMIN</p>
-          <span className="text-[11px] text-slate-500">Full operational control</span>
+          <p className="text-2xl sm:text-3xl font-serif font-black text-[#7E2248] mt-2">SUPER_ADMIN</p>
+          <span className="text-[11px] text-slate-400">Full operational control</span>
         </div>
       </div>
 
       {/* Admin Roster Table */}
-      <div className="rounded-3xl bg-[#0f172a] border border-white/10 shadow-xl overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2">
-            <Shield className="w-4 h-4 text-red-500" />
+      <div className="rounded-3xl bg-white border border-rose-100 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-rose-100 flex items-center justify-between">
+          <h2 className="text-sm font-serif font-bold text-slate-900 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#7E2248]" />
             Super Administrator Directory
           </h2>
-          <span className="text-xs text-slate-400">{admins.length} registered admin(s)</span>
+          <span className="text-xs text-slate-500">{admins.length} registered admin(s)</span>
         </div>
 
         {loading ? (
@@ -199,7 +199,7 @@ export default function AdminManagementPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-white/[0.02] border-b border-white/10 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                <tr className="bg-rose-50/60 border-b border-rose-100 text-slate-500 text-[11px] font-serif font-bold uppercase tracking-wider">
                   <th className="py-4 px-5">Admin Name</th>
                   <th className="py-4 px-4">Email</th>
                   <th className="py-4 px-4">Role</th>
@@ -209,67 +209,67 @@ export default function AdminManagementPage() {
                   <th className="py-4 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-xs">
+              <tbody className="divide-y divide-rose-50 text-xs text-slate-700">
                 {admins.map((admin) => (
-                  <tr key={admin.id} className="hover:bg-white/[0.02] transition">
+                  <tr key={admin.id} className="hover:bg-rose-50/30 transition">
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center font-bold text-sm">
+                        <div className="w-9 h-9 rounded-2xl bg-rose-50 border border-rose-200 text-[#7E2248] flex items-center justify-center font-serif font-bold text-sm">
                           {admin.name ? admin.name.charAt(0).toUpperCase() : "A"}
                         </div>
                         <div>
-                          <p className="font-bold text-white">{admin.name}</p>
-                          <span className="text-[10px] text-slate-500 font-mono">ID: {admin.id.slice(0, 8)}...</span>
+                          <p className="font-serif font-bold text-slate-900">{admin.name}</p>
+                          <span className="text-[10px] text-slate-400 font-mono">ID: {admin.id.slice(0, 8)}...</span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-slate-300 font-mono">
+                    <td className="py-4 px-4 text-slate-600 font-mono">
                       <div className="flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-500" />
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
                         {admin.email}
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-[#7E2248] border border-rose-200">
                         <Lock className="w-3 h-3" />
                         SUPER_ADMIN
                       </span>
                     </td>
                     <td className="py-4 px-4">
                       {admin.status === "ACTIVE" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Active
                         </span>
                       ) : admin.status === "DEACTIVATED" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                           Deactivated
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                           {admin.status || "Suspended"}
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-slate-400 font-mono">
+                    <td className="py-4 px-4 text-slate-500 font-mono">
                       {admin.lastActiveAt ? (
                         <span className="inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-500" />
+                          <Clock className="w-3 h-3 text-slate-400" />
                           {new Date(admin.lastActiveAt).toLocaleString()}
                         </span>
                       ) : (
-                        <span className="text-slate-600">Never</span>
+                        <span className="text-slate-400">Never</span>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-slate-400 font-mono">
+                    <td className="py-4 px-4 text-slate-500 font-mono">
                       <span className="inline-flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-slate-500" />
+                        <Calendar className="w-3 h-3 text-slate-400" />
                         {new Date(admin.createdAt).toLocaleDateString()}
                       </span>
                     </td>
                     <td className="py-4 px-5 text-right">
                       <button
                         onClick={() => openEditModal(admin)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 hover:text-white border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl transition"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition shadow-2xs"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                         Manage Status
@@ -286,16 +286,16 @@ export default function AdminManagementPage() {
       {/* Edit Status Modal */}
       {modalOpen && selectedAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-md bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
-            <div className="px-1 py-1 border-b border-white/10 pb-4 mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-red-500" />
+          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs" onClick={() => setModalOpen(false)} />
+          <div className="relative w-full max-w-md bg-white border border-rose-100 rounded-3xl p-6 shadow-2xl z-10">
+            <div className="px-1 py-1 border-b border-rose-100 pb-4 mb-4 flex items-center justify-between">
+              <h2 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-[#7E2248]" />
                 Manage Super Admin Status
               </h2>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-white transition"
+                className="text-slate-400 hover:text-slate-600 transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -303,30 +303,30 @@ export default function AdminManagementPage() {
 
             <form onSubmit={handleUpdateAdmin} className="space-y-4 text-xs">
               {errorMsg && (
-                <div className="p-3 bg-red-500/15 border border-red-500/30 rounded-xl text-red-300 flex items-center gap-2">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               {selectedAdmin.id === currentAdminId && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 flex items-center gap-2">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>You are currently logged in as this administrator. You cannot deactivate your own session.</span>
                 </div>
               )}
 
-              <div className="p-3.5 bg-[#162136] border border-white/10 rounded-2xl">
-                <p className="text-xs font-bold text-white">{selectedAdmin.name}</p>
-                <p className="text-[11px] font-mono text-slate-400">{selectedAdmin.email}</p>
+              <div className="p-3.5 bg-[#FAF3F6]/50 border border-rose-100 rounded-2xl">
+                <p className="text-xs font-serif font-bold text-slate-900">{selectedAdmin.name}</p>
+                <p className="text-[11px] font-mono text-slate-500">{selectedAdmin.email}</p>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">
                   Administrative Role
                 </label>
-                <div className="px-3.5 py-2.5 bg-[#182337] border border-white/10 rounded-xl text-xs font-bold text-red-400 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-red-500" />
+                <div className="px-3.5 py-2.5 bg-[#FAF3F6]/50 border border-rose-200 rounded-xl text-xs font-bold text-[#7E2248] flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#7E2248]" />
                   SUPER_ADMIN (Full Platform Access)
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
@@ -335,18 +335,18 @@ export default function AdminManagementPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">
                   Account Status *
                 </label>
                 <select
                   value={form.status}
                   disabled={selectedAdmin.id === currentAdminId}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="ACTIVE" className="bg-[#182337] text-white">ACTIVE (Granted Full Access)</option>
-                  <option value="DEACTIVATED" className="bg-[#182337] text-white">DEACTIVATED (Account Deactivated - Access Revoked)</option>
-                  <option value="SUSPENDED" className="bg-[#182337] text-white">SUSPENDED (Temporarily Suspended - Access Revoked)</option>
+                  <option value="ACTIVE">ACTIVE (Granted Full Access)</option>
+                  <option value="DEACTIVATED">DEACTIVATED (Account Deactivated - Access Revoked)</option>
+                  <option value="SUSPENDED">SUSPENDED (Temporarily Suspended - Access Revoked)</option>
                 </select>
                 {selectedAdmin.id === currentAdminId && (
                   <p className="text-[10px] text-slate-500 mt-1">
@@ -356,7 +356,7 @@ export default function AdminManagementPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider text-[10px]">
+                <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">
                   Reason / Justification *
                 </label>
                 <textarea
@@ -365,25 +365,25 @@ export default function AdminManagementPage() {
                   placeholder="e.g. Account activated following onboarding verification"
                   value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                 />
                 <span className="text-[10px] text-slate-500">
                   This justification is permanently stored in the audit trail.
                 </span>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-rose-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-medium rounded-xl transition"
+                  className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-slate-700 border border-rose-200 font-medium rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition"
+                  className="px-6 py-2 bg-[#7E2248] hover:bg-[#681938] disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-[#7E2248]/20 transition"
                 >
                   {saving ? "Saving..." : "Save Status"}
                 </button>

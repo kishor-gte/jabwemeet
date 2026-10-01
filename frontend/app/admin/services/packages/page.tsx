@@ -178,21 +178,21 @@ export default function AdminPackagesPage() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-semibold mb-2">
             <Package className="w-3.5 h-3.5" />
             Service Monetization
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
             Service Packages & Tiers
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Configure pricing, session allowances, call quotas, and billing frequencies for RM and Buddy services.
           </p>
         </div>
 
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition self-start sm:self-auto"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>New Service Package</span>
@@ -209,18 +209,18 @@ export default function AdminPackagesPage() {
           {packages.map((pkg) => (
             <div
               key={pkg.id}
-              className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 hover:border-white/20 transition shadow-xl flex flex-col justify-between space-y-4"
+              className="p-6 rounded-3xl bg-white border border-rose-100 hover:border-rose-200 transition shadow-xs flex flex-col justify-between space-y-4"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                       pkg.type === "RELATIONSHIP_MANAGER"
-                        ? "bg-purple-500/20 text-purple-300"
+                        ? "bg-purple-50 text-purple-700 border-purple-200"
                         : pkg.type === "DATING"
-                        ? "bg-rose-500/20 text-rose-300"
+                        ? "bg-rose-50 text-[#7E2248] border-rose-200"
                         : pkg.type === "HOST"
-                        ? "bg-amber-500/20 text-amber-300"
-                        : "bg-blue-500/20 text-blue-300"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
                     }`}>
                       {pkg.type === "RELATIONSHIP_MANAGER"
                         ? "Matchmaking"
@@ -230,42 +230,42 @@ export default function AdminPackagesPage() {
                         ? "Host Subscription"
                         : "Breakup Buddy"}
                     </span>
-                  <span className={`w-2 h-2 rounded-full ${pkg.isActive ? "bg-emerald-400" : "bg-slate-500"}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${pkg.isActive ? "bg-emerald-500" : "bg-slate-300"}`} />
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-white">{pkg.name}</h3>
-                  <div className="text-2xl font-black text-emerald-400 mt-1">
+                  <h3 className="text-base font-serif font-bold text-slate-900">{pkg.name}</h3>
+                  <div className="text-2xl font-serif font-black text-slate-900 mt-1">
                     ₹{pkg.price.toLocaleString("en-IN")}
-                    <span className="text-xs text-slate-400 font-normal"> / {pkg.billingCycle?.toLowerCase().replace("_", " ")}</span>
+                    <span className="text-xs text-slate-500 font-normal"> / {pkg.billingCycle?.toLowerCase().replace("_", " ")}</span>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-400 line-clamp-2">{pkg.description}</p>
+                <p className="text-xs text-slate-500 line-clamp-2">{pkg.description}</p>
 
-                <div className="pt-2 border-t border-white/5 space-y-1 text-xs text-slate-300">
+                <div className="pt-2 border-t border-rose-100 space-y-1 text-xs text-slate-700">
                   {pkg.type === "HOST" ? (
                     <>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Events Quota:</span>
-                        <span className="font-bold text-amber-400">
+                        <span className="font-bold text-amber-700">
                           {pkg.sessionLimit ? `${pkg.sessionLimit} Events` : "Unlimited Events"}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Validity:</span>
-                        <span className="font-bold text-white">{pkg.durationDays || 30} Days</span>
+                        <span className="font-bold text-slate-900">{pkg.durationDays || 30} Days</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Billing:</span>
-                        <span className="text-slate-300">{pkg.billingCycle || "MONTHLY"}</span>
+                        <span className="text-slate-700">{pkg.billingCycle || "MONTHLY"}</span>
                       </div>
                     </>
                   ) : pkg.type === "BREAKUP_BUDDY" ? (
                     <>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Duration:</span>
-                        <span className="font-bold text-indigo-400">
+                        <span className="font-bold text-[#7E2248]">
                           {(() => {
                             const parts = [];
                             if (pkg.durationHours > 0) parts.push(`${pkg.durationHours} ${pkg.durationHours === 1 ? "Hour" : "Hours"}`);
@@ -276,11 +276,11 @@ export default function AdminPackagesPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Call Quota:</span>
-                        <span className="font-bold text-emerald-400">Unlimited</span>
+                        <span className="font-bold text-emerald-700">Unlimited</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Chat Quota:</span>
-                        <span className="font-bold text-emerald-400">Unlimited</span>
+                        <span className="font-bold text-emerald-700">Unlimited</span>
                       </div>
                     </>
                   ) : (
@@ -291,7 +291,7 @@ export default function AdminPackagesPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Sessions:</span>
-                        <span className="font-bold text-white">{pkg.sessionLimit} sessions</span>
+                        <span className="font-bold text-slate-900">{pkg.sessionLimit} sessions</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Consultation Calls:</span>
@@ -302,12 +302,12 @@ export default function AdminPackagesPage() {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+              <div className="pt-3 border-t border-rose-100 flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => handleDeletePackage(pkg.id, pkg.name)}
                   disabled={deletingId === pkg.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-semibold text-red-400 hover:text-red-300 transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-xs font-semibold text-rose-700 border border-rose-200 transition disabled:opacity-50"
                   title="Delete Package"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -316,7 +316,7 @@ export default function AdminPackagesPage() {
                 <button
                   type="button"
                   onClick={() => openEdit(pkg)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-xs font-semibold text-slate-700 border border-rose-200 transition shadow-2xs"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                   <span>Configure</span>
@@ -330,13 +330,13 @@ export default function AdminPackagesPage() {
       {/* CREATE / EDIT MODAL */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-white">
+          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs" onClick={() => setModalOpen(false)} />
+          <div className="relative w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-6 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4 mb-4">
+              <h3 className="text-lg font-serif font-bold text-slate-900">
                 {editingPkg ? "Edit Package Plan" : "Create Service Plan"}
               </h3>
-              <button onClick={() => setModalOpen(false)} className="p-1 text-slate-400 hover:text-white">
+              <button onClick={() => setModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 transition">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -344,11 +344,11 @@ export default function AdminPackagesPage() {
             <form onSubmit={handleSavePackage} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Service Type</label>
+                  <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Service Type</label>
                   <select
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   >
                     <option value="HOST">Host Subscription</option>
                     <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
@@ -357,14 +357,14 @@ export default function AdminPackagesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Plan Name</label>
+                  <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Plan Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Basic Host / Pro Host / Starter"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white placeholder-slate-400"
                   />
                 </div>
               </div>
@@ -373,18 +373,18 @@ export default function AdminPackagesPage() {
                 <div className="space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Price (₹)</label>
                       <input
                         type="number"
                         min="0"
                         required
                         value={form.price}
                         onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Events Quota</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Events Quota</label>
                       <input
                         type="number"
                         min="0"
@@ -392,27 +392,27 @@ export default function AdminPackagesPage() {
                         placeholder="0 for unlimited"
                         value={form.sessionLimit}
                         onChange={(e) => setForm({ ...form, sessionLimit: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Validity (Days)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Validity (Days)</label>
                       <input
                         type="number"
                         min="1"
                         required
                         value={form.durationDays}
                         onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
+                    <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Billing Cycle</label>
                     <select
                       value={form.billingCycle}
                       onChange={(e) => setForm({ ...form, billingCycle: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                      className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                     >
                       <option value="MONTHLY">Monthly</option>
                       <option value="QUARTERLY">Quarterly</option>
@@ -420,7 +420,7 @@ export default function AdminPackagesPage() {
                       <option value="ONE_TIME">One-Time Pass</option>
                     </select>
                   </div>
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-2 font-medium">
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] flex items-center gap-2 font-medium">
                     <span>🎟️</span>
                     <span>Allows the host to publish up to <strong>{form.sessionLimit === 0 ? "Unlimited" : (form.sessionLimit || 5)} events</strong> over <strong>{form.durationDays || 30} days</strong>.</span>
                   </div>
@@ -429,39 +429,39 @@ export default function AdminPackagesPage() {
                 <div className="space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Price (₹)</label>
                       <input
                         type="number"
                         min="0"
                         required
                         value={form.price}
                         onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Duration (Hours)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Duration (Hours)</label>
                       <input
                         type="number"
                         min="0"
                         value={form.durationHours}
                         onChange={(e) => setForm({ ...form, durationHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Duration (Minutes)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Duration (Minutes)</label>
                       <input
                         type="number"
                         min="0"
                         max="59"
                         value={form.durationMinutes}
                         onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2 font-medium">
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex items-center gap-2 font-medium">
                     <span>✨</span>
                     <span>
                       During these <strong>{(() => {
@@ -477,22 +477,22 @@ export default function AdminPackagesPage() {
                 <>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Price (₹)</label>
                       <input
                         type="number"
                         min="0"
                         required
                         value={form.price}
                         onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Billing Cycle</label>
                       <select
                         value={form.billingCycle}
                         onChange={(e) => setForm({ ...form, billingCycle: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       >
                         <option value="MONTHLY">Monthly</option>
                         <option value="WEEKLY">Weekly</option>
@@ -500,46 +500,46 @@ export default function AdminPackagesPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Validity (Days)</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Validity (Days)</label>
                       <input
                         type="number"
                         min="1"
                         value={form.durationDays}
                         onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Sessions Limit</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Sessions Limit</label>
                       <input
                         type="number"
                         min="0"
                         value={form.sessionLimit}
                         onChange={(e) => setForm({ ...form, sessionLimit: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Call Limit</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Call Limit</label>
                       <input
                         type="number"
                         min="0"
                         value={form.callLimit}
                         onChange={(e) => setForm({ ...form, callLimit: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">Chat Limit</label>
+                      <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Chat Limit</label>
                       <input
                         type="number"
                         min="0"
                         value={form.chatLimit}
                         onChange={(e) => setForm({ ...form, chatLimit: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                       />
                     </div>
                   </div>
@@ -547,22 +547,22 @@ export default function AdminPackagesPage() {
               )}
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Description</label>
+                <label className="block text-slate-700 font-semibold mb-1 uppercase tracking-wider text-[10px]">Description</label>
                 <textarea
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white placeholder-slate-400"
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-rose-100">
                 {editingPkg ? (
                   <button
                     type="button"
                     onClick={() => handleDeletePackage(editingPkg.id, editingPkg.name)}
                     disabled={deletingId === editingPkg.id}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-semibold transition disabled:opacity-50 text-xs"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold transition disabled:opacity-50 text-xs border border-rose-200"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>{deletingId === editingPkg.id ? "Deleting..." : "Delete Plan"}</span>
@@ -572,14 +572,14 @@ export default function AdminPackagesPage() {
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 transition"
+                    className="px-4 py-2 rounded-xl bg-rose-50 text-slate-700 hover:bg-rose-100 border border-rose-200 transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50"
+                    className="px-6 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition disabled:opacity-50 shadow-md shadow-[#7E2248]/20"
                   >
                     {saving ? "Saving..." : "Save Package"}
                   </button>

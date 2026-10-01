@@ -158,7 +158,7 @@ export default function AdminBreakupBuddyDetailPage() {
   if (loading) {
     return (
       <div className="py-24 text-center text-slate-400 animate-pulse space-y-3">
-        <Heart className="w-8 h-8 text-rose-500 mx-auto animate-bounce" />
+        <Heart className="w-8 h-8 text-[#7E2248] mx-auto animate-bounce" />
         <div className="text-sm font-semibold">Loading Breakup Buddy profile & session metrics...</div>
       </div>
     );
@@ -166,13 +166,13 @@ export default function AdminBreakupBuddyDetailPage() {
 
   if (!data?.user) {
     return (
-      <div className="p-12 text-center rounded-2xl bg-[#0f172a] border border-white/10 space-y-4">
-        <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
-        <h2 className="text-lg font-bold text-white">Breakup Buddy Not Found</h2>
-        <p className="text-xs text-slate-400">The requested Breakup Buddy account could not be located.</p>
+      <div className="p-12 text-center rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+        <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+        <h2 className="text-lg font-serif font-bold text-slate-900">Breakup Buddy Not Found</h2>
+        <p className="text-xs text-slate-500">The requested Breakup Buddy account could not be located.</p>
         <Link
           href="/admin/breakup-buddies"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-slate-700 text-xs font-bold transition border border-rose-200"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Breakup Buddies</span>
@@ -191,28 +191,28 @@ export default function AdminBreakupBuddyDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/breakup-buddies"
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition"
+            className="p-2 rounded-xl bg-white hover:bg-rose-50 text-slate-600 hover:text-slate-900 border border-rose-200 transition shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight">
                 {user.displayName || user.name}
               </h1>
               <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   isActive
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-rose-50 text-rose-700 border border-rose-200"
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-rose-500"}`} />
                 {user.status || "ACTIVE"}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Breakup Buddy Personnel Profile • ID: <span className="font-mono text-slate-300">{user.id}</span>
+            <p className="text-xs text-slate-500">
+              Breakup Buddy Personnel Profile • ID: <span className="font-mono text-slate-600">{user.id}</span>
             </p>
           </div>
         </div>
@@ -223,20 +223,20 @@ export default function AdminBreakupBuddyDetailPage() {
             onClick={handleToggleVerify}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition ${
               user.isVerified
-                ? "bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/30"
-                : "bg-white/5 hover:bg-white/10 text-slate-400 border-white/10"
+                ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                : "bg-white hover:bg-rose-50 text-slate-600 border-rose-200"
             }`}
           >
-            <BadgeCheck className="w-4 h-4" />
+            <BadgeCheck className="w-4 h-4 text-blue-600" />
             <span>{user.isVerified ? "Verified Badge Active" : "Grant Verified Badge"}</span>
           </button>
 
           <button
             onClick={handleToggleStatus}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
               isActive
-                ? "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25"
+                ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white"
             }`}
           >
             {isActive ? (
@@ -255,10 +255,10 @@ export default function AdminBreakupBuddyDetailPage() {
       </div>
 
       {/* PROFILE HEADER BANNER */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
+      <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-[#182337] border-2 border-white/10 flex items-center justify-center font-black text-2xl text-white overflow-hidden shrink-0 shadow-xl">
+            <div className="w-20 h-20 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center font-serif font-black text-2xl text-[#7E2248] overflow-hidden shrink-0 shadow-xs">
               {user.profilePhoto ? (
                 <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
               ) : (
@@ -267,34 +267,34 @@ export default function AdminBreakupBuddyDetailPage() {
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white">{user.displayName || user.name}</h2>
+                <h2 className="text-xl font-serif font-bold text-slate-900">{user.displayName || user.name}</h2>
                 {user.displayName && user.displayName !== user.name && (
-                  <span className="text-xs text-slate-400">({user.name})</span>
+                  <span className="text-xs text-slate-500">({user.name})</span>
                 )}
                 {user.isVerified && (
                   <span title="Verified Personnel">
-                    <BadgeCheck className="w-4 h-4 text-blue-400" />
+                    <BadgeCheck className="w-4 h-4 text-blue-600" />
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300 max-w-xl">
+              <p className="text-xs text-slate-600 max-w-xl">
                 {user.shortBio || "Dedicated listener providing non-judgmental empathy and heartbreak healing support."}
               </p>
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-400">
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   {user.city || "Online / Nationwide"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
                   {user.email}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-slate-500" />
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
                   {user.phone || "N/A"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Recently"}
                 </span>
               </div>
@@ -302,30 +302,30 @@ export default function AdminBreakupBuddyDetailPage() {
           </div>
 
           {/* AVAILABILITY SUMMARY */}
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5 text-xs sm:min-w-[220px]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Availability Window</div>
-            <div className="flex items-center gap-1.5 text-white font-semibold">
-              <Clock className="w-3.5 h-3.5 text-rose-400" />
+          <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-1.5 text-xs sm:min-w-[220px]">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Availability Window</div>
+            <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+              <Clock className="w-3.5 h-3.5 text-[#7E2248]" />
               <span>
                 {user.availableTimeStart && user.availableTimeEnd
                   ? `${user.availableTimeStart} - ${user.availableTimeEnd}`
                   : "09:00 - 22:00 (Standard)"}
               </span>
             </div>
-            <div className="text-[11px] text-slate-400">
+            <div className="text-[11px] text-slate-500">
               Active Days: {user.availableDays?.length > 0 ? user.availableDays.join(", ") : "All 7 Days"}
             </div>
           </div>
         </div>
 
         {/* EXPERTISE AND LANGUAGES */}
-        <div className="pt-4 border-t border-white/5 flex flex-wrap items-center gap-4 text-xs">
+        <div className="pt-4 border-t border-rose-100 flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-semibold">Areas of Focus:</span>
+            <span className="text-slate-500 font-semibold">Areas of Focus:</span>
             <div className="flex flex-wrap gap-1">
               {user.areasOfExpertise?.length > 0 ? (
                 user.areasOfExpertise.map((area: string, i: number) => (
-                  <span key={i} className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 font-medium text-[11px] border border-rose-500/20">
+                  <span key={i} className="px-2 py-0.5 rounded bg-rose-50 text-[#7E2248] font-medium text-[11px] border border-rose-200/60">
                     {area}
                   </span>
                 ))
@@ -336,11 +336,11 @@ export default function AdminBreakupBuddyDetailPage() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-semibold">Languages:</span>
+            <span className="text-slate-500 font-semibold">Languages:</span>
             <div className="flex flex-wrap gap-1">
               {user.languages?.length > 0 ? (
                 user.languages.map((lang: string, i: number) => (
-                  <span key={i} className="px-2 py-0.5 rounded bg-white/5 text-slate-300 text-[11px]">
+                  <span key={i} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px]">
                     {lang}
                   </span>
                 ))
@@ -354,61 +354,61 @@ export default function AdminBreakupBuddyDetailPage() {
 
       {/* 5 KEY KPI STATS */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Sessions Conducted</span>
-            <Clock className="w-3.5 h-3.5 text-rose-400" />
+            <Clock className="w-3.5 h-3.5 text-[#7E2248]" />
           </div>
-          <div className="text-2xl font-black text-white">{analytics.totalSessions || 0}</div>
-          <div className="text-[11px] text-emerald-400 font-medium">
+          <div className="text-2xl font-serif font-black text-slate-900">{analytics.totalSessions || 0}</div>
+          <div className="text-[11px] text-emerald-700 font-medium">
             {analytics.completedSessions || 0} completed • {analytics.scheduledSessions || 0} upcoming
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Call Minutes</span>
-            <Phone className="w-3.5 h-3.5 text-blue-400" />
+            <Phone className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-blue-400">{analytics.totalCallMinutes || 0} min</div>
-          <div className="text-[11px] text-slate-400">Total verified audio talk time</div>
+          <div className="text-2xl font-serif font-black text-blue-700">{analytics.totalCallMinutes || 0} min</div>
+          <div className="text-[11px] text-slate-500">Total verified audio talk time</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Client Requests</span>
-            <MessageCircle className="w-3.5 h-3.5 text-purple-400" />
+            <MessageCircle className="w-3.5 h-3.5 text-purple-600" />
           </div>
-          <div className="text-2xl font-black text-purple-400">{analytics.totalRequests || 0}</div>
-          <div className="text-[11px] text-slate-400">{analytics.activeRequests || 0} active / ongoing</div>
+          <div className="text-2xl font-serif font-black text-purple-700">{analytics.totalRequests || 0}</div>
+          <div className="text-[11px] text-slate-500">{analytics.activeRequests || 0} active / ongoing</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Earnings Generated</span>
-            <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+            <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-400">
+          <div className="text-2xl font-serif font-black text-emerald-700">
             ₹{analytics.totalEarnings ? Number(analytics.totalEarnings).toLocaleString() : "0"}
           </div>
-          <div className="text-[11px] text-slate-400">{analytics.packagesPurchased || 0} packages attributed</div>
+          <div className="text-[11px] text-slate-500">{analytics.packagesPurchased || 0} packages attributed</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1 col-span-2 md:col-span-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1 col-span-2 md:col-span-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Client Rating</span>
-            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
           </div>
-          <div className="flex items-center gap-1.5 text-2xl font-black text-amber-400">
+          <div className="flex items-center gap-1.5 text-2xl font-serif font-black text-amber-600">
             <span>{analytics.avgRating ? Number(analytics.avgRating).toFixed(1) : "5.0"}</span>
-            <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
+            <span className="text-xs text-slate-500 font-normal">/ 5.0</span>
           </div>
-          <div className="text-[11px] text-slate-400">{analytics.totalReviews || 0} verified client reviews</div>
+          <div className="text-[11px] text-slate-500">{analytics.totalReviews || 0} verified client reviews</div>
         </div>
       </div>
 
       {/* NAVIGATION TABS */}
-      <div className="flex items-center gap-2 border-b border-white/10 pb-2 overflow-x-auto text-xs font-bold">
+      <div className="flex items-center gap-2 border-b border-rose-100 pb-2 overflow-x-auto text-xs font-bold">
         {[
           { id: "sessions", label: `Session History (${sessions.length})`, icon: Clock },
           { id: "requests", label: `Connection Requests (${requests.length})`, icon: MessageCircle },
@@ -424,8 +424,8 @@ export default function AdminBreakupBuddyDetailPage() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition shrink-0 ${
                 isSelected
-                  ? "bg-rose-600 text-white shadow-md shadow-rose-600/20"
-                  : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                  ? "bg-[#7E2248] text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:text-slate-900 hover:bg-rose-50 border border-rose-100"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -437,14 +437,14 @@ export default function AdminBreakupBuddyDetailPage() {
 
       {/* TAB CONTENT: SESSIONS */}
       {activeTab === "sessions" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Conducted & Scheduled Buddy Sessions</h3>
-            <span className="text-xs text-slate-400">Total: {sessions.length} sessions</span>
+        <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-rose-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Conducted & Scheduled Buddy Sessions</h3>
+            <span className="text-xs text-slate-500">Total: {sessions.length} sessions</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
                 <tr>
                   <th className="px-5 py-3.5">Client User</th>
                   <th className="px-4 py-3.5">Scheduled Date & Time</th>
@@ -454,21 +454,21 @@ export default function AdminBreakupBuddyDetailPage() {
                   <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-rose-50 font-medium">
                 {sessions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                    <td colSpan={6} className="text-center py-12 text-slate-400 italic">
                       No sessions recorded for this Breakup Buddy yet.
                     </td>
                   </tr>
                 ) : (
                   sessions.map((s: any) => (
-                    <tr key={s.id} className="hover:bg-white/[0.02] transition">
+                    <tr key={s.id} className="hover:bg-rose-50/30 transition">
                       <td className="px-5 py-4">
-                        <div className="font-bold text-white text-sm">{s.user?.name || "Anonymous Member"}</div>
-                        <div className="text-[11px] text-slate-400">{s.user?.email || "No email"}</div>
+                        <div className="font-bold text-slate-900 text-sm">{s.user?.name || "Anonymous Member"}</div>
+                        <div className="text-[11px] text-slate-500">{s.user?.email || "No email"}</div>
                       </td>
-                      <td className="px-4 py-4 text-slate-200">
+                      <td className="px-4 py-4 text-slate-700">
                         {new Date(s.scheduledAt).toLocaleString("en-IN", {
                           dateStyle: "medium",
                           timeStyle: "short",
@@ -476,21 +476,21 @@ export default function AdminBreakupBuddyDetailPage() {
                       </td>
                       <td className="px-4 py-4">{s.durationMinutes || 30} mins</td>
                       <td className="px-4 py-4">
-                        <span className="px-2 py-0.5 rounded bg-white/5 text-[11px] text-slate-300">
+                        <span className="px-2 py-0.5 rounded bg-rose-50 text-[11px] text-[#7E2248] border border-rose-200/60">
                           {s.sessionType || "Call / Chat"}
                         </span>
                       </td>
-                      <td className="px-4 py-4 font-bold text-emerald-400">
+                      <td className="px-4 py-4 font-bold text-emerald-700">
                         ₹{s.amountEarned || 0}
                       </td>
                       <td className="px-5 py-4 text-right">
                         <span
-                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                             s.status === "Completed"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : s.status === "Cancelled"
-                              ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                              : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
                           }`}
                         >
                           {s.status}
@@ -507,14 +507,14 @@ export default function AdminBreakupBuddyDetailPage() {
 
       {/* TAB CONTENT: REQUESTS */}
       {activeTab === "requests" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Client Connection Requests</h3>
-            <span className="text-xs text-slate-400">Total: {requests.length} requests</span>
+        <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-rose-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Client Connection Requests</h3>
+            <span className="text-xs text-slate-500">Total: {requests.length} requests</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
                 <tr>
                   <th className="px-5 py-3.5">Client User</th>
                   <th className="px-4 py-3.5">Topic / Focus</th>
@@ -524,21 +524,21 @@ export default function AdminBreakupBuddyDetailPage() {
                   <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-rose-50 font-medium">
                 {requests.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                    <td colSpan={6} className="text-center py-12 text-slate-400 italic">
                       No connection requests recorded yet.
                     </td>
                   </tr>
                 ) : (
                   requests.map((r: any) => (
-                    <tr key={r.id} className="hover:bg-white/[0.02] transition">
+                    <tr key={r.id} className="hover:bg-rose-50/30 transition">
                       <td className="px-5 py-4">
-                        <div className="font-bold text-white text-sm">{r.user?.name || "Client"}</div>
-                        <div className="text-[11px] text-slate-400">{r.user?.phone || r.user?.email || "N/A"}</div>
+                        <div className="font-bold text-slate-900 text-sm">{r.user?.name || "Client"}</div>
+                        <div className="text-[11px] text-slate-500">{r.user?.phone || r.user?.email || "N/A"}</div>
                       </td>
-                      <td className="px-4 py-4 text-slate-300 max-w-xs truncate">
+                      <td className="px-4 py-4 text-slate-700 max-w-xs truncate">
                         {r.topic || "General Healing & Listening"}
                       </td>
                       <td className="px-4 py-4">
@@ -546,18 +546,18 @@ export default function AdminBreakupBuddyDetailPage() {
                       </td>
                       <td className="px-4 py-4">
                         {r.packageName ? (
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
                             {r.packageName} (₹{r.packagePrice || 0})
                           </span>
                         ) : (
                           <span className="text-slate-500 text-[11px]">Free Tier</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-slate-400">
+                      <td className="px-4 py-4 text-slate-500">
                         {new Date(r.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-white/5 text-slate-300 border border-white/5">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
                           {r.status}
                         </span>
                       </td>
@@ -572,33 +572,33 @@ export default function AdminBreakupBuddyDetailPage() {
 
       {/* TAB CONTENT: REVIEWS */}
       {activeTab === "reviews" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-rose-100">
             <div>
-              <h3 className="font-bold text-white text-sm">Verified Client Reviews & Feedback</h3>
-              <p className="text-xs text-slate-400">Ratings submitted by users after sessions.</p>
+              <h3 className="font-serif font-bold text-slate-900 text-sm">Verified Client Reviews & Feedback</h3>
+              <p className="text-xs text-slate-500">Ratings submitted by users after sessions.</p>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
-              <Star className="w-3.5 h-3.5 fill-amber-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               <span>{analytics.avgRating ? Number(analytics.avgRating).toFixed(1) : "5.0"} Average</span>
             </div>
           </div>
 
           {reviews.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 italic text-xs">
+            <div className="py-12 text-center text-slate-400 italic text-xs">
               No reviews submitted for this Breakup Buddy yet.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {reviews.map((rev: any) => (
-                <div key={rev.id} className="p-4 rounded-xl bg-slate-900/60 border border-white/5 space-y-2">
+                <div key={rev.id} className="p-4 rounded-2xl bg-rose-50/40 border border-rose-100 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-400">
+                    <div className="flex items-center gap-1 text-amber-500">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
                           className={`w-3.5 h-3.5 ${
-                            star <= rev.rating ? "fill-amber-400 text-amber-400" : "text-slate-600"
+                            star <= rev.rating ? "fill-amber-400 text-amber-400" : "text-slate-300"
                           }`}
                         />
                       ))}
@@ -607,11 +607,11 @@ export default function AdminBreakupBuddyDetailPage() {
                       {new Date(rev.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-200 italic">
+                  <p className="text-xs text-slate-700 italic">
                     "{rev.comment || "Great listening and supportive conversation."}"
                   </p>
-                  <div className="text-[11px] text-slate-400 pt-1 border-t border-white/5">
-                    Client: <strong className="text-white">{rev.user?.name || "Anonymous Member"}</strong>
+                  <div className="text-[11px] text-slate-500 pt-1 border-t border-rose-100">
+                    Client: <strong className="text-slate-800">{rev.user?.name || "Anonymous Member"}</strong>
                   </div>
                 </div>
               ))}
@@ -622,14 +622,14 @@ export default function AdminBreakupBuddyDetailPage() {
 
       {/* TAB CONTENT: CALL LOGS */}
       {activeTab === "calls" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Call Logs & Voice Transcripts</h3>
-            <span className="text-xs text-slate-400">Total: {callLogs.length} call records</span>
+        <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-rose-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Call Logs & Voice Transcripts</h3>
+            <span className="text-xs text-slate-500">Total: {callLogs.length} call records</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
                 <tr>
                   <th className="px-5 py-3.5">Caller</th>
                   <th className="px-4 py-3.5">Receiver</th>
@@ -638,33 +638,33 @@ export default function AdminBreakupBuddyDetailPage() {
                   <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-rose-50 font-medium">
                 {callLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-500 italic">
+                    <td colSpan={5} className="text-center py-12 text-slate-400 italic">
                       No call records found for this Breakup Buddy.
                     </td>
                   </tr>
                 ) : (
                   callLogs.map((log: any) => (
-                    <tr key={log.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-5 py-4 font-bold text-white">{log.caller?.name || "User"}</td>
-                      <td className="px-4 py-4">{log.receiver?.name || "Buddy"}</td>
-                      <td className="px-4 py-4 text-slate-400">
+                    <tr key={log.id} className="hover:bg-rose-50/30 transition">
+                      <td className="px-5 py-4 font-bold text-slate-900">{log.caller?.name || "User"}</td>
+                      <td className="px-4 py-4 text-slate-700">{log.receiver?.name || "Buddy"}</td>
+                      <td className="px-4 py-4 text-slate-500">
                         {new Date(log.startedAt).toLocaleString("en-IN", {
                           dateStyle: "medium",
                           timeStyle: "short",
                         })}
                       </td>
-                      <td className="px-4 py-4 font-bold text-blue-400">
+                      <td className="px-4 py-4 font-bold text-blue-700">
                         {Math.floor((log.durationSec || 0) / 60)}m {(log.durationSec || 0) % 60}s
                       </td>
                       <td className="px-5 py-4 text-right">
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                             log.status === "COMPLETED"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
                           }`}
                         >
                           {log.status}
@@ -682,9 +682,9 @@ export default function AdminBreakupBuddyDetailPage() {
       {/* TAB CONTENT: GOVERNANCE & INTERNAL NOTES */}
       {activeTab === "governance" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
-            <h3 className="font-bold text-white text-sm">Internal Admin Notes & Compliance</h3>
-            <p className="text-xs text-slate-400">
+          <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-4">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Internal Admin Notes & Compliance</h3>
+            <p className="text-xs text-slate-500">
               Private notes visible only to platform administrators regarding performance, warnings, or background checks.
             </p>
             <textarea
@@ -692,40 +692,40 @@ export default function AdminBreakupBuddyDetailPage() {
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
               placeholder="Record administrative observations, client feedback notes, or probationary guidelines..."
-              className="w-full p-3 bg-slate-900 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              className="w-full p-3 bg-[#FAF3F6]/50 border border-rose-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
             <button
               onClick={handleSaveNotes}
               disabled={savingNotes}
-              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/25 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition disabled:opacity-50"
             >
               {savingNotes ? "Saving..." : "Save Admin Notes"}
             </button>
           </div>
 
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4 text-xs">
-            <h3 className="font-bold text-white text-sm">KYC & Identity Verification Summary</h3>
+          <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-4 text-xs">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">KYC & Identity Verification Summary</h3>
             <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">ID Document Type</span>
-                  <strong className="text-white">{user.idType || "Government National ID / Aadhaar"}</strong>
+                  <span className="text-slate-500 block text-[11px]">ID Document Type</span>
+                  <strong className="text-slate-800">{user.idType || "Government National ID / Aadhaar"}</strong>
                 </div>
-                <BadgeCheck className="w-5 h-5 text-emerald-400" />
+                <BadgeCheck className="w-5 h-5 text-emerald-600" />
               </div>
-              <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Email Verification</span>
-                  <strong className="text-white">{user.email}</strong>
+                  <span className="text-slate-500 block text-[11px]">Email Verification</span>
+                  <strong className="text-slate-800">{user.email}</strong>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Phone Verification</span>
-                  <strong className="text-white">{user.phone || "Verified"}</strong>
+                  <span className="text-slate-500 block text-[11px]">Phone Verification</span>
+                  <strong className="text-slate-800">{user.phone || "Verified"}</strong>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
           </div>

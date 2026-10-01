@@ -258,10 +258,10 @@ export default function AdminOverviewPage() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-20 bg-white/5 rounded-2xl" />
+        <div className="h-24 bg-rose-100/40 rounded-3xl border border-rose-100" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-28 bg-white/5 rounded-2xl" />
+            <div key={i} className="h-32 bg-white border border-rose-100 rounded-3xl shadow-xs" />
           ))}
         </div>
       </div>
@@ -271,16 +271,16 @@ export default function AdminOverviewPage() {
   return (
     <div className="space-y-8 pb-12">
       {/* HEADER & TOP BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-[#121c2e] via-[#0f1728] to-[#121c2e] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-rose-50/70 via-white to-rose-50/40 border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            Platform Control Center
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-bold mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
+            <span>Platform Control Center</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
             JabWeMeet Operations Command
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xl">
             Real People. Real Places. Real Connections. Monitor live registrations, matchmaker pipelines, breakup buddy circles, and transactions.
           </p>
         </div>
@@ -289,35 +289,35 @@ export default function AdminOverviewPage() {
           <button
             onClick={() => fetchOverview()}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white hover:bg-rose-50 border border-rose-200 text-xs font-bold text-slate-700 hover:text-[#7E2248] transition active:scale-95 disabled:opacity-50 shadow-2xs cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-red-400" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-[#7E2248]" : "text-slate-500"}`} />
             <span>{refreshing ? "Refreshing..." : "Refresh Data"}</span>
           </button>
         </div>
       </div>
 
       {actionSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <span>{actionSuccess}</span>
           </div>
-          <button onClick={() => setActionSuccess(null)} className="text-emerald-400 hover:text-white">
+          <button onClick={() => setActionSuccess(null)} className="text-emerald-600 hover:text-emerald-900 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* QUICK ACTIONS BAR */}
-      <div className="bg-[#0f1829] border border-white/10 rounded-2xl p-5 shadow-lg space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="bg-white border border-rose-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">
           Quick Actions
         </h3>
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setActiveModal("event")}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold shadow-md shadow-red-500/20 transition active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-sm shadow-[#7E2248]/20 transition active:scale-95 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Event</span>
@@ -325,41 +325,41 @@ export default function AdminOverviewPage() {
 
           <a
             href="/admin/relationship-managers"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-200/80 text-slate-700 hover:text-[#7E2248] text-xs font-bold transition"
           >
-            <HeartHandshake className="w-3.5 h-3.5 text-rose-400" />
+            <HeartHandshake className="w-3.5 h-3.5 text-[#7E2248]" />
             <span>Manage RMs</span>
           </a>
 
           <a
             href="/admin/breakup-buddies"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-200/80 text-slate-700 hover:text-[#7E2248] text-xs font-bold transition"
           >
-            <Heart className="w-3.5 h-3.5 text-blue-400" />
+            <Heart className="w-3.5 h-3.5 text-rose-500" />
             <span>Manage Buddies</span>
           </a>
 
           <button
             onClick={() => setActiveModal("package")}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-200/80 text-slate-700 hover:text-[#7E2248] text-xs font-bold transition cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <Plus className="w-3.5 h-3.5 text-emerald-600" />
             <span>Create Package</span>
           </button>
 
           <button
             onClick={() => setActiveModal("coupon")}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-200/80 text-slate-700 hover:text-[#7E2248] text-xs font-bold transition cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-amber-400" />
+            <Plus className="w-3.5 h-3.5 text-amber-600" />
             <span>Create Coupon</span>
           </button>
 
           <button
             onClick={() => setActiveModal("announcement")}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#162136] hover:bg-[#1c2a44] border border-white/10 text-slate-200 text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-200/80 text-slate-700 hover:text-[#7E2248] text-xs font-bold transition cursor-pointer"
           >
-            <Send className="w-3.5 h-3.5 text-purple-400" />
+            <Send className="w-3.5 h-3.5 text-[#7E2248]" />
             <span>Send Announcement</span>
           </button>
         </div>
@@ -369,8 +369,8 @@ export default function AdminOverviewPage() {
       {alerts.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Bell className="w-4 h-4 text-amber-400" />
+            <h3 className="text-sm font-serif font-bold text-slate-900 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-500" />
               <span>Admin Alert Center</span>
             </h3>
             <span className="text-xs text-slate-400">Direct navigation to active queues</span>
@@ -381,22 +381,22 @@ export default function AdminOverviewPage() {
               <a
                 key={a.id}
                 href={a.link}
-                className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 hover:border-white/20 transition flex items-center justify-between group shadow-md"
+                className="p-4 sm:p-5 rounded-3xl bg-white border border-rose-100 hover:border-rose-200 transition-all flex items-center justify-between group shadow-xs hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
-                    a.count > 0 ? "bg-red-500/20 text-red-400" : "bg-white/5 text-slate-400"
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-sm ${
+                    a.count > 0 ? "bg-rose-100 text-[#7E2248] border border-rose-200" : "bg-slate-100 text-slate-500"
                   }`}>
                     {a.count}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white group-hover:text-red-400 transition">
+                    <h4 className="text-xs font-bold text-slate-800 group-hover:text-[#7E2248] transition">
                       {a.title}
                     </h4>
                     <span className="text-[10px] text-slate-400">{a.badge}</span>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-white transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#7E2248] transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </a>
             ))}
           </div>
@@ -405,93 +405,109 @@ export default function AdminOverviewPage() {
 
       {/* REAL DATABASE KPI CARDS */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-white">Platform Key Performance Indicators</h3>
+        <h3 className="text-sm font-serif font-bold text-slate-900">Platform Key Performance Indicators</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {/* Total Users */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Total Users</span>
-              <Users className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Total Users</span>
+              <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                <Users className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.totalUsers || 0}</div>
-            <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">{stats?.totalUsers || 0}</div>
+            <div className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
               <span>{stats?.activeUsers || 0} Active accounts</span>
             </div>
           </div>
 
           {/* Verified Users */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Verified Members</span>
-              <FileCheck className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Verified Members</span>
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                <FileCheck className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.verifiedUsers || 0}</div>
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">{stats?.verifiedUsers || 0}</div>
             <div className="text-[11px] text-slate-400 mt-1">
               ID & Profile verified
             </div>
           </div>
 
           {/* Upcoming Events */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Upcoming Events</span>
-              <Calendar className="w-4 h-4 text-rose-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Upcoming Events</span>
+              <div className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                <Calendar className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.upcomingEvents || 0}</div>
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">{stats?.upcomingEvents || 0}</div>
             <div className="text-[11px] text-slate-400 mt-1">Active on public schedule</div>
           </div>
 
           {/* Today's Registrations */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Today&apos;s Passes</span>
-              <Ticket className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Today&apos;s Passes</span>
+              <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                <Ticket className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.todayRegistrations || 0}</div>
-            <div className="text-[11px] text-emerald-400 mt-1">Real-time venue bookings</div>
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">{stats?.todayRegistrations || 0}</div>
+            <div className="text-[11px] text-emerald-700 font-semibold mt-1">Real-time venue bookings</div>
           </div>
 
           {/* Total Revenue */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Total Revenue</span>
-              <CreditCard className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Total Revenue</span>
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                <CreditCard className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-400">
+            <div className="text-2xl sm:text-3xl font-serif font-black text-emerald-700">
               ₹{(stats?.totalRevenue || 0).toLocaleString("en-IN")}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">All processed transactions</div>
           </div>
 
           {/* Monthly Revenue */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Monthly Run-Rate</span>
-              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Monthly Run-Rate</span>
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                <DollarSign className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">
               ₹{(stats?.monthlyRevenue || 0).toLocaleString("en-IN")}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">Current calendar month</div>
           </div>
 
           {/* RM Subscribers */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">RM Clients</span>
-              <HeartHandshake className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">RM Clients</span>
+              <div className="w-7 h-7 rounded-xl bg-rose-50 text-[#7E2248] flex items-center justify-center border border-rose-100">
+                <HeartHandshake className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.rmSubscribers || 0}</div>
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">{stats?.rmSubscribers || 0}</div>
             <div className="text-[11px] text-slate-400 mt-1">Assigned to Matchmakers</div>
           </div>
 
           {/* Open Support Tickets */}
-          <div className="p-5 rounded-2xl bg-[#0d1627] border border-white/10 shadow-lg">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-100 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold uppercase">Support Cases</span>
-              <LifeBuoy className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">Support Cases</span>
+              <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                <LifeBuoy className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">{stats?.openSupportTickets || 0}</div>
+            <div className="text-2xl sm:text-3xl font-serif font-black text-slate-900">{stats?.openSupportTickets || 0}</div>
             <div className="text-[11px] text-slate-400 mt-1">Awaiting staff response</div>
           </div>
         </div>
@@ -500,18 +516,18 @@ export default function AdminOverviewPage() {
       {/* CHARTS & ANALYTICS SECTION */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-red-400" />
+          <h3 className="text-sm font-serif font-bold text-slate-900 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-[#7E2248]" />
             <span>Platform Analytics & Trends</span>
           </h3>
 
-          <div className="flex items-center gap-1 bg-[#131d2e] p-1 rounded-xl border border-white/10 self-start sm:self-auto">
+          <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-rose-200 self-start sm:self-auto shadow-2xs">
             {["7d", "30d", "90d", "1y"].map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase transition ${
-                  range === r ? "bg-red-600 text-white shadow" : "text-slate-400 hover:text-white"
+                className={`px-3 py-1 rounded-xl text-xs font-bold uppercase transition cursor-pointer ${
+                  range === r ? "bg-[#7E2248] text-white shadow-xs" : "text-slate-500 hover:text-[#7E2248]"
                 }`}
               >
                 {r}
@@ -522,23 +538,23 @@ export default function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue by Category Breakdown */}
-          <div className="p-6 rounded-3xl bg-[#0d1627] border border-white/10 shadow-xl space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="p-6 sm:p-7 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">
               Revenue by Product Stream ({range.toUpperCase()})
             </h4>
             <div className="space-y-3 pt-2">
               {analytics?.revenueByCategory?.length === 0 ? (
-                <p className="text-xs text-slate-500 italic py-8 text-center">No transaction records in this timeframe.</p>
+                <p className="text-xs text-slate-400 italic py-8 text-center">No transaction records in this timeframe.</p>
               ) : (
                 analytics?.revenueByCategory?.map((item: any) => (
                   <div key={item.type} className="space-y-1.5">
                     <div className="flex justify-between text-xs font-medium">
-                      <span className="text-slate-300">{item.type.replace("_", " ")}</span>
-                      <span className="text-emerald-400 font-bold">₹{item.total.toLocaleString("en-IN")} ({item.transactions} orders)</span>
+                      <span className="text-slate-700 font-semibold">{item.type.replace("_", " ")}</span>
+                      <span className="text-emerald-700 font-bold">₹{item.total.toLocaleString("en-IN")} ({item.transactions} orders)</span>
                     </div>
-                    <div className="w-full h-2.5 rounded-full bg-white/5 overflow-hidden">
+                    <div className="w-full h-2.5 rounded-full bg-rose-50 border border-rose-100/60 overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                        className="h-full bg-gradient-to-r from-[#7E2248] via-rose-500 to-[#7E2248] rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, Math.max(15, (item.total / (stats?.totalRevenue || 1)) * 100))}%` }}
                       />
                     </div>
@@ -549,18 +565,18 @@ export default function AdminOverviewPage() {
           </div>
 
           {/* Top Cities Distribution */}
-          <div className="p-6 rounded-3xl bg-[#0d1627] border border-white/10 shadow-xl space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="p-6 sm:p-7 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-serif">
               Geographical Distribution (Top Cities)
             </h4>
             <div className="grid grid-cols-2 gap-3 pt-2">
               {analytics?.cityDistribution?.map((c: any) => (
-                <div key={c.city} className="p-3.5 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+                <div key={c.city} className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Building className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span className="text-xs font-bold text-white capitalize">{c.city}</span>
+                    <Building className="w-4 h-4 text-[#7E2248] shrink-0" />
+                    <span className="text-xs font-bold text-slate-800 capitalize">{c.city}</span>
                   </div>
-                  <span className="text-xs font-extrabold text-slate-300 px-2 py-0.5 rounded-full bg-white/10">
+                  <span className="text-xs font-extrabold text-[#7E2248] px-2.5 py-0.5 rounded-full bg-white border border-rose-200">
                     {c.count}
                   </span>
                 </div>
@@ -573,38 +589,38 @@ export default function AdminOverviewPage() {
       {/* CREATE EVENT MODAL */}
       {activeModal === "event" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs" onClick={() => setActiveModal(null)} />
           <div
-            className="relative w-full max-w-xl bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="relative w-full max-w-xl bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl z-10 max-h-[90vh] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-white">Create New Real-World Event</h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4 mb-4">
+              <h3 className="text-lg font-serif font-bold text-slate-900">Create New Real-World Event</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-rose-50 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateEvent} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Event Title *</label>
+                <label className="block text-slate-700 font-bold mb-1">Event Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Rooftop Singles Mixer & Cocktails"
                   value={eventForm.title}
                   onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Category *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Category *</label>
                   <select
                     value={eventForm.category}
                     onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition cursor-pointer"
                   >
                     <option value="Singles Events">Singles Mixer</option>
                     <option value="Speed Dating">Speed Dating</option>
@@ -615,86 +631,86 @@ export default function AdminOverviewPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">City *</label>
+                  <label className="block text-slate-700 font-bold mb-1">City *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Mumbai, Bangalore"
                     value={eventForm.city}
                     onChange={(e) => setEventForm({ ...eventForm, city: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Venue Location *</label>
+                <label className="block text-slate-700 font-bold mb-1">Venue Location *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Sky Lounge, Indiranagar"
                   value={eventForm.location}
                   onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Date & Time *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Date & Time *</label>
                   <input
                     type="datetime-local"
                     required
                     value={eventForm.date}
                     onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Ticket Price (₹)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Ticket Price (₹)</label>
                   <input
                     type="number"
                     min="0"
                     value={eventForm.price}
                     onChange={(e) => setEventForm({ ...eventForm, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Capacity</label>
+                  <label className="block text-slate-700 font-bold mb-1">Capacity</label>
                   <input
                     type="number"
                     min="5"
                     value={eventForm.maxAttendees}
                     onChange={(e) => setEventForm({ ...eventForm, maxAttendees: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Event Description</label>
+                <label className="block text-slate-700 font-bold mb-1">Event Description</label>
                 <textarea
                   rows={3}
                   placeholder="Detailed breakdown of the experience, dress code, icebreakers..."
                   value={eventForm.description}
                   onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-3 border-t border-rose-100">
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition disabled:opacity-50 shadow-sm shadow-[#7E2248]/20 cursor-pointer"
                 >
                   {modalLoading ? "Publishing..." : "Publish Event"}
                 </button>
@@ -707,11 +723,11 @@ export default function AdminOverviewPage() {
       {/* CREATE PACKAGE MODAL */}
       {activeModal === "package" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
-          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-white">Create Service Package</h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4 mb-4">
+              <h3 className="text-lg font-serif font-bold text-slate-900">Create Service Package</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-rose-50 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -719,47 +735,47 @@ export default function AdminOverviewPage() {
             <form onSubmit={handleCreatePackage} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Service Type</label>
+                  <label className="block text-slate-700 font-bold mb-1">Service Type</label>
                   <select
                     value={packageForm.type}
                     onChange={(e) => setPackageForm({ ...packageForm, type: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition cursor-pointer"
                   >
                     <option value="RELATIONSHIP_MANAGER">Relationship Manager</option>
                     <option value="BREAKUP_BUDDY">Breakup Buddy</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Package Name</label>
+                  <label className="block text-slate-700 font-bold mb-1">Package Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. VIP Harmony Circle"
                     value={packageForm.name}
                     onChange={(e) => setPackageForm({ ...packageForm, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Price (₹)</label>
                   <input
                     type="number"
                     min="0"
                     required
                     value={packageForm.price}
                     onChange={(e) => setPackageForm({ ...packageForm, price: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Billing Cycle</label>
+                  <label className="block text-slate-700 font-bold mb-1">Billing Cycle</label>
                   <select
                     value={packageForm.billingCycle}
                     onChange={(e) => setPackageForm({ ...packageForm, billingCycle: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition cursor-pointer"
                   >
                     <option value="MONTHLY">Monthly</option>
                     <option value="WEEKLY">Weekly</option>
@@ -769,27 +785,27 @@ export default function AdminOverviewPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Description</label>
+                <label className="block text-slate-700 font-bold mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={packageForm.description}
                   onChange={(e) => setPackageForm({ ...packageForm, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-3 border-t border-rose-100">
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition disabled:opacity-50 shadow-sm shadow-[#7E2248]/20 cursor-pointer"
                 >
                   {modalLoading ? "Creating..." : "Save Package"}
                 </button>
@@ -802,65 +818,65 @@ export default function AdminOverviewPage() {
       {/* CREATE COUPON MODAL */}
       {activeModal === "coupon" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
-          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-white">Create Promotional Coupon</h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4 mb-4">
+              <h3 className="text-lg font-serif font-bold text-slate-900">Create Promotional Coupon</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-rose-50 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateCoupon} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Coupon Code</label>
+                <label className="block text-slate-700 font-bold mb-1">Coupon Code</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. SUMMERLOVE25"
                   value={couponForm.code}
                   onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white uppercase font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 uppercase font-mono focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Discount Type</label>
+                  <label className="block text-slate-700 font-bold mb-1">Discount Type</label>
                   <select
                     value={couponForm.discountType}
                     onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition cursor-pointer"
                   >
                     <option value="PERCENTAGE">Percentage (%)</option>
                     <option value="FIXED">Flat Amount (₹)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Discount Amount</label>
+                  <label className="block text-slate-700 font-bold mb-1">Discount Amount</label>
                   <input
                     type="number"
                     min="1"
                     required
                     value={couponForm.discountAmount}
                     onChange={(e) => setCouponForm({ ...couponForm, discountAmount: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-3 border-t border-rose-100">
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="px-6 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition disabled:opacity-50 shadow-sm shadow-[#7E2248]/20 cursor-pointer"
                 >
                   {modalLoading ? "Saving..." : "Create Coupon"}
                 </button>
@@ -873,22 +889,22 @@ export default function AdminOverviewPage() {
       {/* SEND ANNOUNCEMENT MODAL */}
       {activeModal === "announcement" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setActiveModal(null)} />
-          <div className="relative w-full max-w-lg bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-white">Broadcast Platform Announcement</h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs" onClick={() => setActiveModal(null)} />
+          <div className="relative w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-6 sm:p-8 shadow-2xl z-10">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4 mb-4">
+              <h3 className="text-lg font-serif font-bold text-slate-900">Broadcast Platform Announcement</h3>
+              <button onClick={() => setActiveModal(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-rose-50 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSendAnnouncement} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Target Audience</label>
+                <label className="block text-slate-700 font-bold mb-1">Target Audience</label>
                 <select
                   value={announcementForm.targetAudience}
                   onChange={(e) => setAnnouncementForm({ ...announcementForm, targetAudience: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition cursor-pointer"
                 >
                   <option value="All Users">All Verified Users</option>
                   <option value="Event Attendees">Upcoming Event Attendees</option>
@@ -898,41 +914,41 @@ export default function AdminOverviewPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Headline / Title *</label>
+                <label className="block text-slate-700 font-bold mb-1">Headline / Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. New Singles Mixers Announced for Bangalore & Mumbai!"
                   value={announcementForm.title}
                   onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Message Content *</label>
+                <label className="block text-slate-700 font-bold mb-1">Message Content *</label>
                 <textarea
                   rows={4}
                   required
                   placeholder="Compose notification text..."
                   value={announcementForm.message}
                   onChange={(e) => setAnnouncementForm({ ...announcementForm, message: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white transition"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-3 border-t border-rose-100">
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="px-6 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-2xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition disabled:opacity-50 shadow-sm shadow-[#7E2248]/20 flex items-center gap-2 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{modalLoading ? "Broadcasting..." : "Send Announcement"}</span>

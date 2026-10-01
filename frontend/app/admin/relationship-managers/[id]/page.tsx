@@ -157,7 +157,7 @@ export default function AdminRelationshipManagerDetailPage() {
   if (loading) {
     return (
       <div className="py-24 text-center text-slate-400 animate-pulse space-y-3">
-        <HeartHandshake className="w-8 h-8 text-purple-500 mx-auto animate-bounce" />
+        <HeartHandshake className="w-8 h-8 text-[#7E2248] mx-auto animate-bounce" />
         <div className="text-sm font-semibold">Loading Relationship Manager profile & client portfolio...</div>
       </div>
     );
@@ -165,13 +165,13 @@ export default function AdminRelationshipManagerDetailPage() {
 
   if (!data?.user) {
     return (
-      <div className="p-12 text-center rounded-2xl bg-[#0f172a] border border-white/10 space-y-4">
-        <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
-        <h2 className="text-lg font-bold text-white">Relationship Manager Not Found</h2>
-        <p className="text-xs text-slate-400">The requested Relationship Manager profile could not be loaded.</p>
+      <div className="p-12 text-center rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+        <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+        <h2 className="text-lg font-serif font-bold text-slate-900">Relationship Manager Not Found</h2>
+        <p className="text-xs text-slate-500">The requested Relationship Manager profile could not be loaded.</p>
         <Link
           href="/admin/relationship-managers"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-slate-700 text-xs font-bold transition border border-rose-200"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Relationship Managers</span>
@@ -190,28 +190,28 @@ export default function AdminRelationshipManagerDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/relationship-managers"
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition"
+            className="p-2 rounded-xl bg-white hover:bg-rose-50 text-slate-700 hover:text-slate-900 border border-rose-200 transition shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight">
                 {user.name}
               </h1>
               <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   isActive
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-rose-50 text-rose-700 border border-rose-200"
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-rose-500"}`} />
                 {user.status || "ACTIVE"}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Relationship Manager Personnel Profile • ID: <span className="font-mono text-slate-300">{user.id}</span>
+            <p className="text-xs text-slate-500">
+              Relationship Manager Personnel Profile • ID: <span className="font-mono text-slate-600">{user.id}</span>
             </p>
           </div>
         </div>
@@ -222,20 +222,20 @@ export default function AdminRelationshipManagerDetailPage() {
             onClick={handleToggleVerify}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition ${
               user.isVerified
-                ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/30"
-                : "bg-white/5 hover:bg-white/10 text-slate-400 border-white/10"
+                ? "bg-rose-50 hover:bg-rose-100 text-[#7E2248] border-rose-300"
+                : "bg-white hover:bg-rose-50 text-slate-600 border-rose-200"
             }`}
           >
-            <BadgeCheck className="w-4 h-4" />
+            <BadgeCheck className="w-4 h-4 text-[#7E2248]" />
             <span>{user.isVerified ? "Verified Badge Active" : "Grant Verified Badge"}</span>
           </button>
 
           <button
             onClick={handleToggleStatus}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
               isActive
-                ? "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25"
+                ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white"
             }`}
           >
             {isActive ? (
@@ -254,10 +254,10 @@ export default function AdminRelationshipManagerDetailPage() {
       </div>
 
       {/* PROFILE HEADER BANNER */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
+      <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-[#182337] border-2 border-white/10 flex items-center justify-center font-black text-2xl text-white overflow-hidden shrink-0 shadow-xl">
+            <div className="w-20 h-20 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center font-serif font-black text-2xl text-[#7E2248] overflow-hidden shrink-0 shadow-xs">
               {user.profileImage ? (
                 <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
               ) : (
@@ -266,45 +266,45 @@ export default function AdminRelationshipManagerDetailPage() {
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white">{user.name}</h2>
+                <h2 className="text-xl font-serif font-bold text-slate-900">{user.name}</h2>
                 {user.isVerified && (
                   <span title="Verified Relationship Manager">
-                    <BadgeCheck className="w-4 h-4 text-purple-400" />
+                    <BadgeCheck className="w-4 h-4 text-[#7E2248]" />
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300 max-w-xl">
+              <p className="text-xs text-slate-600 max-w-xl">
                 {user.workExperience || "Senior matchmaking advisor specializing in curated introductions and values vetting."}
               </p>
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-400">
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   {user.city || "Online / Flexible"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
                   {user.email}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-slate-500" />
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
                   {user.phone || "N/A"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Recently"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5 text-xs sm:min-w-[220px]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Matchmaker Role</div>
-            <div className="flex items-center gap-1.5 text-white font-semibold">
-              <HeartHandshake className="w-3.5 h-3.5 text-purple-400" />
+          <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-1.5 text-xs sm:min-w-[220px]">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Matchmaker Role</div>
+            <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+              <HeartHandshake className="w-3.5 h-3.5 text-[#7E2248]" />
               <span>Dedicated Relationship Manager</span>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Assigned Clients: <strong className="text-white">{clients.length} Active</strong>
+            <div className="text-[11px] text-slate-500">
+              Assigned Clients: <strong className="text-slate-800">{clients.length} Active</strong>
             </div>
           </div>
         </div>
@@ -312,53 +312,53 @@ export default function AdminRelationshipManagerDetailPage() {
 
       {/* 4 KEY KPI STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Managed Clients</span>
-            <Users className="w-3.5 h-3.5 text-emerald-400" />
+            <Users className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-400">{analytics.assignedClientsCount || 0}</div>
-          <div className="text-[11px] text-slate-400">Active portfolio members</div>
+          <div className="text-2xl font-serif font-black text-emerald-700">{analytics.assignedClientsCount || 0}</div>
+          <div className="text-[11px] text-slate-500">Active portfolio members</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Match Suggestions</span>
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <Sparkles className="w-3.5 h-3.5 text-[#7E2248]" />
           </div>
-          <div className="text-2xl font-black text-purple-400">{analytics.madeSuggestionsCount || 0}</div>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-2xl font-serif font-black text-[#7E2248]">{analytics.madeSuggestionsCount || 0}</div>
+          <div className="text-[11px] text-slate-500">
             {analytics.acceptedSuggestions || 0} mutually approved matches
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Consultations & Dates</span>
-            <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+            <Calendar className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-indigo-400">{analytics.totalAppointments || 0}</div>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-2xl font-serif font-black text-blue-700">{analytics.totalAppointments || 0}</div>
+          <div className="text-[11px] text-slate-500">
             {analytics.completedAppointments || 0} completed • {analytics.scheduledAppointments || 0} scheduled
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Match Success Rate</span>
-            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
           </div>
-          <div className="text-2xl font-black text-amber-400">
+          <div className="text-2xl font-serif font-black text-amber-600">
             {analytics.madeSuggestionsCount > 0
               ? `${Math.round(((analytics.acceptedSuggestions || 0) / analytics.madeSuggestionsCount) * 100)}%`
               : "100%"}
           </div>
-          <div className="text-[11px] text-slate-400">Mutual consent conversion</div>
+          <div className="text-[11px] text-slate-500">Mutual consent conversion</div>
         </div>
       </div>
 
       {/* NAVIGATION TABS */}
-      <div className="flex items-center gap-2 border-b border-white/10 pb-2 overflow-x-auto text-xs font-bold">
+      <div className="flex items-center gap-2 border-b border-rose-100 pb-2 overflow-x-auto text-xs font-bold">
         {[
           { id: "clients", label: `Assigned Clients (${clients.length})`, icon: Users },
           { id: "suggestions", label: `Match Suggestions (${suggestions.length})`, icon: Sparkles },
@@ -373,8 +373,8 @@ export default function AdminRelationshipManagerDetailPage() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition shrink-0 ${
                 isSelected
-                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
-                  : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                  ? "bg-[#7E2248] text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:text-slate-900 hover:bg-rose-50 border border-rose-100"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -386,14 +386,14 @@ export default function AdminRelationshipManagerDetailPage() {
 
       {/* TAB CONTENT: ASSIGNED CLIENTS */}
       {activeTab === "clients" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Assigned Client Portfolio</h3>
-            <span className="text-xs text-slate-400">Total: {clients.length} clients</span>
+        <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-rose-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Assigned Client Portfolio</h3>
+            <span className="text-xs text-slate-500">Total: {clients.length} clients</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
                 <tr>
                   <th className="px-5 py-3.5">Client Name</th>
                   <th className="px-4 py-3.5">Contact</th>
@@ -403,34 +403,34 @@ export default function AdminRelationshipManagerDetailPage() {
                   <th className="px-5 py-3.5 text-right">Profile</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-rose-50 font-medium">
                 {clients.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                    <td colSpan={6} className="text-center py-12 text-slate-400 italic">
                       No clients assigned to this Relationship Manager yet.
                     </td>
                   </tr>
                 ) : (
                   clients.map((c: any) => (
-                    <tr key={c.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-5 py-4 font-bold text-white text-sm">{c.name}</td>
+                    <tr key={c.id} className="hover:bg-rose-50/30 transition">
+                      <td className="px-5 py-4 font-bold text-slate-900 text-sm">{c.name}</td>
                       <td className="px-4 py-4 space-y-0.5">
-                        <div className="text-slate-300">{c.email}</div>
-                        <div className="text-[11px] text-slate-400">{c.phone || "N/A"}</div>
+                        <div className="text-slate-700">{c.email}</div>
+                        <div className="text-[11px] text-slate-500">{c.phone || "N/A"}</div>
                       </td>
-                      <td className="px-4 py-4 text-slate-300">{c.city || "Unspecified"}</td>
-                      <td className="px-4 py-4 text-slate-400">
+                      <td className="px-4 py-4 text-slate-700">{c.city || "Unspecified"}</td>
+                      <td className="px-4 py-4 text-slate-500">
                         {new Date(c.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-4">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
                           {c.status || "ACTIVE"}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <Link
                           href={`/admin/users/${c.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-slate-700 text-xs font-semibold border border-rose-200"
                         >
                           <span>360° View</span>
                           <ExternalLink className="w-3 h-3 text-slate-500" />
@@ -447,14 +447,14 @@ export default function AdminRelationshipManagerDetailPage() {
 
       {/* TAB CONTENT: MATCH SUGGESTIONS */}
       {activeTab === "suggestions" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Curated Match Suggestions</h3>
-            <span className="text-xs text-slate-400">Total: {suggestions.length} suggestions</span>
+        <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-rose-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Curated Match Suggestions</h3>
+            <span className="text-xs text-slate-500">Total: {suggestions.length} suggestions</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
                 <tr>
                   <th className="px-5 py-3.5">Client User</th>
                   <th className="px-4 py-3.5">Suggested Profile</th>
@@ -464,32 +464,32 @@ export default function AdminRelationshipManagerDetailPage() {
                   <th className="px-5 py-3.5 text-right">Created Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-rose-50 font-medium">
                 {suggestions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                    <td colSpan={6} className="text-center py-12 text-slate-400 italic">
                       No match suggestions curated by this manager yet.
                     </td>
                   </tr>
                 ) : (
                   suggestions.map((s: any) => (
-                    <tr key={s.id} className="hover:bg-white/[0.02] transition">
+                    <tr key={s.id} className="hover:bg-rose-50/30 transition">
                       <td className="px-5 py-4">
-                        <div className="font-bold text-white text-sm">{s.client?.name || "Client"}</div>
-                        <div className="text-[11px] text-slate-400">{s.client?.city || "Online"}</div>
+                        <div className="font-bold text-slate-900 text-sm">{s.client?.name || "Client"}</div>
+                        <div className="text-[11px] text-slate-500">{s.client?.city || "Online"}</div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="font-bold text-purple-300 text-sm">{s.suggestedProfile?.name || "Candidate"}</div>
-                        <div className="text-[11px] text-slate-400">{s.suggestedProfile?.city || "Online"}</div>
+                        <div className="font-bold text-[#7E2248] text-sm">{s.suggestedProfile?.name || "Candidate"}</div>
+                        <div className="text-[11px] text-slate-500">{s.suggestedProfile?.city || "Online"}</div>
                       </td>
                       <td className="px-4 py-4">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             s.clientStatus === "Approved"
-                              ? "bg-emerald-500/15 text-emerald-400"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : s.clientStatus === "Rejected"
-                              ? "bg-rose-500/15 text-rose-400"
-                              : "bg-amber-500/15 text-amber-400"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
                           }`}
                         >
                           {s.clientStatus || "Pending"}
@@ -499,16 +499,16 @@ export default function AdminRelationshipManagerDetailPage() {
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             s.suggestedStatus === "Approved"
-                              ? "bg-emerald-500/15 text-emerald-400"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : s.suggestedStatus === "Rejected"
-                              ? "bg-rose-500/15 text-rose-400"
-                              : "bg-amber-500/15 text-amber-400"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
                           }`}
                         >
                           {s.suggestedStatus || "Pending"}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-slate-300">
+                      <td className="px-4 py-4 text-slate-700">
                         {s.meetingDate
                           ? new Date(s.meetingDate).toLocaleString("en-IN", {
                               dateStyle: "medium",
@@ -516,7 +516,7 @@ export default function AdminRelationshipManagerDetailPage() {
                             })
                           : "Not scheduled yet"}
                       </td>
-                      <td className="px-5 py-4 text-right text-slate-400">
+                      <td className="px-5 py-4 text-right text-slate-500">
                         {new Date(s.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -530,14 +530,14 @@ export default function AdminRelationshipManagerDetailPage() {
 
       {/* TAB CONTENT: APPOINTMENTS */}
       {activeTab === "appointments" && (
-        <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm">Consultation & Date Appointments</h3>
-            <span className="text-xs text-slate-400">Total: {appointments.length} appointments</span>
+        <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-rose-100 flex items-center justify-between">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Consultation & Date Appointments</h3>
+            <span className="text-xs text-slate-500">Total: {appointments.length} appointments</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
                 <tr>
                   <th className="px-5 py-3.5">Client User</th>
                   <th className="px-4 py-3.5">Date & Time</th>
@@ -546,28 +546,28 @@ export default function AdminRelationshipManagerDetailPage() {
                   <th className="px-5 py-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 font-medium">
+              <tbody className="divide-y divide-rose-50 font-medium">
                 {appointments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-500 italic">
+                    <td colSpan={5} className="text-center py-12 text-slate-400 italic">
                       No appointments scheduled with this Relationship Manager.
                     </td>
                   </tr>
                 ) : (
                   appointments.map((a: any) => (
-                    <tr key={a.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-5 py-4 font-bold text-white">{a.client?.name || "Client"}</td>
-                      <td className="px-4 py-4 text-slate-200">
+                    <tr key={a.id} className="hover:bg-rose-50/30 transition">
+                      <td className="px-5 py-4 font-bold text-slate-900">{a.client?.name || "Client"}</td>
+                      <td className="px-4 py-4 text-slate-700">
                         {new Date(a.date).toLocaleDateString()} at {a.time}
                       </td>
                       <td className="px-4 py-4 capitalize">{a.mode || "Video Call"}</td>
-                      <td className="px-4 py-4 text-slate-300">{a.type || "Matchmaking Advisory"}</td>
+                      <td className="px-4 py-4 text-slate-700">{a.type || "Matchmaking Advisory"}</td>
                       <td className="px-5 py-4 text-right">
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                             a.status === "Completed"
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
                           }`}
                         >
                           {a.status}
@@ -585,9 +585,9 @@ export default function AdminRelationshipManagerDetailPage() {
       {/* TAB CONTENT: GOVERNANCE & NOTES */}
       {activeTab === "governance" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4">
-            <h3 className="font-bold text-white text-sm">Internal Admin Notes & Performance Observations</h3>
-            <p className="text-xs text-slate-400">
+          <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-4">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Internal Admin Notes & Performance Observations</h3>
+            <p className="text-xs text-slate-500">
               Private administrative evaluation notes regarding matchmaking etiquette, client conversion rate, and conduct.
             </p>
             <textarea
@@ -595,40 +595,40 @@ export default function AdminRelationshipManagerDetailPage() {
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
               placeholder="Record notes on matchmaker performance, client feedback, or policy compliance..."
-              className="w-full p-3 bg-slate-900 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              className="w-full p-3 bg-[#FAF3F6]/50 border border-rose-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
             <button
               onClick={handleSaveNotes}
               disabled={savingNotes}
-              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/25 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition disabled:opacity-50"
             >
               {savingNotes ? "Saving..." : "Save Admin Notes"}
             </button>
           </div>
 
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-xl space-y-4 text-xs">
-            <h3 className="font-bold text-white text-sm">Credentials & Verification Records</h3>
+          <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-xs space-y-4 text-xs">
+            <h3 className="font-serif font-bold text-slate-900 text-sm">Credentials & Verification Records</h3>
             <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Government ID Proof</span>
-                  <strong className="text-white">{user.govIdProof ? "Document On File" : "Verified Staff Record"}</strong>
+                  <span className="text-slate-500 block text-[11px]">Government ID Proof</span>
+                  <strong className="text-slate-800">{user.govIdProof ? "Document On File" : "Verified Staff Record"}</strong>
                 </div>
-                <BadgeCheck className="w-5 h-5 text-emerald-400" />
+                <BadgeCheck className="w-5 h-5 text-emerald-600" />
               </div>
-              <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Professional Certification</span>
-                  <strong className="text-white">{user.eduCertificate ? "Certified Matchmaker" : "Advisory Credentials Verified"}</strong>
+                  <span className="text-slate-500 block text-[11px]">Professional Certification</span>
+                  <strong className="text-slate-800">{user.eduCertificate ? "Certified Matchmaker" : "Advisory Credentials Verified"}</strong>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="p-3 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Contact Authenticity</span>
-                  <strong className="text-white">{user.email} • {user.phone || "Active"}</strong>
+                  <span className="text-slate-500 block text-[11px]">Contact Authenticity</span>
+                  <strong className="text-slate-800">{user.email} • {user.phone || "Active"}</strong>
                 </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
           </div>

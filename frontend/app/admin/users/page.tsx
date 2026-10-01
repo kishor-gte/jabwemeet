@@ -126,21 +126,21 @@ export default function AdminUsersPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-            <Users className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-semibold mb-2">
+            <Users className="w-3.5 h-3.5 text-[#7E2248]" />
             Platform Membership
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
             User Directory & Access Control
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Total {pagination.total} registered platform members across all roles and verification statuses.
           </p>
         </div>
       </div>
 
       {/* FILTER BAR */}
-      <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-3">
+      <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-3">
         <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -149,7 +149,7 @@ export default function AdminUsersPage() {
               placeholder="Search by name, email, or mobile..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#162136] border border-white/10 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function AdminUsersPage() {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#162136] border border-white/10 text-slate-200 focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-700 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="ALL">All Roles</option>
               <option value="USER">Members (USER)</option>
@@ -172,7 +172,7 @@ export default function AdminUsersPage() {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#162136] border border-white/10 text-slate-200 focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-700 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE">Active</option>
@@ -184,7 +184,7 @@ export default function AdminUsersPage() {
             <select
               value={verification}
               onChange={(e) => setVerification(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#162136] border border-white/10 text-slate-200 focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-700 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="ALL">All Verification</option>
               <option value="VERIFIED">Verified</option>
@@ -193,7 +193,7 @@ export default function AdminUsersPage() {
 
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition"
+              className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition shadow-xs"
             >
               Apply Filter
             </button>
@@ -202,10 +202,10 @@ export default function AdminUsersPage() {
       </div>
 
       {/* USERS TABLE */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
               <tr>
                 <th className="px-5 py-3.5">User</th>
                 <th className="px-4 py-3.5">Contact</th>
@@ -217,25 +217,25 @@ export default function AdminUsersPage() {
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-medium">
+            <tbody className="divide-y divide-rose-50 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-500">
+                  <td colSpan={8} className="text-center py-10 text-slate-400">
                     Loading user records...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-500 italic">
+                  <td colSpan={8} className="text-center py-10 text-slate-400 italic">
                     No users found matching current filters.
                   </td>
                 </tr>
               ) : (
                 users.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/[0.02] transition">
+                  <tr key={u.id} className="hover:bg-rose-50/30 transition">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#182337] border border-white/10 flex items-center justify-center font-bold text-white text-xs shrink-0 overflow-hidden">
+                        <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center font-bold text-[#7E2248] text-xs shrink-0 overflow-hidden">
                           {u.profilePhoto || u.profileImage ? (
                             <img src={u.profilePhoto || u.profileImage} alt={u.name} className="w-full h-full object-cover" />
                           ) : (
@@ -245,7 +245,7 @@ export default function AdminUsersPage() {
                         <div>
                           <a
                             href={`/admin/users/USR-${u.id.slice(-6).toUpperCase()}`}
-                            className="font-bold text-white hover:text-red-400 transition flex items-center gap-1.5"
+                            className="font-bold text-slate-900 hover:text-[#7E2248] transition flex items-center gap-1.5"
                           >
                             <span>{u.name}</span>
                           </a>
@@ -255,31 +255,31 @@ export default function AdminUsersPage() {
                     </td>
 
                     <td className="px-4 py-4 space-y-0.5">
-                      <div className="flex items-center gap-1.5 text-slate-300">
-                        <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-slate-700">
+                        <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                         <span>{u.email}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                        <Phone className="w-3 h-3 text-slate-500 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                        <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                         <span>{u.phone || "N/A"}</span>
                       </div>
                     </td>
 
                     <td className="px-4 py-4">
-                      <span className="capitalize">{u.city || "Unspecified"}</span>
+                      <span className="capitalize text-slate-700">{u.city || "Unspecified"}</span>
                     </td>
 
                     <td className="px-4 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                         u.role === "ADMIN"
-                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                          ? "bg-purple-50 text-purple-700 border border-purple-200"
                           : u.role === "MATCHMAKER"
-                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          ? "bg-rose-50 text-[#7E2248] border border-rose-200"
                           : u.role === "BREAKUP_BUDDY"
-                          ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
                           : u.role === "HOST"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                          : "bg-white/10 text-slate-300 border border-white/10"
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
                       }`}>
                         {u.role === "MATCHMAKER" ? "Relationship Manager" : u.role}
                       </span>
@@ -287,14 +287,14 @@ export default function AdminUsersPage() {
 
                     <td className="px-4 py-4">
                       {u.role === "ADMIN" ? (
-                        <span className="text-slate-500 text-[10px] font-semibold">N/A</span>
+                        <span className="text-slate-400 text-[10px] font-semibold">N/A</span>
                       ) : u.isVerified ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Verified</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-amber-400 text-xs font-semibold">
+                        <span className="inline-flex items-center gap-1 text-amber-700 text-xs font-semibold">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           <span>Pending</span>
                         </span>
@@ -302,18 +302,18 @@ export default function AdminUsersPage() {
                     </td>
 
                     <td className="px-4 py-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         u.status === "ACTIVE"
-                          ? "bg-emerald-500/15 text-emerald-400"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : u.status === "SUSPENDED"
-                          ? "bg-amber-500/15 text-amber-400"
-                          : "bg-red-500/15 text-red-400"
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-rose-50 text-rose-700 border border-rose-200"
                       }`}>
                         {u.status || "ACTIVE"}
                       </span>
                     </td>
 
-                    <td className="px-4 py-4 text-slate-400 text-[11px]">
+                    <td className="px-4 py-4 text-slate-500 text-[11px]">
                       {new Date(u.createdAt).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
@@ -325,7 +325,7 @@ export default function AdminUsersPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <a
                           href={`/admin/users/USR-${u.id.slice(-6).toUpperCase()}`}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition"
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-slate-600 hover:text-slate-900 border border-rose-100 transition"
                           title="View 360° Profile"
                         >
                           <Eye className="w-4 h-4" />
@@ -343,7 +343,7 @@ export default function AdminUsersPage() {
                                 message: `Are you sure you want to mark ${u.name} as a verified member?`,
                               })
                             }
-                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition"
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
                             title="Verify Member"
                           >
                             <UserCheck className="w-4 h-4" />
@@ -362,7 +362,7 @@ export default function AdminUsersPage() {
                                 message: `Are you sure you want to suspend ${u.name}? They will not be able to log in or book events.`,
                               })
                             }
-                            className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition"
+                            className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition"
                             title="Suspend User"
                           >
                             <UserX className="w-4 h-4" />
@@ -379,7 +379,7 @@ export default function AdminUsersPage() {
                                 message: `Reactivate access for ${u.name}?`,
                               })
                             }
-                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition"
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
                             title="Reactivate User"
                           >
                             <UserCheck className="w-4 h-4" />
@@ -395,8 +395,8 @@ export default function AdminUsersPage() {
         </div>
 
         {/* PAGINATION */}
-        <div className="px-5 py-4 bg-[#131d2e] border-t border-white/10 flex items-center justify-between text-xs">
-          <span className="text-slate-400">
+        <div className="px-5 py-4 bg-rose-50/40 border-t border-rose-100 flex items-center justify-between text-xs">
+          <span className="text-slate-600">
             Page {pagination.page} of {Math.max(1, pagination.totalPages)} ({pagination.total} total members)
           </span>
 
@@ -404,14 +404,14 @@ export default function AdminUsersPage() {
             <button
               onClick={() => fetchUsers(pagination.page - 1)}
               disabled={pagination.page <= 1}
-              className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 disabled:opacity-30 hover:bg-white/10 transition"
+              className="p-1.5 rounded-lg bg-white border border-rose-200 text-slate-700 disabled:opacity-30 hover:bg-rose-50 transition"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => fetchUsers(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages}
-              className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 disabled:opacity-30 hover:bg-white/10 transition"
+              className="p-1.5 rounded-lg bg-white border border-rose-200 text-slate-700 disabled:opacity-30 hover:bg-rose-50 transition"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -422,25 +422,25 @@ export default function AdminUsersPage() {
       {/* CONFIRMATION DIALOG MODAL */}
       {confirmDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setConfirmDialog(null)} />
-          <div className="relative w-full max-w-md bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-4">
+          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setConfirmDialog(null)} />
+          <div className="relative w-full max-w-md bg-white border border-rose-100 rounded-3xl p-6 shadow-2xl z-10 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">{confirmDialog.title}</h3>
-                <span className="text-xs text-slate-400">Target: {confirmDialog.userName}</span>
+                <h3 className="text-base font-serif font-bold text-slate-900">{confirmDialog.title}</h3>
+                <span className="text-xs text-slate-500">Target: {confirmDialog.userName}</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">{confirmDialog.message}</p>
+            <p className="text-xs text-slate-600 leading-relaxed">{confirmDialog.message}</p>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+            <div className="flex justify-end gap-3 pt-3 border-t border-rose-100">
               <button
                 type="button"
                 onClick={() => setConfirmDialog(null)}
-                className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 text-xs"
+                className="px-4 py-2 rounded-xl bg-rose-50 text-slate-700 hover:bg-rose-100 text-xs font-bold"
               >
                 Cancel
               </button>
@@ -448,7 +448,7 @@ export default function AdminUsersPage() {
                 type="button"
                 disabled={actionLoading}
                 onClick={handleConfirmAction}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs transition shadow-xs disabled:opacity-50"
               >
                 {actionLoading ? "Processing..." : "Confirm Action"}
               </button>
@@ -459,5 +459,3 @@ export default function AdminUsersPage() {
     </div>
   );
 }
-
-

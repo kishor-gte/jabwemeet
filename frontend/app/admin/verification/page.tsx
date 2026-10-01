@@ -79,28 +79,28 @@ export default function AdminVerificationPage() {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-semibold mb-2">
           <FileCheck className="w-3.5 h-3.5" />
           Trust & Identity Safeguard
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
           Member & Staff Verification Desk
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
           Review government photo IDs, address proofs, and professional certifications before approving platform privileges.
         </p>
       </div>
 
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
         <div className="p-6 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <h3 className="text-xs font-serif font-bold uppercase tracking-wider text-slate-500">
             Pending Applications Queue ({pendingUsers.length})
           </h3>
 
           {loading ? (
             <p className="text-xs text-slate-500 py-8 text-center animate-pulse">Loading queue...</p>
           ) : pendingUsers.length === 0 ? (
-            <p className="text-xs text-emerald-400 italic py-8 text-center">
+            <p className="text-xs text-emerald-600 font-medium italic py-8 text-center">
               ✓ No pending applications requiring administrative review.
             </p>
           ) : (
@@ -108,16 +108,16 @@ export default function AdminVerificationPage() {
               {pendingUsers.map((p) => (
                 <div
                   key={p.id}
-                  className="p-5 rounded-2xl bg-white/5 border border-white/5 flex flex-col md:flex-row justify-between gap-4 text-xs"
+                  className="p-5 rounded-2xl bg-[#FAF3F6]/50 border border-rose-100 flex flex-col md:flex-row justify-between gap-4 text-xs hover:border-rose-200 transition"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-sm">{p.name}</span>
-                      <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold text-[10px]">
+                      <span className="font-bold text-slate-900 text-sm">{p.name}</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-[#7E2248] font-bold text-[10px]">
                         {p.role}
                       </span>
                     </div>
-                    <div className="text-slate-400">
+                    <div className="text-slate-500">
                       {p.email} • {p.phone || "N/A"} • {p.city || "Unspecified"}
                     </div>
 
@@ -128,7 +128,7 @@ export default function AdminVerificationPage() {
                           href={`/uploads/${p.govIdProof}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 transition font-medium shadow-2xs"
                         >
                           <span>📄 Gov ID Proof</span>
                           <ExternalLink className="w-3 h-3" />
@@ -139,7 +139,7 @@ export default function AdminVerificationPage() {
                           href={`/uploads/${p.addressProof}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 transition font-medium shadow-2xs"
                         >
                           <span>📄 Address Proof</span>
                           <ExternalLink className="w-3 h-3" />
@@ -150,7 +150,7 @@ export default function AdminVerificationPage() {
                           href={`/uploads/${p.eduCertificate}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 transition font-medium shadow-2xs"
                         >
                           <span>📄 Education Cert</span>
                           <ExternalLink className="w-3 h-3" />
@@ -161,7 +161,7 @@ export default function AdminVerificationPage() {
                           href={`/uploads/${p.workExperience}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 transition font-medium shadow-2xs"
                         >
                           <span>📄 Work Experience</span>
                           <ExternalLink className="w-3 h-3" />
@@ -172,7 +172,7 @@ export default function AdminVerificationPage() {
                           href={`/uploads/${p.idDocument}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white hover:bg-rose-50 text-[#7E2248] border border-rose-200 transition font-medium shadow-2xs"
                         >
                           <span>📄 {p.idType || "ID Document"}</span>
                           <ExternalLink className="w-3 h-3" />
@@ -184,13 +184,13 @@ export default function AdminVerificationPage() {
                   <div className="flex items-center gap-2 self-end md:self-center">
                     <button
                       onClick={() => handleVerify(p.id, false)}
-                      className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition"
+                      className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-slate-700 font-bold border border-rose-200 transition"
                     >
                       Reject
                     </button>
                     <button
                       onClick={() => handleVerify(p.id, true)}
-                      className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-lg shadow-emerald-600/20"
+                      className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm shadow-emerald-600/20"
                     >
                       Approve & Verify
                     </button>

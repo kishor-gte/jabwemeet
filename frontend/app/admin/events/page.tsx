@@ -185,8 +185,8 @@ export default function AdminEventsPage() {
     e.preventDefault();
     setModalLoading(true);
     try {
-      const method = editingEvent ? "PATCH" : "POST";
       const url = editingEvent ? `/api/admin/events/${editingEvent.id}` : "/api/admin/events";
+      const method = editingEvent ? "PATCH" : "POST";
 
       const res = await fetch(url, {
         method,
@@ -202,14 +202,14 @@ export default function AdminEventsPage() {
       } else {
         alert({
           title: "Save Failed",
-          message: data.message || "Failed to save event details.",
+          message: data.message || "Failed to save event.",
           type: "danger",
         });
       }
     } catch (e) {
       alert({
         title: "Server Error",
-        message: "An error occurred while saving the event.",
+        message: "Failed to communicate with the server.",
         type: "danger",
       });
     } finally {
@@ -257,23 +257,29 @@ export default function AdminEventsPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold mb-2">
-            <Calendar className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-semibold mb-2">
+            <Calendar className="w-3.5 h-3.5 text-[#7E2248]" />
             Curated Real-World Experiences
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
             Event Operations & Schedules
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Manage mixers, speed dating, blind dates, dance workshops, and singles travel meetups.
           </p>
         </div>
 
-        
+        <button
+          onClick={openCreateModal}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create New Event</span>
+        </button>
       </div>
 
       {/* FILTERS */}
-      <div className="p-4 rounded-2xl bg-[#0f172a] border border-white/10 space-y-3">
+      <div className="p-4 rounded-2xl bg-white border border-rose-100 shadow-xs space-y-3">
         <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -282,7 +288,7 @@ export default function AdminEventsPage() {
               placeholder="Search by event title, venue, or neighborhood..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#162136] border border-white/10 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
           </div>
 
@@ -290,7 +296,7 @@ export default function AdminEventsPage() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#162136] border border-white/10 text-slate-200 focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-700 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="ALL">All Categories</option>
               <option value="Singles Events">Singles Mixer</option>
@@ -304,7 +310,7 @@ export default function AdminEventsPage() {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#162136] border border-white/10 text-slate-200 focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-700 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="ALL">All Statuses</option>
               <option value="PUBLISHED">Published</option>
@@ -316,7 +322,7 @@ export default function AdminEventsPage() {
             <select
               value={selectedCreator}
               onChange={(e) => setSelectedCreator(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#162136] border border-white/10 text-slate-200 focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-700 focus:outline-none focus:border-[#7E2248] focus:bg-white"
             >
               <option value="ALL">All Hosts / Creators ({groupedByCreator.length})</option>
               {groupedByCreator.map((g) => (
@@ -328,7 +334,7 @@ export default function AdminEventsPage() {
 
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition"
+              className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition shadow-xs"
             >
               Apply Filter
             </button>
@@ -337,9 +343,9 @@ export default function AdminEventsPage() {
 
         {/* Creator Selection Pills */}
         {groupedByCreator.length > 0 && (
-          <div className="flex items-center gap-2 pt-2 border-t border-white/5 overflow-x-auto no-scrollbar text-xs">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-rose-400" />
+          <div className="flex items-center gap-2 pt-2 border-t border-rose-100 overflow-x-auto no-scrollbar text-xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-[#7E2248]" />
               Event Creators:
             </span>
             <button
@@ -347,12 +353,12 @@ export default function AdminEventsPage() {
               onClick={() => setSelectedCreator("ALL")}
               className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
                 selectedCreator === "ALL"
-                  ? "bg-rose-600 text-white shadow-md shadow-rose-500/20"
-                  : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5"
+                  ? "bg-[#7E2248] text-white shadow-xs"
+                  : "bg-rose-50 hover:bg-rose-100 text-slate-600 hover:text-slate-900 border border-rose-100"
               }`}
             >
               <span>All Hosts</span>
-              <span className="px-1.5 py-0.2 rounded bg-black/30 text-[10px]">
+              <span className="px-1.5 py-0.2 rounded bg-black/10 text-[10px]">
                 {events.length}
               </span>
             </button>
@@ -363,13 +369,13 @@ export default function AdminEventsPage() {
                 onClick={() => setSelectedCreator(g.id)}
                 className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
                   selectedCreator === g.id
-                    ? "bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold"
-                    : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5"
+                    ? "bg-rose-100 border border-rose-300 text-[#7E2248] font-bold"
+                    : "bg-rose-50 hover:bg-rose-100 text-slate-600 hover:text-slate-900 border border-rose-100"
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                <span className="w-2 h-2 rounded-full bg-[#7E2248]" />
                 <span>{g.name}</span>
-                <span className="px-1.5 py-0.2 rounded bg-white/10 text-[10px] text-white font-bold">
+                <span className="px-1.5 py-0.2 rounded bg-white text-[10px] text-slate-800 font-bold border border-rose-200/60">
                   {g.events.length} {g.events.length === 1 ? "event" : "events"}
                 </span>
               </button>
@@ -380,11 +386,11 @@ export default function AdminEventsPage() {
 
       {/* EVENTS GROUPED BY CREATOR */}
       {loading ? (
-        <div className="py-20 text-center text-slate-500 animate-pulse text-xs">
+        <div className="py-20 text-center text-slate-400 animate-pulse text-xs">
           Loading events catalog...
         </div>
       ) : filteredGroups.length === 0 ? (
-        <div className="py-20 text-center text-slate-500 italic bg-[#0f172a] rounded-2xl border border-white/10 text-xs">
+        <div className="py-20 text-center text-slate-400 italic bg-white rounded-3xl border border-rose-100 shadow-xs text-xs">
           No events found matching current criteria.
         </div>
       ) : (
@@ -394,14 +400,14 @@ export default function AdminEventsPage() {
             return (
               <div
                 key={group.id}
-                className="rounded-3xl bg-[#0f172a] border border-white/10 shadow-2xl overflow-hidden"
+                className="rounded-3xl bg-white border border-rose-100 shadow-xs overflow-hidden"
               >
                 {/* Creator Header Section */}
-                <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#131d33] to-[#1e1c33] border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="p-4 sm:p-5 bg-rose-50/50 border-b border-rose-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     {/* Avatar / Initials */}
                     <div className="relative shrink-0">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500/20 via-red-500/20 to-purple-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-lg shadow-inner">
+                      <div className="w-12 h-12 rounded-2xl bg-white border border-rose-200 flex items-center justify-center text-[#7E2248] font-serif font-black text-lg shadow-xs">
                         {group.profileImage ? (
                           <img
                             src={group.profileImage}
@@ -415,10 +421,10 @@ export default function AdminEventsPage() {
                       <span
                         className={`absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider ${
                           group.role === "ADMIN"
-                            ? "bg-purple-500 text-white"
+                            ? "bg-purple-600 text-white"
                             : group.role === "HOST"
-                            ? "bg-rose-500 text-white"
-                            : "bg-blue-500 text-white"
+                            ? "bg-[#7E2248] text-white"
+                            : "bg-blue-600 text-white"
                         }`}
                       >
                         {group.role}
@@ -427,15 +433,15 @@ export default function AdminEventsPage() {
 
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                        <h2 className="text-base sm:text-lg font-serif font-bold text-slate-900 tracking-tight">
                           {group.name}
                         </h2>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-500">
                           ({group.email})
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Creator / Host Profile &middot; Added <span className="text-rose-400 font-bold">{group.events.length} {group.events.length === 1 ? "Event" : "Events"}</span>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Creator / Host Profile &middot; Added <span className="text-[#7E2248] font-bold">{group.events.length} {group.events.length === 1 ? "Event" : "Events"}</span>
                       </p>
                     </div>
                   </div>
@@ -443,8 +449,8 @@ export default function AdminEventsPage() {
                   {/* Creator Metadata & Event Count */}
                   <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto">
                     {/* Prominent count badge */}
-                    <div className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 to-red-500/20 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center gap-2 shadow-sm">
-                      <Calendar className="w-4 h-4 text-rose-400" />
+                    <div className="px-3.5 py-1.5 rounded-xl bg-rose-100/70 border border-rose-200 text-[#7E2248] font-bold text-xs flex items-center gap-2 shadow-xs">
+                      <Calendar className="w-4 h-4 text-[#7E2248]" />
                       <span>
                         {group.events.length}{" "}
                         {group.events.length === 1 ? "Event Added" : "Events Added"}
@@ -452,16 +458,16 @@ export default function AdminEventsPage() {
                     </div>
 
                     {/* Bookings Stat */}
-                    <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-slate-700 text-xs flex items-center gap-1.5 shadow-xs">
+                      <Users className="w-3.5 h-3.5 text-emerald-600" />
                       <span>
                         {group.totalRegistered} / {group.totalCapacity} Booked
                       </span>
                     </div>
 
                     {/* Checked In Stat */}
-                    <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs flex items-center gap-1.5">
-                      <Ticket className="w-3.5 h-3.5 text-red-400" />
+                    <div className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-slate-700 text-xs flex items-center gap-1.5 shadow-xs">
+                      <Ticket className="w-3.5 h-3.5 text-[#7E2248]" />
                       <span>{group.totalCheckedIn} Checked In</span>
                     </div>
 
@@ -469,7 +475,7 @@ export default function AdminEventsPage() {
                     <button
                       type="button"
                       onClick={() => toggleCreatorCollapse(group.id)}
-                      className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition flex items-center gap-1 text-xs"
+                      className="p-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-600 hover:text-slate-900 border border-rose-200 transition flex items-center gap-1 text-xs shadow-xs"
                       title={isCollapsed ? "Expand Events" : "Collapse Events"}
                     >
                       {isCollapsed ? (
@@ -483,24 +489,24 @@ export default function AdminEventsPage() {
 
                 {/* Events Grid for this creator */}
                 {!isCollapsed && (
-                  <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-[#0a0f1d]/50">
+                  <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 bg-rose-50/20">
                     {group.events.map((evt) => (
                       <div
                         key={evt.id}
-                        className="rounded-2xl bg-[#0f172a] border border-white/10 hover:border-white/20 transition p-5 shadow-xl flex flex-col justify-between space-y-4 group"
+                        className="rounded-3xl bg-white border border-rose-100 hover:border-rose-300 hover:shadow-md transition p-5 shadow-xs flex flex-col justify-between space-y-4 group"
                       >
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#7E2248] border border-rose-200/60">
                               {evt.category}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
                                 evt.status === "PUBLISHED"
-                                  ? "bg-emerald-500/20 text-emerald-400"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                   : evt.status === "CANCELLED"
-                                  ? "bg-red-500/20 text-red-400"
-                                  : "bg-white/10 text-slate-400"
+                                  ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                  : "bg-slate-100 text-slate-600 border border-slate-200"
                               }`}
                             >
                               {evt.status || "PUBLISHED"}
@@ -508,17 +514,17 @@ export default function AdminEventsPage() {
                           </div>
 
                           <div>
-                            <h3 className="text-base font-bold text-white group-hover:text-red-400 transition line-clamp-1">
+                            <h3 className="text-base font-serif font-bold text-slate-900 group-hover:text-[#7E2248] transition line-clamp-1">
                               {evt.title}
                             </h3>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-                              <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span className="line-clamp-1">
                                 {evt.location}, {evt.city}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5">
-                              <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>
                                 {new Date(evt.date).toLocaleDateString("en-IN", {
                                   day: "2-digit",
@@ -531,20 +537,20 @@ export default function AdminEventsPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5 text-xs">
-                            <div className="p-2.5 rounded-xl bg-white/5">
-                              <span className="text-[10px] text-slate-400 block">
+                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-rose-100 text-xs">
+                            <div className="p-2.5 rounded-2xl bg-rose-50/40 border border-rose-100/60">
+                              <span className="text-[10px] text-slate-500 block">
                                 Entry Ticket
                               </span>
-                              <span className="font-bold text-white">
+                              <span className="font-bold text-slate-800">
                                 ₹{evt.price || "Free"}
                               </span>
                             </div>
-                            <div className="p-2.5 rounded-xl bg-white/5">
-                              <span className="text-[10px] text-slate-400 block">
+                            <div className="p-2.5 rounded-2xl bg-rose-50/40 border border-rose-100/60">
+                              <span className="text-[10px] text-slate-500 block">
                                 Bookings
                               </span>
-                              <span className="font-bold text-emerald-400">
+                              <span className="font-bold text-emerald-700">
                                 {evt.registeredCount || 0} /{" "}
                                 {evt.maxAttendees || 50}
                               </span>
@@ -553,12 +559,12 @@ export default function AdminEventsPage() {
                         </div>
 
                         {/* Card Actions */}
-                        <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs">
+                        <div className="flex items-center justify-between pt-3 border-t border-rose-100 text-xs">
                           <a
                             href={`/admin/events/${evt.id}/registrations`}
-                            className="inline-flex items-center gap-1.5 font-bold text-red-400 hover:text-red-300 transition"
+                            className="inline-flex items-center gap-1.5 font-bold text-[#7E2248] hover:text-[#681938] transition"
                           >
-                            <Ticket className="w-3.5 h-3.5" />
+                            <Ticket className="w-3.5 h-3.5 text-[#7E2248]" />
                             <span>
                               Attendance Desk ({evt.checkedInCount || 0} checked in)
                             </span>
@@ -567,14 +573,14 @@ export default function AdminEventsPage() {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => openEditModal(evt)}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition"
+                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-slate-700 transition border border-rose-200"
                               title="Edit Event"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteEvent(evt.id)}
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition"
+                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition border border-rose-200"
                               title="Delete Event"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -594,39 +600,39 @@ export default function AdminEventsPage() {
       {/* CREATE / EDIT EVENT MODAL */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
+          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
           <div
-            className="relative w-full max-w-2xl bg-[#0f172a] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            className="relative w-full max-w-2xl bg-white border border-rose-100 rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-white">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-4 mb-4">
+              <h3 className="text-lg font-serif font-bold text-slate-900">
                 {editingEvent ? "Edit Event Configuration" : "Create New Real-World Event"}
               </h3>
-              <button onClick={() => setModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-white">
+              <button onClick={() => setModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-rose-50">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveEvent} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Event Title *</label>
+                <label className="block text-slate-700 font-semibold mb-1">Event Title *</label>
                 <input
                   type="text"
                   required
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#182337] border border-white/10 text-white focus:outline-none focus:border-red-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Category *</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Category *</label>
                   <select
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   >
                     <option value="Singles Events">Singles Mixer</option>
                     <option value="Speed Dating">Speed Dating</option>
@@ -637,21 +643,21 @@ export default function AdminEventsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">City *</label>
+                  <label className="block text-slate-700 font-semibold mb-1">City *</label>
                   <input
                     type="text"
                     required
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Status</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Status</label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   >
                     <option value="PUBLISHED">PUBLISHED</option>
                     <option value="DRAFT">DRAFT</option>
@@ -663,102 +669,102 @@ export default function AdminEventsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Venue Name / Location *</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Venue Name / Location *</label>
                   <input
                     type="text"
                     required
                     value={form.location}
                     onChange={(e) => setForm({ ...form, location: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Street Address</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Street Address</label>
                   <input
                     type="text"
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Event Date & Time *</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Event Date & Time *</label>
                   <input
                     type="datetime-local"
                     required
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Price (₹)</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Price (₹)</label>
                   <input
                     type="number"
                     min="0"
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Max Attendees</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Max Attendees</label>
                   <input
                     type="number"
                     min="5"
                     value={form.maxAttendees}
                     onChange={(e) => setForm({ ...form, maxAttendees: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Age Range</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Age Range</label>
                   <input
                     type="text"
                     value={form.ageRange}
                     onChange={(e) => setForm({ ...form, ageRange: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Dress Code</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Dress Code</label>
                   <input
                     type="text"
                     value={form.dressCode}
                     onChange={(e) => setForm({ ...form, dressCode: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                    className="w-full px-3.5 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Description & Flow</label>
+                <label className="block text-slate-700 font-semibold mb-1">Description & Flow</label>
                 <textarea
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#182337] border border-white/10 text-white"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 focus:outline-none focus:border-[#7E2248] focus:bg-white"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-3 border-t border-rose-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10"
+                  className="px-4 py-2 rounded-xl bg-rose-50 text-slate-700 hover:bg-rose-100 font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition disabled:opacity-50"
+                  className="px-6 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold transition shadow-xs disabled:opacity-50"
                 >
                   {modalLoading ? "Saving..." : "Save Event"}
                 </button>
@@ -770,4 +776,3 @@ export default function AdminEventsPage() {
     </div>
   );
 }
-

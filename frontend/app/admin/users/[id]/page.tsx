@@ -113,8 +113,8 @@ export default function AdminUserProfilePage() {
   if (!data || !data.user) {
     return (
       <div className="py-20 text-center space-y-4">
-        <p className="text-slate-400">User not found or deleted.</p>
-        <button onClick={() => router.back()} className="px-4 py-2 rounded-xl bg-white/10 text-white text-xs">
+        <p className="text-slate-500">User not found or deleted.</p>
+        <button onClick={() => router.back()} className="px-4 py-2 rounded-xl bg-rose-50 text-slate-700 border border-rose-200 text-xs font-bold hover:bg-rose-100">
           ← Go Back
         </button>
       </div>
@@ -133,31 +133,31 @@ export default function AdminUserProfilePage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition"
+          className="p-2 rounded-xl bg-white border border-rose-200 text-slate-700 hover:text-slate-900 hover:bg-rose-50 transition shadow-xs"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
             <span>{user.name}</span>
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
               user.status === "ACTIVE"
-                ? "bg-emerald-500/15 text-emerald-400"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : user.status === "SUSPENDED"
-                ? "bg-amber-500/15 text-amber-400"
-                : "bg-red-500/15 text-red-400"
+                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                : "bg-rose-50 text-rose-700 border border-rose-200"
             }`}>
               {user.status || "ACTIVE"}
             </span>
           </h2>
-          <span className="text-xs text-slate-400">ID: {"USR-" + user.id.slice(-6).toUpperCase()}</span>
+          <span className="text-xs text-slate-500">ID: {"USR-" + user.id.slice(-6).toUpperCase()}</span>
         </div>
       </div>
 
       {/* 360 HEADER PROFILE CARD */}
-      <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-[#182337] border border-white/15 flex items-center justify-center font-black text-2xl text-white overflow-hidden shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center font-serif font-black text-2xl text-[#7E2248] overflow-hidden shrink-0 shadow-xs">
             {user.profilePhoto || user.profileImage ? (
               <img src={user.profilePhoto || user.profileImage} alt={user.name} className="w-full h-full object-cover" />
             ) : (
@@ -165,34 +165,34 @@ export default function AdminUserProfilePage() {
             )}
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-white">{user.name}</h3>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+            <h3 className="text-lg font-serif font-bold text-slate-900">{user.name}</h3>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <span className="flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5 text-slate-500" /> {user.email}
+                <Mail className="w-3.5 h-3.5 text-slate-400" /> {user.email}
               </span>
               <span className="flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5 text-slate-500" /> {user.phone || "N/A"}
+                <Phone className="w-3.5 h-3.5 text-slate-400" /> {user.phone || "N/A"}
               </span>
               <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-slate-500" /> {user.city || "Unspecified"}
+                <MapPin className="w-3.5 h-3.5 text-slate-400" /> {user.city || "Unspecified"}
               </span>
             </div>
             <div className="flex items-center gap-2 pt-1 text-xs">
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 font-semibold text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-[#7E2248] font-bold text-[10px] border border-rose-200/60">
                 {user.role}
               </span>
-              <span className="text-slate-400">Age: <strong>{age}</strong></span>
-              <span className="text-slate-400">• Gender: <strong>{user.gender || "Not specified"}</strong></span>
+              <span className="text-slate-600">Age: <strong>{age}</strong></span>
+              <span className="text-slate-600">• Gender: <strong>{user.gender || "Not specified"}</strong></span>
             </div>
           </div>
         </div>
 
         {/* Status Control */}
-        <div className="flex flex-col sm:flex-row items-end gap-3 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-white/10">
+        <div className="flex flex-col sm:flex-row items-end gap-3 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-rose-100">
           <select
             value={statusUpdate}
             onChange={(e) => setStatusUpdate(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#182337] border border-white/15 text-xs text-white"
+            className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#7E2248] focus:bg-white"
           >
             <option value="ACTIVE">ACTIVE</option>
             <option value="SUSPENDED">SUSPENDED</option>
@@ -201,7 +201,7 @@ export default function AdminUserProfilePage() {
           <button
             onClick={handleSaveStatus}
             disabled={saving}
-            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs transition shadow-xs disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save Status"}
           </button>
@@ -209,7 +209,7 @@ export default function AdminUserProfilePage() {
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="flex items-center gap-2 border-b border-white/10 overflow-x-auto text-xs font-semibold">
+      <div className="flex items-center gap-2 border-b border-rose-100 overflow-x-auto text-xs font-semibold">
         {[
           { id: "overview", label: "Account Overview" },
           { id: "timeline", label: `Activity Timeline (${timeline?.length || 0})` },
@@ -222,8 +222,8 @@ export default function AdminUserProfilePage() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-3 border-b-2 transition whitespace-nowrap ${
               activeTab === tab.id
-                ? "border-red-500 text-white font-bold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-[#7E2248] text-[#7E2248] font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             {tab.label}
@@ -235,28 +235,28 @@ export default function AdminUserProfilePage() {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
           {/* Identity & Verification */}
-          <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+            <h4 className="text-xs font-serif font-bold uppercase tracking-wider text-slate-500">
               Identity & Verification
             </h4>
             <div className="space-y-2.5">
-              <div className="flex justify-between py-1.5 border-b border-white/5">
-                <span className="text-slate-400">Profile Status</span>
-                <span className="font-bold text-emerald-400">{user.isVerified ? "Verified Member" : "Pending Verification"}</span>
+              <div className="flex justify-between py-1.5 border-b border-rose-50">
+                <span className="text-slate-500">Profile Status</span>
+                <span className="font-bold text-emerald-700">{user.isVerified ? "Verified Member" : "Pending Verification"}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-white/5">
-                <span className="text-slate-400">Date of Birth</span>
-                <span className="text-slate-200 font-medium">
+              <div className="flex justify-between py-1.5 border-b border-rose-50">
+                <span className="text-slate-500">Date of Birth</span>
+                <span className="text-slate-800 font-medium">
                   {user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : "N/A"}
                 </span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-white/5">
-                <span className="text-slate-400">Relationship Intent</span>
-                <span className="text-slate-200 font-medium">{user.relationshipIntent || "Social Connections"}</span>
+              <div className="flex justify-between py-1.5 border-b border-rose-50">
+                <span className="text-slate-500">Relationship Intent</span>
+                <span className="text-slate-800 font-medium">{user.relationshipIntent || "Social Connections"}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-white/5">
-                <span className="text-slate-400">Assigned Relationship Manager</span>
-                <span className="text-purple-400 font-bold">
+              <div className="flex justify-between py-1.5 border-b border-rose-50">
+                <span className="text-slate-500">Assigned Relationship Manager</span>
+                <span className="text-[#7E2248] font-bold">
                   {user.assignedManager ? user.assignedManager.name : "None assigned"}
                 </span>
               </div>
@@ -264,20 +264,20 @@ export default function AdminUserProfilePage() {
               {/* Uploaded Documents */}
               {(user.govIdProof || user.addressProof || user.eduCertificate || user.workExperience || user.idDocument) && (
                 <div className="pt-2">
-                  <span className="text-slate-400 block mb-2 font-bold">Uploaded Verification Documents:</span>
+                  <span className="text-slate-500 block mb-2 font-bold">Uploaded Verification Documents:</span>
                   <div className="flex flex-wrap gap-2">
                     {user.govIdProof && (
-                      <a href={`/uploads/${user.govIdProof}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-blue-400 border border-white/10">
+                      <a href={`/uploads/${user.govIdProof}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-[#7E2248] border border-rose-200">
                         📄 Gov ID Proof
                       </a>
                     )}
                     {user.addressProof && (
-                      <a href={`/uploads/${user.addressProof}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-blue-400 border border-white/10">
+                      <a href={`/uploads/${user.addressProof}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-[#7E2248] border border-rose-200">
                         📄 Address Proof
                       </a>
                     )}
                     {user.idDocument && (
-                      <a href={`/uploads/${user.idDocument}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-blue-400 border border-white/10">
+                      <a href={`/uploads/${user.idDocument}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-[#7E2248] border border-rose-200">
                         📄 ID Document ({user.idType || "Doc"})
                       </a>
                     )}
@@ -288,8 +288,8 @@ export default function AdminUserProfilePage() {
           </div>
 
           {/* Internal Notes */}
-          <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+            <h4 className="text-xs font-serif font-bold uppercase tracking-wider text-slate-500">
               Staff Internal Notes & Case Log
             </h4>
             <textarea
@@ -297,13 +297,13 @@ export default function AdminUserProfilePage() {
               placeholder="Add private staff notes regarding this member's offline conduct, verification checks, or concierge preferences..."
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
-              className="w-full p-3 rounded-xl bg-[#182337] border border-white/10 text-white text-xs focus:outline-none focus:border-red-500"
+              className="w-full p-3 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-slate-800 placeholder-slate-400 text-xs focus:outline-none focus:border-[#7E2248] focus:bg-white"
             />
             <div className="flex justify-end">
               <button
                 onClick={handleSaveStatus}
                 disabled={saving}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition"
+                className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-slate-700 border border-rose-200 font-bold text-xs transition"
               >
                 Save Internal Notes
               </button>
@@ -314,22 +314,22 @@ export default function AdminUserProfilePage() {
 
       {/* TAB CONTENT: TIMELINE */}
       {activeTab === "timeline" && (
-        <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 space-y-6">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-6">
+          <h4 className="text-xs font-serif font-bold uppercase tracking-wider text-slate-500">
             Real Chronological Member Activity
           </h4>
 
           {timeline.length === 0 ? (
-            <p className="text-xs text-slate-500 italic">No activity logged yet.</p>
+            <p className="text-xs text-slate-400 italic">No activity logged yet.</p>
           ) : (
-            <div className="relative pl-6 border-l border-white/10 space-y-6">
+            <div className="relative pl-6 border-l border-rose-200 space-y-6">
               {timeline.map((item: any, idx: number) => (
                 <div key={idx} className="relative group">
-                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-red-600 border-2 border-[#080d1a]" />
+                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#7E2248] border-2 border-white shadow-xs" />
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-xs">{item.title}</span>
-                      <span className="text-[10px] text-slate-500">
+                      <span className="font-bold text-slate-900 text-xs">{item.title}</span>
+                      <span className="text-[10px] text-slate-400">
                         {new Date(item.date).toLocaleString("en-IN", {
                           day: "2-digit",
                           month: "short",
@@ -339,7 +339,7 @@ export default function AdminUserProfilePage() {
                         })}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">{item.description}</p>
+                    <p className="text-xs text-slate-600">{item.description}</p>
                   </div>
                 </div>
               ))}
@@ -350,30 +350,30 @@ export default function AdminUserProfilePage() {
 
       {/* TAB CONTENT: EVENTS */}
       {activeTab === "events" && (
-        <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 space-y-4">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+          <h4 className="text-xs font-serif font-bold uppercase tracking-wider text-slate-500">
             Registered Real-World Events & Ticket Passes
           </h4>
 
           {registrations.length === 0 ? (
-            <p className="text-xs text-slate-500 italic py-6 text-center">No event registrations found for this user.</p>
+            <p className="text-xs text-slate-400 italic py-6 text-center">No event registrations found for this user.</p>
           ) : (
             <div className="space-y-3">
               {registrations.map((r: any) => (
-                <div key={r.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                <div key={r.id} className="p-4 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between text-xs">
                   <div>
-                    <h5 className="font-bold text-white">{r.eventTitle}</h5>
-                    <p className="text-[11px] text-slate-400">
+                    <h5 className="font-bold text-slate-900">{r.eventTitle}</h5>
+                    <p className="text-[11px] text-slate-500">
                       {new Date(r.eventDate).toLocaleDateString()} • {r.eventCity} • Pass: {r.ticketCode}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      r.checkedIn ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-slate-300"
+                      r.checkedIn ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-700"
                     }`}>
                       {r.checkedIn ? "Checked In at Venue" : "Not Checked In"}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                       {r.paymentStatus}
                     </span>
                   </div>
@@ -386,22 +386,22 @@ export default function AdminUserProfilePage() {
 
       {/* TAB CONTENT: PAYMENTS */}
       {activeTab === "payments" && (
-        <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 space-y-4">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-4">
+          <h4 className="text-xs font-serif font-bold uppercase tracking-wider text-slate-500">
             Transaction History
           </h4>
 
           {payments.length === 0 ? (
-            <p className="text-xs text-slate-500 italic py-6 text-center">No billing transactions recorded.</p>
+            <p className="text-xs text-slate-400 italic py-6 text-center">No billing transactions recorded.</p>
           ) : (
             <div className="space-y-3">
               {payments.map((p: any) => (
-                <div key={p.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                <div key={p.id} className="p-4 rounded-2xl bg-rose-50/40 border border-rose-100 flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-emerald-400">₹{p.amount} ({p.type})</span>
-                    <p className="text-[11px] text-slate-400">{p.gateway} • {new Date(p.createdAt).toLocaleDateString()}</p>
+                    <span className="font-bold text-emerald-700">₹{p.amount} ({p.type})</span>
+                    <p className="text-[11px] text-slate-500">{p.gateway} • {new Date(p.createdAt).toLocaleDateString()}</p>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     {p.status}
                   </span>
                 </div>
@@ -413,22 +413,22 @@ export default function AdminUserProfilePage() {
 
       {/* TAB CONTENT: SAFETY */}
       {activeTab === "safety" && (
-        <div className="p-6 rounded-3xl bg-[#0f172a] border border-white/10 space-y-6 text-xs">
+        <div className="p-6 rounded-3xl bg-white border border-rose-100 shadow-xs space-y-6 text-xs">
           <div>
-            <h4 className="font-bold text-slate-400 uppercase tracking-wider text-xs mb-3">
+            <h4 className="font-serif font-bold text-slate-700 uppercase tracking-wider text-xs mb-3">
               Safety Incidents & Reports ({reports.length})
             </h4>
             {reports.length === 0 ? (
-              <p className="text-slate-500 italic py-2">No safety reports associated with this member.</p>
+              <p className="text-slate-400 italic py-2">No safety reports associated with this member.</p>
             ) : (
               <div className="space-y-2">
                 {reports.map((rep: any) => (
-                  <div key={rep.id} className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 space-y-1">
-                    <div className="flex justify-between font-bold text-white">
+                  <div key={rep.id} className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 space-y-1">
+                    <div className="flex justify-between font-bold text-slate-900">
                       <span>Reason: {rep.reason}</span>
-                      <span className="text-red-400">{rep.status}</span>
+                      <span className="text-rose-700">{rep.status}</span>
                     </div>
-                    <p className="text-slate-300">{rep.details}</p>
+                    <p className="text-slate-600">{rep.details}</p>
                   </div>
                 ))}
               </div>
@@ -436,20 +436,20 @@ export default function AdminUserProfilePage() {
           </div>
 
           <div>
-            <h4 className="font-bold text-slate-400 uppercase tracking-wider text-xs mb-3">
+            <h4 className="font-serif font-bold text-slate-700 uppercase tracking-wider text-xs mb-3">
               Support Inquiries ({supportTickets.length})
             </h4>
             {supportTickets.length === 0 ? (
-              <p className="text-slate-500 italic py-2">No support inquiries opened.</p>
+              <p className="text-slate-400 italic py-2">No support inquiries opened.</p>
             ) : (
               <div className="space-y-2">
                 {supportTickets.map((st: any) => (
-                  <div key={st.id} className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex justify-between items-center">
+                  <div key={st.id} className="p-3.5 rounded-xl bg-rose-50/40 border border-rose-100 flex justify-between items-center">
                     <div>
-                      <div className="font-bold text-white">{st.subject}</div>
-                      <span className="text-[11px] text-slate-400">{st.category} • #{st.ticketNumber}</span>
+                      <div className="font-bold text-slate-900">{st.subject}</div>
+                      <span className="text-[11px] text-slate-500">{st.category} • #{st.ticketNumber}</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold text-[10px]">
+                    <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]">
                       {st.status}
                     </span>
                   </div>
@@ -462,5 +462,3 @@ export default function AdminUserProfilePage() {
     </div>
   );
 }
-
-

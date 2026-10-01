@@ -43,25 +43,25 @@ export default function AdminInvoicesPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white transition"
+          className="p-2 rounded-xl bg-white border border-rose-200 text-slate-700 hover:text-slate-900 hover:bg-rose-50 transition shadow-xs"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-1">
-            <Receipt className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[#7E2248] text-xs font-semibold mb-1">
+            <Receipt className="w-3.5 h-3.5 text-[#7E2248]" />
             Billing & Invoicing
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
+          <h1 className="text-2xl font-serif font-black text-slate-900 tracking-tight">
             Generated GST Invoices & Receipts
           </h1>
         </div>
       </div>
 
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-rose-100 rounded-3xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-[#131d2e] text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-rose-50/60 text-[11px] font-serif font-bold uppercase tracking-wider text-slate-500 border-b border-rose-100">
               <tr>
                 <th className="px-5 py-3.5">Invoice #</th>
                 <th className="px-4 py-3.5">Member</th>
@@ -73,36 +73,40 @@ export default function AdminInvoicesPage() {
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-medium">
+            <tbody className="divide-y divide-rose-50 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-500 animate-pulse">
+                  <td colSpan={8} className="text-center py-10 text-slate-400 animate-pulse">
                     Loading invoices...
                   </td>
                 </tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-500 italic">
+                  <td colSpan={8} className="text-center py-10 text-slate-400 italic">
                     No invoices generated yet.
                   </td>
                 </tr>
               ) : (
                 invoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-white/[0.02] transition">
-                    <td className="px-5 py-4 font-mono font-bold text-white">{inv.invoiceNumber}</td>
+                  <tr key={inv.id} className="hover:bg-rose-50/30 transition">
+                    <td className="px-5 py-4 font-mono font-bold text-slate-800">{inv.invoiceNumber}</td>
                     <td className="px-4 py-4">
-                      <div className="font-bold text-white">{inv.userName}</div>
+                      <div className="font-bold text-slate-900">{inv.userName}</div>
                       <span className="text-[10px] text-slate-500">{inv.userEmail}</span>
                     </td>
-                    <td className="px-4 py-4">{inv.paymentType?.replace("_", " ") || "Service"}</td>
-                    <td className="px-4 py-4 font-bold text-emerald-400">₹{inv.amount}</td>
-                    <td className="px-4 py-4 text-slate-400">₹{inv.taxAmount}</td>
                     <td className="px-4 py-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                      <span className="px-2 py-0.5 rounded bg-rose-50 text-[#7E2248] border border-rose-200/60 font-semibold">
+                        {inv.paymentType?.replace("_", " ") || "Service"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 font-bold text-emerald-700">₹{inv.amount}</td>
+                    <td className="px-4 py-4 text-slate-500">₹{inv.taxAmount}</td>
+                    <td className="px-4 py-4">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-slate-400 text-[11px]">
+                    <td className="px-5 py-4 text-slate-500 text-[11px]">
                       {new Date(inv.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -131,9 +135,9 @@ export default function AdminInvoicesPage() {
                             });
                           }
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 text-xs font-semibold transition inline-flex items-center gap-1.5 cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-[#7E2248] text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
-                        <FileText className="w-3.5 h-3.5" />
+                        <FileText className="w-3.5 h-3.5 text-[#7E2248]" />
                         <span>Email Receipt</span>
                       </button>
                     </td>
