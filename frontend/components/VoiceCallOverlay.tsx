@@ -35,36 +35,52 @@ export default function VoiceCallOverlay({
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<"connecting" | "ringing" | "connected" | "ended">("connecting");
   const [isMuted, setIsMuted] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(300); // 5 mins
-  const [voiceLimit, setVoiceLimit] = useState(300);
+  const [timerSeconds, setTimerSeconds] = useState(1800); // 30 mins shared free pool
+  const [voiceLimit, setVoiceLimit] = useState(1800);
+  const [hasActivePackage, setHasActivePackage] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success">("idle");
   const callLogIdRef = useRef<string | undefined>(initialCallLogId);
 
-  const localAudioRef = useRef<HTMLAudioElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
 
-  const [remainingChatMinutes, setRemainingChatMinutes] = useState(15);
+  const [remainingChatMinutes, setRemainingChatMinutes] = useState(0);
   const [availablePackages, setAvailablePackages] = useState<any[]>([]);
-  const [packagesViewMode, setPackagesViewMode] = useState<"summary" | "plans">("summary");
+  const [packagesViewMode, setPackagesViewMode] = useState<"summary" | "plans">("plans");
+
+  const flushPendingCandidates = async (pc: RTCPeerConnection) => {
+    if (!pc.remoteDescription || !pc.remoteDescription.type) return;
+    while (pendingCandidatesRef.current.length > 0) {
+      const candidate = pendingCandidatesRef.current.shift();
+      if (candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.warn("Error flushing queued ICE candidate:", err);
+        }
+      }
+    }
+  };
 
   useEffect(() => {
-    // Fetch current limits and available packages dynamically
+    // Fetch current shared 30-min quota and available packages dynamically
     const fetchLimits = async () => {
       try {
         const res = await fetch(`/api/services/buddy-chat/${requestId}`, { credentials: "include" });
         const data = await res.json();
         if (data.success) {
-          if (data.voiceCallLimitSeconds !== undefined) {
-            setVoiceLimit(data.voiceCallLimitSeconds);
-            setTimerSeconds(Math.max(0, data.voiceCallLimitSeconds - (data.voiceCallSeconds || 0)));
-          }
-          const chatLeft = Math.max(0, (data.chatLimitSeconds || 900) - (data.timeUsedSeconds || 0));
-          setRemainingChatMinutes(Math.ceil(chatLeft / 60));
+          const limit = data.totalLimitSeconds ?? data.voiceCallLimitSeconds ?? 1800;
+          const used = data.totalUsedSeconds ?? ((data.timeUsedSeconds || 0) + (data.voiceCallSeconds || 0));
+          const rem = data.remainingSeconds ?? Math.max(0, limit - used);
+          setVoiceLimit(limit);
+          setTimerSeconds(rem);
+          setHasActivePackage(!!data.hasActivePackage);
+          setRemainingChatMinutes(Math.floor(rem / 60));
         }
-        
+
         const pkgRes = await fetch(`/api/services/packages/breakup-buddy`, { credentials: "include" });
         const pkgData = await pkgRes.json();
         if (pkgData.success && pkgData.packages) {
@@ -79,7 +95,7 @@ export default function VoiceCallOverlay({
     const s = io(getSocketUrl(), { withCredentials: true });
     setSocket(s);
 
-    s.on("connect", () => {
+    s.on("connect", async () => {
       s.emit("join-request-room", requestId);
 
       if (isInitiator) {
@@ -94,6 +110,8 @@ export default function VoiceCallOverlay({
       } else {
         setStatus("ringing"); // Receiver side
         if (autoAccept) {
+          await startWebRTC(s, false);
+          setStatus("connected");
           s.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
         }
       }
@@ -105,27 +123,39 @@ export default function VoiceCallOverlay({
       }
       if (data?.remainingSeconds !== undefined) {
         setTimerSeconds(data.remainingSeconds);
+        setRemainingChatMinutes(Math.floor(data.remainingSeconds / 60));
       }
-      if (data?.voiceCallLimitSeconds !== undefined) {
-        setVoiceLimit(data.voiceCallLimitSeconds);
+      if (data?.totalLimitSeconds !== undefined || data?.voiceCallLimitSeconds !== undefined) {
+        setVoiceLimit(data.totalLimitSeconds ?? data.voiceCallLimitSeconds);
+      }
+      if (data?.hasActivePackage !== undefined) {
+        setHasActivePackage(!!data.hasActivePackage);
       }
     });
 
     s.on("timer-tick", (data) => {
       if (data?.remainingSeconds !== undefined) {
         setTimerSeconds(data.remainingSeconds);
+        setRemainingChatMinutes(Math.floor(data.remainingSeconds / 60));
       }
-      if (data?.voiceCallLimitSeconds !== undefined) {
-        setVoiceLimit(data.voiceCallLimitSeconds);
+      if (data?.totalLimitSeconds !== undefined || data?.voiceCallLimitSeconds !== undefined) {
+        setVoiceLimit(data.totalLimitSeconds ?? data.voiceCallLimitSeconds);
+      }
+      if (data?.hasActivePackage !== undefined) {
+        setHasActivePackage(!!data.hasActivePackage);
       }
     });
 
     s.on("call-accepted", async (data) => {
       if (data?.remainingSeconds !== undefined) {
         setTimerSeconds(data.remainingSeconds);
+        setRemainingChatMinutes(Math.floor(data.remainingSeconds / 60));
       }
-      if (data?.voiceCallLimitSeconds !== undefined) {
-        setVoiceLimit(data.voiceCallLimitSeconds);
+      if (data?.totalLimitSeconds !== undefined || data?.voiceCallLimitSeconds !== undefined) {
+        setVoiceLimit(data.totalLimitSeconds ?? data.voiceCallLimitSeconds);
+      }
+      if (data?.hasActivePackage !== undefined) {
+        setHasActivePackage(!!data.hasActivePackage);
       }
       if (isInitiator) {
         await startWebRTC(s, true);
@@ -138,6 +168,8 @@ export default function VoiceCallOverlay({
         alert("The line is currently busy. Please try again later.");
         onClose();
       } else if (data?.reason === "limit-reached") {
+        setTimerSeconds(0);
+        setRemainingChatMinutes(0);
         setShowSubscription(true);
       } else {
         alert("Call declined");
@@ -148,35 +180,65 @@ export default function VoiceCallOverlay({
     s.on("call-ended", (data) => {
       setStatus("ended");
       if (data?.reason === "time-expired") {
+        setTimerSeconds(0);
+        setRemainingChatMinutes(0);
         setShowSubscription(true);
       } else if (!showSubscription) {
         onClose();
       }
     });
 
-    s.on("webrtc-offer", async (offer) => {
-      if (!peerConnectionRef.current) {
-        await startWebRTC(s, false);
-      }
-      await peerConnectionRef.current?.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peerConnectionRef.current?.createAnswer();
-      await peerConnectionRef.current?.setLocalDescription(answer);
-      s.emit("webrtc-answer", { requestId, answer });
-    });
-
-    s.on("webrtc-answer", async (answer) => {
-      await peerConnectionRef.current?.setRemoteDescription(new RTCSessionDescription(answer));
-    });
-
-    s.on("webrtc-ice", async (candidate) => {
+    s.on("webrtc-offer", async (payload) => {
       try {
-        if (candidate && peerConnectionRef.current) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        const offer = payload?.offer || payload;
+        if (!offer) return;
+        let pc = peerConnectionRef.current;
+        if (!pc) {
+          pc = await startWebRTC(s, false);
         }
-      } catch (e) {
-        console.error("Error adding ice candidate:", e);
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        await flushPendingCandidates(pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        s.emit("webrtc-answer", { requestId, answer });
+        setStatus("connected");
+      } catch (err) {
+        console.error("Error handling webrtc-offer:", err);
       }
     });
+
+    s.on("webrtc-answer", async (payload) => {
+      try {
+        const answer = payload?.answer || payload;
+        if (!answer) return;
+        const pc = peerConnectionRef.current;
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        await flushPendingCandidates(pc);
+        setStatus("connected");
+      } catch (err) {
+        console.error("Error handling webrtc-answer:", err);
+      }
+    });
+
+    const handleIncomingIce = async (payload: any) => {
+      const candidate = payload?.candidate !== undefined ? payload.candidate : payload;
+      if (!candidate) return;
+      const pc = peerConnectionRef.current;
+      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.warn("Error adding ice candidate:", e);
+        }
+      } else {
+        pendingCandidatesRef.current.push(candidate);
+      }
+    };
+
+    s.on("webrtc-ice", handleIncomingIce);
+    s.on("ice-candidate", handleIncomingIce);
 
     return () => {
       if (localStreamRef.current) {
@@ -235,9 +297,9 @@ export default function VoiceCallOverlay({
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (status === "connected" && timerSeconds > 0 && !showSubscription) {
+    if (status === "connected" && !showSubscription) {
       interval = setInterval(() => {
-        setTimerSeconds(prev => {
+        setTimerSeconds((prev) => {
           if (prev <= 1) {
             handleTimeUp();
             return 0;
@@ -247,33 +309,75 @@ export default function VoiceCallOverlay({
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [status, timerSeconds, showSubscription]);
+  }, [status, showSubscription]);
 
   const handleTimeUp = () => {
     cleanup();
-    if (socket) socket.emit("end-call", { requestId });
+    if (socket) socket.emit("end-call", { requestId, callLogId: callLogIdRef.current });
     setStatus("ended");
+    setRemainingChatMinutes(0);
     setShowSubscription(true);
   };
 
-  const startWebRTC = async (s: Socket, isOffer: boolean) => {
+  const startWebRTC = async (s: Socket, isOffer: boolean): Promise<RTCPeerConnection | null> => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStreamRef.current = stream;
-      if (localAudioRef.current) {
-        localAudioRef.current.srcObject = stream;
+      if (peerConnectionRef.current && peerConnectionRef.current.signalingState !== "closed") {
+        if (isOffer) {
+          const offer = await peerConnectionRef.current.createOffer();
+          await peerConnectionRef.current.setLocalDescription(offer);
+          s.emit("webrtc-offer", { requestId, offer });
+        }
+        return peerConnectionRef.current;
+      }
+
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
+        localStreamRef.current = stream;
+      } catch (micErr) {
+        console.warn("Microphone access unavailable or busy; using fallback audio stream:", micErr);
+        try {
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const dest = ctx.createMediaStreamDestination();
+          stream = dest.stream;
+          localStreamRef.current = stream;
+        } catch (fallbackErr) {
+          console.warn("Fallback audio stream creation failed:", fallbackErr);
+        }
       }
 
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+        ],
       });
       peerConnectionRef.current = pc;
 
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      if (stream && stream.getTracks().length > 0) {
+        stream.getTracks().forEach((track) => {
+          track.enabled = true;
+          pc.addTrack(track, stream!);
+        });
+      } else {
+        pc.addTransceiver("audio", { direction: "recvonly" });
+      }
 
       pc.ontrack = (event) => {
+        const remoteStream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
         if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = event.streams[0];
+          remoteAudioRef.current.srcObject = remoteStream;
+          remoteAudioRef.current.muted = false;
+          remoteAudioRef.current.volume = 1.0;
+          remoteAudioRef.current.play().catch((e) => console.warn("Remote audio play warning:", e));
         }
         setStatus("connected");
       };
@@ -284,15 +388,27 @@ export default function VoiceCallOverlay({
         }
       };
 
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+          setStatus("connected");
+          if (remoteAudioRef.current && remoteAudioRef.current.paused) {
+            remoteAudioRef.current.play().catch(() => {});
+          }
+        }
+      };
+
       if (isOffer) {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         s.emit("webrtc-offer", { requestId, offer });
       }
+
+      return pc;
     } catch (err) {
       console.error("WebRTC Error:", err);
-      alert("Microphone access is required for voice calls.");
+      alert("Unable to establish voice connection.");
       onClose();
+      return null;
     }
   };
 
@@ -302,6 +418,7 @@ export default function VoiceCallOverlay({
     }
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
   };
 
@@ -315,12 +432,19 @@ export default function VoiceCallOverlay({
     }
   };
 
-  const acceptCall = () => {
-    setStatus("connected");
-    socket?.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
+  const acceptCall = async () => {
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.play().catch(() => {});
+    }
+    if (socket) {
+      await startWebRTC(socket, false);
+      setStatus("connected");
+      socket.emit("accept-call", { requestId, callLogId: callLogIdRef.current });
+    }
   };
 
   const endCall = () => {
+    cleanup();
     socket?.emit("end-call", { requestId, callLogId: callLogIdRef.current });
     setStatus("ended");
     onClose();
@@ -455,27 +579,20 @@ export default function VoiceCallOverlay({
                 <div className="w-14 h-14 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
                   <Clock className="w-7 h-7" />
                 </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">5-Minute Free Call Ended</h2>
+                <h2 className="text-2xl font-black text-white tracking-tight">30-Minute Free Session Ended</h2>
                 
                 {role === "USER" ? (
                   <div className="space-y-3">
                     <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                      You have hit your <strong>5 minutes of free voice call</strong> with <strong>{buddyDisplayName}</strong>.
+                      You have completed your <strong>30 minutes of free Call &amp; Chat</strong> with <strong>{buddyDisplayName}</strong>.
                     </p>
-                    
-                    {remainingChatMinutes > 0 ? (
-                      <div className="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-xs text-indigo-300 max-w-md mx-auto">
-                        💬 You still have <strong>{remainingChatMinutes} minutes of free chat</strong> available with {buddyDisplayName} to use!
-                      </div>
-                    ) : (
-                      <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300 max-w-md mx-auto">
-                        ⚠️ You have also used all free chat time with {buddyDisplayName}.
-                      </div>
-                    )}
+                    <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300 max-w-md mx-auto">
+                      ⚠️ To continue calling or chatting with {buddyDisplayName}, please subscribe to a package below.
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-400 max-w-md mx-auto">
-                    The user's 5 minutes of free voice call has ended with you.
+                    The user&apos;s 30 minutes of free call &amp; chat quota has ended. They must purchase a subscription to continue.
                   </p>
                 )}
               </div>
@@ -484,23 +601,21 @@ export default function VoiceCallOverlay({
                 <>
                   {packagesViewMode === "summary" ? (
                     <div className="space-y-3 max-w-md mx-auto">
-                      {remainingChatMinutes > 0 && (
-                        <button
-                          onClick={onClose}
-                          className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
-                        >
-                          <span>💬 Use Free Chat ({remainingChatMinutes}m remaining)</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setPackagesViewMode("plans")}
+                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
+                      >
+                        <span>⭐ Buy Subscription Now</span>
+                      </button>
 
                       <button
                         onClick={() => {
                           if (onClose) onClose();
                           router.push("/dashboard?tab=packages");
                         }}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2"
+                        className="w-full py-3 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2"
                       >
-                        <span>⭐ View Packages / Buy Unlimited Pass</span>
+                        <span>View All Packages</span>
                       </button>
 
                       <div className="text-center pt-2">
@@ -512,18 +627,22 @@ export default function VoiceCallOverlay({
                   ) : (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                        <button
-                          onClick={() => setPackagesViewMode("summary")}
-                          className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
-                        >
-                          ← Back
-                        </button>
-                        <span className="text-xs text-emerald-400 font-bold">Unlimited Calls & Chats</span>
+                        <span className="text-xs text-slate-300 font-semibold">Select a Subscription Plan</span>
+                        <span className="text-xs text-emerald-400 font-bold">Unlimited Calls &amp; Chats</span>
                       </div>
 
                       {availablePackages.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400 text-xs bg-white/5 rounded-2xl">
-                          No packages currently available.
+                        <div className="p-6 text-center text-slate-400 text-xs bg-white/5 rounded-2xl space-y-3">
+                          <p>No packages currently loaded.</p>
+                          <button
+                            onClick={() => {
+                              if (onClose) onClose();
+                              router.push("/dashboard?tab=packages");
+                            }}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs"
+                          >
+                            Open Packages Page
+                          </button>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
@@ -549,15 +668,20 @@ export default function VoiceCallOverlay({
                                 onClick={() => handlePayment(pkg)}
                                 className="mt-3 w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow"
                               >
-                                Buy & Continue
+                                Buy &amp; Continue
                               </button>
                             </div>
                           ))}
                         </div>
                       )}
 
-                      <div className="flex justify-center text-slate-400 text-[11px] items-center gap-1.5 pt-2">
-                        <Lock className="w-3.5 h-3.5" /> 100% Secure & Confidential
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="flex text-slate-400 text-[11px] items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5" /> 100% Secure &amp; Confidential
+                        </div>
+                        <button onClick={onClose} className="text-xs text-slate-400 hover:text-white transition underline">
+                          Close Call
+                        </button>
                       </div>
                     </div>
                   )}
@@ -578,9 +702,11 @@ export default function VoiceCallOverlay({
     );
   }
 
+  const usedSeconds = Math.max(0, voiceLimit - timerSeconds);
+
   return (
     <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <audio ref={remoteAudioRef} autoPlay />
+      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
       
       <div className="bg-[#131d2e] border border-white/10 rounded-3xl p-8 max-w-sm w-full flex flex-col items-center text-center shadow-2xl">
         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#e06d53] to-amber-500 flex items-center justify-center font-bold text-white text-3xl mb-4 relative animate-pulse">
@@ -595,13 +721,34 @@ export default function VoiceCallOverlay({
             : (callerName || (role === "USER" ? "Breakup Buddy" : "User"))}
         </h3>
         
-        <p className="text-sm text-slate-400 mb-8">
-          {status === "ringing" && isInitiator && "Calling..."}
-          {status === "ringing" && !isInitiator && "Incoming Voice Call..."}
-          {status === "connected" && voiceLimit > 300 && <span className="text-emerald-400 font-bold">Premium Active</span>}
-          {status === "connected" && voiceLimit <= 300 && <span className="text-emerald-400 font-mono">{formatTime(timerSeconds)} remaining</span>}
-          {status === "ended" && "Call Ended"}
-        </p>
+        <div className="text-sm text-slate-400 mb-8 space-y-2 w-full">
+          {status === "connecting" && <p>Connecting...</p>}
+          {status === "ringing" && isInitiator && <p>Calling...</p>}
+          {status === "ringing" && !isInitiator && <p>Incoming Voice Call...</p>}
+          {status === "ended" && <p>Call Ended</p>}
+
+          {status === "connected" && (
+            <div className="mt-2 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-lg font-extrabold">
+                <Clock className="w-4 h-4 animate-pulse" />
+                <span>{formatTime(timerSeconds)} remaining</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono">
+                Used: <span className="text-amber-300 font-semibold">{formatTime(usedSeconds)}</span> / {formatTime(voiceLimit)}
+                {hasActivePackage ? " (Subscribed)" : " (30m Free Quota)"}
+              </div>
+            </div>
+          )}
+
+          {status === "ringing" && (
+            <div className="mt-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 inline-flex items-center gap-1.5 text-[11px] text-slate-300 font-mono">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span>
+                Time Left: <strong className="text-emerald-400">{formatTime(timerSeconds)}</strong> (Used {formatTime(usedSeconds)} / {formatTime(voiceLimit)})
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-6">
           {status === "ringing" && !isInitiator ? (

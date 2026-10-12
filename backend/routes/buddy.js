@@ -109,7 +109,24 @@ router.get('/accepted-users', async (req, res) => {
       },
       orderBy: { updatedAt: 'desc' },
     });
-    res.json({ success: true, data: accepted });
+    const enriched = accepted.map((r) => {
+      const hasActivePackage = !!(r.packageExpiresAt && new Date(r.packageExpiresAt).getTime() > Date.now());
+      const totalLimitSeconds = hasActivePackage ? Math.max(1800, r.chatLimitSeconds || 1800) : 1800;
+      const chatUsed = r.timeUsedSeconds || 0;
+      const callUsed = r.voiceCallSeconds || 0;
+      const totalUsedSeconds = Math.min(totalLimitSeconds, chatUsed + callUsed);
+      const remainingSeconds = Math.max(0, totalLimitSeconds - totalUsedSeconds);
+      return {
+        ...r,
+        hasActivePackage,
+        totalLimitSeconds,
+        totalUsedSeconds,
+        remainingSeconds,
+        chatLimitSeconds: totalLimitSeconds,
+        voiceCallLimitSeconds: totalLimitSeconds,
+      };
+    });
+    res.json({ success: true, data: enriched });
   } catch (error) {
     res.status(500).json({ success: false });
   }
@@ -619,11 +636,29 @@ router.get('/chat/:requestId', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
+    const hasActivePackage = !!(request.packageExpiresAt && new Date(request.packageExpiresAt).getTime() > Date.now());
+    const totalLimitSeconds = hasActivePackage ? Math.max(1800, request.chatLimitSeconds || 1800) : 1800;
+    const chatUsed = request.timeUsedSeconds || 0;
+    const callUsed = request.voiceCallSeconds || 0;
+    const totalUsedSeconds = Math.min(totalLimitSeconds, chatUsed + callUsed);
+    const remainingSeconds = Math.max(0, totalLimitSeconds - totalUsedSeconds);
+
     const messages = await prisma.buddyMessage.findMany({
       where: { requestId },
       orderBy: { createdAt: 'asc' },
     });
-    res.json({ success: true, data: messages, timeUsedSeconds: request.timeUsedSeconds });
+    res.json({
+      success: true,
+      data: messages,
+      timeUsedSeconds: chatUsed,
+      voiceCallSeconds: callUsed,
+      totalUsedSeconds,
+      totalLimitSeconds,
+      remainingSeconds,
+      chatLimitSeconds: totalLimitSeconds,
+      voiceCallLimitSeconds: totalLimitSeconds,
+      hasActivePackage,
+    });
   } catch (error) {
     console.error('Error fetching chat messages:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch messages' });
@@ -634,7 +669,9 @@ router.get('/chat/:requestId', async (req, res) => {
 router.post('/away/:requestId', async (req, res) => {
   try {
     const { requestId } = req.params;
-    const buddyId = req.user.userId;
+    if (global.chatPresenceTracker) {
+      global.chatPresenceTracker.delete(requestId);
+    }
 
     await prisma.buddyPresence.updateMany({
       where: { requestId, role: 'BUDDY' },
@@ -662,6 +699,17 @@ router.post('/chat/:requestId', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
+    const hasActivePackage = !!(request.packageExpiresAt && new Date(request.packageExpiresAt).getTime() > Date.now());
+    const totalLimitSeconds = hasActivePackage ? Math.max(1800, request.chatLimitSeconds || 1800) : 1800;
+    const totalUsedSeconds = (request.timeUsedSeconds || 0) + (request.voiceCallSeconds || 0);
+    if (totalUsedSeconds >= totalLimitSeconds) {
+      return res.status(403).json({
+        success: false,
+        reason: 'limit-reached',
+        message: 'The 30-minute free session has ended. The user must buy a subscription package to continue.'
+      });
+    }
+
     const message = await prisma.buddyMessage.create({
       data: {
         requestId,
@@ -674,6 +722,9 @@ router.post('/chat/:requestId', async (req, res) => {
     // Email notification if receiver is not active
     try {
       const io = req.app.get('io');
+      if (io) {
+        io.to(`request-${requestId}`).emit('new-buddy-message', message);
+      }
       const receiverId = request.userId;
       const receiverSockets = io ? await io.in(`user-${receiverId}`).fetchSockets() : [];
       const isOnline = receiverSockets.length > 0;
@@ -731,10 +782,59 @@ router.post('/presence/:requestId', async (req, res) => {
     const userPresence = await prisma.buddyPresence.findUnique({
       where: { requestId_role: { requestId, role: 'USER' } },
     });
-    const threshold = new Date(Date.now() - 15000); // 15 seconds threshold for away
-    const userActive = userPresence && userPresence.lastSeen > threshold;
+    const threshold = new Date(Date.now() - 10000); // 10 seconds active threshold
+    const userActive = !!(userPresence && userPresence.lastSeen > threshold);
 
-    res.json({ success: true, data: { bothActive: !!userActive, timeUsedSeconds: request.timeUsedSeconds } });
+    global.chatPresenceTracker = global.chatPresenceTracker || new Map();
+    const isCallActive = !!(global.activeCalls && global.activeCalls.has(requestId));
+
+    const hasActivePackage = !!(request.packageExpiresAt && new Date(request.packageExpiresAt).getTime() > Date.now());
+    const totalLimitSeconds = hasActivePackage ? Math.max(1800, request.chatLimitSeconds || 1800) : 1800;
+    let currentTotalUsed = (request.timeUsedSeconds || 0) + (request.voiceCallSeconds || 0);
+
+    // Strictly count time ONLY when BOTH user and breakup buddy are actively in chat (and not already on a voice call)
+    if (userActive && !isCallActive && currentTotalUsed < totalLimitSeconds) {
+      const now = Date.now();
+      const lastTick = global.chatPresenceTracker.get(requestId);
+      if (lastTick) {
+        const deltaSec = Math.min(6, Math.max(0, Math.floor((now - lastTick) / 1000)));
+        if (deltaSec >= 1) {
+          global.chatPresenceTracker.set(requestId, now);
+          const maxAdd = Math.max(0, totalLimitSeconds - currentTotalUsed);
+          const addSec = Math.min(maxAdd, deltaSec);
+          if (addSec > 0) {
+            request = await prisma.buddyRequest.update({
+              where: { id: requestId },
+              data: { timeUsedSeconds: { increment: addSec } }
+            });
+          }
+        }
+      } else {
+        global.chatPresenceTracker.set(requestId, now);
+      }
+    } else if (!userActive || isCallActive) {
+      global.chatPresenceTracker.delete(requestId);
+    }
+
+    const chatUsed = request.timeUsedSeconds || 0;
+    const callUsed = request.voiceCallSeconds || 0;
+    const totalUsedSeconds = Math.min(totalLimitSeconds, chatUsed + callUsed);
+    const remainingSeconds = Math.max(0, totalLimitSeconds - totalUsedSeconds);
+
+    res.json({
+      success: true,
+      data: {
+        bothActive: userActive,
+        timeUsedSeconds: chatUsed,
+        voiceCallSeconds: callUsed,
+        totalUsedSeconds,
+        totalLimitSeconds,
+        remainingSeconds,
+        chatLimitSeconds: totalLimitSeconds,
+        voiceCallLimitSeconds: totalLimitSeconds,
+        hasActivePackage,
+      }
+    });
   } catch (error) {
     console.error('Presence error:', error);
     res.status(500).json({ success: false });

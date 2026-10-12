@@ -1,19 +1,25 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { MessageCircle, Send, Clock, ArrowLeft, User, Sparkles } from "lucide-react";
+import { MessageCircle, Send, Clock, ArrowLeft, Phone } from "lucide-react";
 
 export default function BuddyMessagesTab({
   acceptedUsers,
   initialActiveReqId,
+  onStartCall,
+  isCallActive = false,
 }: {
   acceptedUsers: any[];
   initialActiveReqId?: string;
+  onStartCall?: (req: any) => void;
+  isCallActive?: boolean;
 }) {
   const [activeReqId, setActiveReqId] = useState<string | null>(initialActiveReqId || null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [timerSeconds, setTimerSeconds] = useState(15 * 60);
+  const [timerSeconds, setTimerSeconds] = useState(30 * 60);
+  const [totalLimitSeconds, setTotalLimitSeconds] = useState(1800);
+  const [hasActivePackage, setHasActivePackage] = useState(false);
   const [bothActive, setBothActive] = useState(false);
   const [showChatMobile, setShowChatMobile] = useState<boolean>(!!initialActiveReqId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,7 +39,7 @@ export default function BuddyMessagesTab({
     sendPresence();
 
     const msgInterval = setInterval(fetchMessages, 3000);
-    const presenceInterval = setInterval(sendPresence, 5000);
+    const presenceInterval = setInterval(sendPresence, 4000);
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -50,28 +56,34 @@ export default function BuddyMessagesTab({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       navigator.sendBeacon(`/api/buddy/away/${activeReqId}`);
     };
-  }, [activeReqId]);
+  }, [activeReqId, isCallActive]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (bothActive && timerSeconds > 0) {
+    if (bothActive && !isCallActive) {
       interval = setInterval(() => {
-        setTimerSeconds(prev => (prev > 0 ? prev - 1 : 0));
+        setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [bothActive, timerSeconds]);
+  }, [bothActive, isCallActive]);
 
   const fetchMessages = async () => {
     if (!activeReqId) return;
     try {
-      const res = await fetch(`/api/buddy/chat/${activeReqId}`, { credentials: 'include' });
+      const res = await fetch(`/api/buddy/chat/${activeReqId}?t=${Date.now()}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
       const data = await res.json();
       if (data.success) {
         setMessages(data.data);
-        if (data.timeUsedSeconds !== undefined) {
-          setTimerSeconds(Math.max(0, 900 - data.timeUsedSeconds));
-        }
+        const limit = data.totalLimitSeconds ?? data.chatLimitSeconds ?? 1800;
+        const used = data.totalUsedSeconds ?? ((data.timeUsedSeconds || 0) + (data.voiceCallSeconds || 0));
+        const rem = data.remainingSeconds ?? Math.max(0, limit - used);
+        setTotalLimitSeconds(limit);
+        setTimerSeconds(rem);
+        setHasActivePackage(!!data.hasActivePackage);
         scrollToBottom();
       }
     } catch (e) {}
@@ -79,16 +91,21 @@ export default function BuddyMessagesTab({
 
   const sendPresence = async () => {
     if (!activeReqId) return;
+    if (isCallActive) return; // Pause chat presence while in an active voice call
     try {
-      const res = await fetch(`/api/buddy/presence/${activeReqId}`, { 
-        method: 'POST', credentials: 'include' 
+      const res = await fetch(`/api/buddy/presence/${activeReqId}`, {
+        method: "POST",
+        credentials: "include",
       });
       const data = await res.json();
       if (data.success) {
         setBothActive(data.data.bothActive);
-        if (data.data.timeUsedSeconds !== undefined) {
-          setTimerSeconds(Math.max(0, 900 - data.data.timeUsedSeconds));
-        }
+        const limit = data.data.totalLimitSeconds ?? data.data.chatLimitSeconds ?? 1800;
+        const used = data.data.totalUsedSeconds ?? ((data.data.timeUsedSeconds || 0) + (data.data.voiceCallSeconds || 0));
+        const rem = data.data.remainingSeconds ?? Math.max(0, limit - used);
+        setTotalLimitSeconds(limit);
+        setTimerSeconds(rem);
+        setHasActivePackage(!!data.data.hasActivePackage);
       }
     } catch (e) {}
   };
@@ -100,36 +117,39 @@ export default function BuddyMessagesTab({
       const text = newMessage;
       setNewMessage("");
       await fetch(`/api/buddy/chat/${activeReqId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ text })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text }),
       });
       fetchMessages();
     } catch (e) {}
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const activeReq = acceptedUsers.find(r => r.id === activeReqId);
+  const activeReq = acceptedUsers.find((r) => r.id === activeReqId);
+  const usedSeconds = Math.max(0, totalLimitSeconds - timerSeconds);
 
   return (
     <div className="flex flex-col space-y-3 sm:space-y-4 h-[calc(100vh-140px)] min-h-[500px] md:h-[650px]">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">Messages & Support</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Real-time confidential chat with your accepted clients</p>
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">Messages &amp; Support</h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Real-time confidential chat &amp; voice call with your accepted clients
+          </p>
         </div>
       </div>
-      
+
       <div className="flex-1 bg-white border border-rose-100 rounded-3xl flex flex-col md:flex-row shadow-sm overflow-hidden min-h-0">
         {/* Sidebar / Active Chats List */}
         <div
@@ -158,6 +178,10 @@ export default function BuddyMessagesTab({
                 const u = req.user || {};
                 const name = u.name || "Client";
                 const initial = name.charAt(0).toUpperCase();
+                const reqRem =
+                  isSelected
+                    ? timerSeconds
+                    : req.remainingSeconds ?? Math.max(0, 1800 - ((req.timeUsedSeconds || 0) + (req.voiceCallSeconds || 0)));
 
                 return (
                   <button
@@ -189,11 +213,9 @@ export default function BuddyMessagesTab({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs sm:text-sm font-bold truncate">{name}</span>
-                        {req.sessionType && (
-                          <span className="text-[10px] font-bold text-[#7E2248] bg-rose-100/70 px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
-                            {req.sessionType.includes("call") ? "🎧 Call" : "💬 Chat"}
-                          </span>
-                        )}
+                        <span className="text-[10px] font-mono font-bold text-[#7E2248] bg-rose-100/70 px-2 py-0.5 rounded-full border border-rose-200 shrink-0">
+                          {formatTime(reqRem)}
+                        </span>
                       </div>
                       <p className="text-[11px] text-slate-400 truncate mt-0.5">
                         {req.topic || "Tap to chat with client"}
@@ -234,22 +256,71 @@ export default function BuddyMessagesTab({
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">{activeReq.user?.name || "Client"}</p>
+                    <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                      {activeReq.user?.name || "Client"}
+                    </p>
                     <p className="text-[10px] text-emerald-700 flex items-center gap-1 font-semibold">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Active Session
                     </p>
                   </div>
                 </div>
 
-                {/* Status and Timer */}
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-xs ${timerSeconds < 300 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                {/* Call Button, Status, and Shared 30-Min Timer */}
+                <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
+                  {onStartCall && (
+                    <button
+                      type="button"
+                      onClick={() => onStartCall(activeReq)}
+                      disabled={timerSeconds <= 0}
+                      className="px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                      title="Start Voice Call with Client"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call</span>
+                    </button>
+                  )}
+
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-xs ${
+                      timerSeconds === 0
+                        ? "bg-red-100 border-red-300 text-red-800"
+                        : timerSeconds < 300
+                        ? "bg-rose-50 border-rose-200 text-rose-700"
+                        : "bg-slate-50 border-slate-200 text-slate-700"
+                    }`}
+                    title="Shared 30-minute free quota across Call & Chat (counts only when both are active)"
+                  >
                     <Clock className="w-3.5 h-3.5" />
-                    <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)}</span>
+                    <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)} left</span>
+                    <span className="text-[10px] font-mono opacity-75 hidden sm:inline">
+                      (Used {formatTime(usedSeconds)}/{formatTime(totalLimitSeconds)})
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs ${bothActive ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${bothActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-                    <span>{bothActive ? 'Live' : 'Away'}</span>
+
+                  {hasActivePackage && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      Pass Active
+                    </span>
+                  )}
+
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs ${
+                      bothActive
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        : "bg-amber-50 text-amber-800 border border-amber-200"
+                    }`}
+                    title={
+                      bothActive
+                        ? "Both User and Breakup Buddy are active — timer is counting"
+                        : "Waiting for both to be active — timer is paused"
+                    }
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        bothActive ? "bg-emerald-500 animate-pulse" : "bg-amber-400"
+                      }`}
+                    />
+                    <span>{bothActive ? "Live" : "Paused"}</span>
                   </span>
                 </div>
               </div>
@@ -260,7 +331,9 @@ export default function BuddyMessagesTab({
                   <div className="text-center my-10 text-xs sm:text-sm text-slate-500 bg-white border border-rose-100 rounded-3xl p-6 max-w-sm mx-auto shadow-xs">
                     <p className="text-2xl mb-1">👋</p>
                     <p className="font-bold text-slate-900 font-serif">Start the conversation</p>
-                    <p className="text-slate-400 text-xs mt-0.5">Say hello and introduce yourself warmly to {activeReq.user?.name || "your client"}!</p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      Say hello and introduce yourself warmly to {activeReq.user?.name || "your client"}!
+                    </p>
                   </div>
                 )}
                 {messages.map((msg, i) => {
@@ -275,8 +348,12 @@ export default function BuddyMessagesTab({
                         } shadow-xs rounded-2xl px-4 py-2.5 max-w-[85%] sm:max-w-[75%] break-words`}
                       >
                         <p className="text-xs sm:text-sm leading-relaxed">{msg.text}</p>
-                        <p className={`text-[10px] mt-1 font-medium ${isBuddy ? "text-rose-200 text-right" : "text-slate-400"}`}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <p
+                          className={`text-[10px] mt-1 font-medium ${
+                            isBuddy ? "text-rose-200 text-right" : "text-slate-400"
+                          }`}
+                        >
+                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     </div>
@@ -286,12 +363,19 @@ export default function BuddyMessagesTab({
               </div>
 
               {/* Input Bar */}
-              <form onSubmit={handleSend} className="p-3.5 border-t border-rose-100 bg-white flex items-center gap-2 shrink-0">
+              <form
+                onSubmit={handleSend}
+                className="p-3.5 border-t border-rose-100 bg-white flex items-center gap-2 shrink-0"
+              >
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={timerSeconds === 0 ? "Time's up! User must subscribe." : "Type your message..."}
+                  placeholder={
+                    timerSeconds === 0
+                      ? "30-minute free session ended! User must subscribe to continue."
+                      : "Type your message..."
+                  }
                   disabled={timerSeconds === 0}
                   className="flex-1 px-4 py-2.5 rounded-full bg-[#FDFBF9] border border-rose-200 text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-[#7E2248] focus:bg-white transition disabled:opacity-50"
                 />

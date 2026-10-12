@@ -272,35 +272,110 @@ io.use((socket, next) => {
 });
 
 // Track call intervals and metadata to update DB
-const activeCalls = new Map(); // requestId -> { interval, callLogId, startTime }
+const activeCalls = new Map(); // requestId -> { interval, callLogId, startTime, elapsedSec, initialChatSec, initialVoiceSec, limitSec, hasActivePackage }
+global.activeCalls = activeCalls;
+global.chatPresenceTracker = global.chatPresenceTracker || new Map();
+
+function computeRequestQuota(req) {
+  const hasActivePackage = !!(req.packageExpiresAt && new Date(req.packageExpiresAt).getTime() > Date.now());
+  const totalLimitSeconds = hasActivePackage ? Math.max(1800, req.chatLimitSeconds || 1800) : 1800;
+  const chatUsed = req.timeUsedSeconds || 0;
+  const callUsed = req.voiceCallSeconds || 0;
+  const totalUsedSeconds = Math.min(totalLimitSeconds, chatUsed + callUsed);
+  const remainingSeconds = Math.max(0, totalLimitSeconds - totalUsedSeconds);
+  return {
+    hasActivePackage,
+    totalLimitSeconds,
+    chatUsed,
+    callUsed,
+    totalUsedSeconds,
+    remainingSeconds,
+  };
+}
+
+async function stopAndSaveActiveCall(io, requestId, callLogId, reason) {
+  const callData = activeCalls.get(requestId);
+  const targetCallLogId = callLogId || (callData ? callData.callLogId : null);
+
+  if (callData) {
+    clearInterval(callData.interval);
+    activeCalls.delete(requestId);
+
+    const elapsed = Math.max(0, callData.elapsedSec || Math.floor((Date.now() - callData.startTime) / 1000));
+    const maxAdditionalVoice = Math.max(0, callData.limitSec - callData.initialChatSec - callData.initialVoiceSec);
+    const addedVoice = Math.min(maxAdditionalVoice, elapsed);
+    const finalVoiceSec = callData.initialVoiceSec + addedVoice;
+    const totalUsedSeconds = Math.min(callData.limitSec, callData.initialChatSec + finalVoiceSec);
+    const remainingSeconds = Math.max(0, callData.limitSec - totalUsedSeconds);
+
+    await prisma.buddyRequest.update({
+      where: { id: requestId },
+      data: { voiceCallSeconds: finalVoiceSec }
+    }).catch(() => {});
+
+    if (targetCallLogId) {
+      await prisma.callLog.update({
+        where: { id: targetCallLogId },
+        data: { durationSec: Math.max(1, addedVoice), endedAt: new Date(), status: 'COMPLETED' }
+      }).catch(() => {});
+    }
+
+    io.to(`request-${requestId}`).emit('call-ended', {
+      reason: reason || 'ended',
+      remainingSeconds,
+      totalUsedSeconds,
+      totalLimitSeconds: callData.limitSec,
+      hasActivePackage: callData.hasActivePackage,
+    });
+  } else {
+    if (targetCallLogId) {
+      await prisma.callLog.update({
+        where: { id: targetCallLogId },
+        data: { endedAt: new Date() }
+      }).catch(() => {});
+    }
+    io.to(`request-${requestId}`).emit('call-ended', { reason: reason || 'ended' });
+    try {
+      const req = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
+      if (req) {
+        io.to(`user-${req.userId}`).emit('call-ended', { reason: reason || 'ended' });
+        io.to(`buddy-${req.buddyId}`).emit('call-ended', { reason: reason || 'ended' });
+      }
+    } catch (e) {}
+  }
+}
 
 io.on('connection', (socket) => {
   console.log(`Socket authenticated & connected: ${socket.id} (user: ${socket.user?.userId || 'unknown'})`);
 
   socket.on('join-buddy-room', (buddyId) => {
-    // Only allow joining own buddy room or if admin
     const targetId = socket.user.role === 'ADMIN' ? buddyId : socket.user.userId;
     socket.join(`buddy-${targetId}`);
     socket.join(`user-${targetId}`);
   });
 
   socket.on('join-user-room', (userId) => {
-    // Only allow joining own user room or if admin
     const targetId = socket.user.role === 'ADMIN' ? userId : socket.user.userId;
     socket.join(`user-${targetId}`);
   });
 
   socket.on('join-request-room', async (requestId) => {
+    if (!requestId) return;
+    // Join immediately so signaling events are never lost to async race conditions
+    socket.join(`request-${requestId}`);
+    socket.activeCallRequestId = requestId;
     try {
       const request = await prisma.buddyRequest.findUnique({
         where: { id: requestId },
         select: { userId: true, buddyId: true }
       });
-      if (!request) return;
+      if (!request) {
+        socket.leave(`request-${requestId}`);
+        return;
+      }
       const isParticipant = request.userId === socket.user.userId || request.buddyId === socket.user.userId || socket.user.role === 'ADMIN';
-      if (isParticipant) {
-        socket.join(`request-${requestId}`);
-      } else {
+      if (!isParticipant) {
+        socket.leave(`request-${requestId}`);
         console.warn(`[Socket Security] Unauthorized attempt to join request-${requestId} by user ${socket.user.userId}`);
       }
     } catch (e) {
@@ -310,9 +385,25 @@ io.on('connection', (socket) => {
 
   socket.on('initiate-call', async ({ requestId, targetUserId, callerName, callerRole }) => {
     try {
+      if (!requestId) return;
+      socket.join(`request-${requestId}`);
+      socket.activeCallRequestId = requestId;
+
       const request = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
-      if (!request || request.voiceCallSeconds >= request.voiceCallLimitSeconds) {
-        socket.emit('call-rejected', { reason: 'limit-reached' });
+      if (!request) {
+        socket.emit('call-rejected', { reason: 'error' });
+        return;
+      }
+
+      const quota = computeRequestQuota(request);
+      if (quota.remainingSeconds <= 0) {
+        socket.emit('call-rejected', {
+          reason: 'limit-reached',
+          remainingSeconds: 0,
+          totalUsedSeconds: quota.totalUsedSeconds,
+          totalLimitSeconds: quota.totalLimitSeconds,
+          hasActivePackage: quota.hasActivePackage,
+        });
         return;
       }
 
@@ -323,6 +414,9 @@ io.on('connection', (socket) => {
         socket.emit('call-rejected', { reason: 'unauthorized' });
         return;
       }
+
+      // Pause any chat presence timer while call is being initiated/active
+      global.chatPresenceTracker.delete(requestId);
 
       const actualCallerId = socket.user.userId;
       const actualReceiverId = isUserCaller ? request.buddyId : request.userId;
@@ -339,20 +433,24 @@ io.on('connection', (socket) => {
         }
       });
 
-      const remainingSeconds = Math.max(0, (request.voiceCallLimitSeconds || 300) - (request.voiceCallSeconds || 0));
-      const voiceCallLimitSeconds = request.voiceCallLimitSeconds || 300;
+      const callMeta = {
+        callLogId: callLog.id,
+        remainingSeconds: quota.remainingSeconds,
+        totalUsedSeconds: quota.totalUsedSeconds,
+        totalLimitSeconds: quota.totalLimitSeconds,
+        voiceCallLimitSeconds: quota.totalLimitSeconds,
+        hasActivePackage: quota.hasActivePackage,
+      };
 
-      socket.emit('call-initiated', { callLogId: callLog.id, remainingSeconds, voiceCallLimitSeconds });
+      socket.emit('call-initiated', callMeta);
 
       // Notify the target receiver room
       const payload = {
         requestId,
-        callLogId: callLog.id,
+        ...callMeta,
         callerName,
         callerRole: isUserCaller ? 'USER' : 'BUDDY',
         callerId: actualCallerId,
-        remainingSeconds,
-        voiceCallLimitSeconds,
       };
       if (isUserCaller) {
         io.to(`buddy-${actualReceiverId}`).emit('incoming-call', payload);
@@ -366,18 +464,46 @@ io.on('connection', (socket) => {
   });
 
   socket.on('accept-call', async ({ requestId, callLogId }) => {
-    let remainingSeconds = 300;
-    let voiceCallLimitSeconds = 300;
+    if (!requestId) return;
+    socket.join(`request-${requestId}`);
+    socket.activeCallRequestId = requestId;
+    global.chatPresenceTracker.delete(requestId);
+
+    let quota = {
+      hasActivePackage: false,
+      totalLimitSeconds: 1800,
+      chatUsed: 0,
+      callUsed: 0,
+      totalUsedSeconds: 0,
+      remainingSeconds: 1800,
+    };
+
     try {
       const req = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
       if (req) {
-        voiceCallLimitSeconds = req.voiceCallLimitSeconds || 300;
-        remainingSeconds = Math.max(0, voiceCallLimitSeconds - (req.voiceCallSeconds || 0));
+        quota = computeRequestQuota(req);
       }
     } catch (e) {}
 
-    io.to(`request-${requestId}`).emit('call-accepted', { remainingSeconds, voiceCallLimitSeconds });
-    
+    if (quota.remainingSeconds <= 0) {
+      io.to(`request-${requestId}`).emit('call-ended', {
+        reason: 'time-expired',
+        remainingSeconds: 0,
+        totalUsedSeconds: quota.totalLimitSeconds,
+        totalLimitSeconds: quota.totalLimitSeconds,
+        hasActivePackage: quota.hasActivePackage,
+      });
+      return;
+    }
+
+    io.to(`request-${requestId}`).emit('call-accepted', {
+      remainingSeconds: quota.remainingSeconds,
+      totalUsedSeconds: quota.totalUsedSeconds,
+      totalLimitSeconds: quota.totalLimitSeconds,
+      voiceCallLimitSeconds: quota.totalLimitSeconds,
+      hasActivePackage: quota.hasActivePackage,
+    });
+
     // Update CallLog status to COMPLETED and mark connect timestamp
     if (callLogId) {
       try {
@@ -390,61 +516,95 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Start tracking exact cumulative time in DB for this call
-    if (!activeCalls.has(requestId)) {
-      try {
-        const req = await prisma.buddyRequest.findUnique({ where: { id: requestId } });
-        const initialVoiceSec = req ? (req.voiceCallSeconds || 0) : 0;
-        const limitSec = req ? (req.voiceCallLimitSeconds || 300) : 300;
-        const startTime = Date.now();
-
-        const interval = setInterval(async () => {
-          try {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const currentTotal = initialVoiceSec + elapsed;
-
-            if (currentTotal >= limitSec) {
-              // Strict 5-minute (or limit) cap reached! Force end call server-side
-              await prisma.buddyRequest.update({
-                where: { id: requestId },
-                data: { voiceCallSeconds: limitSec }
-              }).catch(() => {});
-
-              io.to(`request-${requestId}`).emit('call-ended', { reason: 'time-expired' });
-              
-              const callData = activeCalls.get(requestId);
-              if (callData) {
-                clearInterval(callData.interval);
-                const durationSec = Math.max(1, elapsed);
-                if (callData.callLogId) {
-                  await prisma.callLog.update({
-                    where: { id: callData.callLogId },
-                    data: { durationSec, endedAt: new Date(), status: 'COMPLETED' }
-                  }).catch(() => {});
-                }
-                activeCalls.delete(requestId);
-              }
-            } else {
-              // Update cumulative voice seconds in DB periodically
-              await prisma.buddyRequest.update({
-                where: { id: requestId },
-                data: { voiceCallSeconds: currentTotal }
-              }).catch(() => {});
-
-              // Broadcast live synchronized remaining time to all clients in request room
-              const remaining = Math.max(0, limitSec - currentTotal);
-              io.to(`request-${requestId}`).emit('timer-tick', { remainingSeconds: remaining, voiceCallLimitSeconds: limitSec });
-            }
-          } catch (e) {
-            console.error('Timer error:', e);
-          }
-        }, 1000); // Check precision every second
-
-        activeCalls.set(requestId, { interval, callLogId, startTime, initialVoiceSec, limitSec });
-      } catch (e) {
-        console.error('Accept call DB fetch error:', e);
-      }
+    // Clear any stale interval if one existed
+    if (activeCalls.has(requestId)) {
+      clearInterval(activeCalls.get(requestId).interval);
+      activeCalls.delete(requestId);
     }
+
+    // Start tracking exact cumulative time in DB ONLY when both User and BB are in the call room
+    const callState = {
+      interval: null,
+      callLogId,
+      startTime: Date.now(),
+      elapsedSec: 0,
+      initialChatSec: quota.chatUsed,
+      initialVoiceSec: quota.callUsed,
+      limitSec: quota.totalLimitSeconds,
+      hasActivePackage: quota.hasActivePackage,
+      aloneTicks: 0,
+    };
+
+    callState.interval = setInterval(async () => {
+      try {
+        const room = io.sockets.adapter.rooms.get(`request-${requestId}`);
+        const numInRoom = room ? room.size : 0;
+
+        // Only count time when BOTH User and Breakup Buddy are connected in the call room
+        if (numInRoom < 2) {
+          callState.aloneTicks += 1;
+          if (callState.aloneTicks >= 3) {
+            await stopAndSaveActiveCall(io, requestId, callLogId, 'peer-disconnected');
+          }
+          return;
+        }
+
+        callState.aloneTicks = 0;
+        callState.elapsedSec += 1;
+
+        const currentVoiceSec = callState.initialVoiceSec + callState.elapsedSec;
+        const currentTotalUsed = callState.initialChatSec + currentVoiceSec;
+        const remaining = Math.max(0, callState.limitSec - currentTotalUsed);
+
+        if (currentTotalUsed >= callState.limitSec) {
+          // Strict 30-minute (or package limit) cap reached! Force end call server-side
+          const maxVoiceSec = Math.max(0, callState.limitSec - callState.initialChatSec);
+          await prisma.buddyRequest.update({
+            where: { id: requestId },
+            data: { voiceCallSeconds: maxVoiceSec }
+          }).catch(() => {});
+
+          clearInterval(callState.interval);
+          activeCalls.delete(requestId);
+
+          if (callState.callLogId) {
+            await prisma.callLog.update({
+              where: { id: callState.callLogId },
+              data: { durationSec: Math.max(1, callState.elapsedSec), endedAt: new Date(), status: 'COMPLETED' }
+            }).catch(() => {});
+          }
+
+          io.to(`request-${requestId}`).emit('call-ended', {
+            reason: 'time-expired',
+            remainingSeconds: 0,
+            totalUsedSeconds: callState.limitSec,
+            totalLimitSeconds: callState.limitSec,
+            hasActivePackage: callState.hasActivePackage,
+          });
+        } else {
+          // Save cumulative voice seconds in DB every second
+          await prisma.buddyRequest.update({
+            where: { id: requestId },
+            data: { voiceCallSeconds: currentVoiceSec }
+          }).catch(() => {});
+
+          // Broadcast live synchronized remaining & used time to both participants
+          io.to(`request-${requestId}`).emit('timer-tick', {
+            remainingSeconds: remaining,
+            totalUsedSeconds: currentTotalUsed,
+            totalLimitSeconds: callState.limitSec,
+            voiceCallSeconds: currentVoiceSec,
+            callElapsedSeconds: callState.elapsedSec,
+            voiceCallLimitSeconds: callState.limitSec,
+            hasActivePackage: callState.hasActivePackage,
+          });
+        }
+      } catch (e) {
+        console.error('Timer error:', e);
+      }
+    }, 1000);
+
+    activeCalls.set(requestId, callState);
   });
 
   socket.on('reject-call', async ({ requestId, callLogId, reason }) => {
@@ -471,62 +631,37 @@ io.on('connection', (socket) => {
   });
 
   socket.on('end-call', async ({ requestId, callLogId }) => {
-    io.to(`request-${requestId}`).emit('call-ended');
-    
-    const callData = activeCalls.get(requestId);
-    const targetCallLogId = callLogId || (callData ? callData.callLogId : null);
-
-    if (callData) {
-      clearInterval(callData.interval);
-      const elapsed = Math.max(1, Math.floor((Date.now() - callData.startTime) / 1000));
-      const finalVoiceSec = Math.min(callData.limitSec, callData.initialVoiceSec + elapsed);
-
-      // Save exact cumulative time to DB
-      await prisma.buddyRequest.update({
-        where: { id: requestId },
-        data: { voiceCallSeconds: finalVoiceSec }
-      }).catch(() => {});
-
-      if (targetCallLogId) {
-        try {
-          await prisma.callLog.update({
-            where: { id: targetCallLogId },
-            data: { durationSec: elapsed, endedAt: new Date(), status: 'COMPLETED' }
-          });
-        } catch (e) {
-          console.error('Failed to update CallLog on end:', e);
-        }
-      }
-      activeCalls.delete(requestId);
-    } else if (targetCallLogId) {
-      // Unanswered / cancelled before connect
-      try {
-        await prisma.callLog.update({
-          where: { id: targetCallLogId },
-          data: { endedAt: new Date() }
-        });
-      } catch (e) {}
-    }
+    if (!requestId) return;
+    await stopAndSaveActiveCall(io, requestId, callLogId, 'ended');
   });
 
-  // WebRTC Signaling (Restricted to verified room participants)
+  // WebRTC Signaling (Relay offer, answer, and ICE candidates reliably)
   socket.on('webrtc-offer', ({ requestId, offer }) => {
-    if (!requestId || !socket.rooms.has(`request-${requestId}`)) return;
+    if (!requestId) return;
+    socket.join(`request-${requestId}`);
     socket.to(`request-${requestId}`).emit('webrtc-offer', offer);
   });
 
   socket.on('webrtc-answer', ({ requestId, answer }) => {
-    if (!requestId || !socket.rooms.has(`request-${requestId}`)) return;
+    if (!requestId) return;
+    socket.join(`request-${requestId}`);
     socket.to(`request-${requestId}`).emit('webrtc-answer', answer);
   });
 
-  socket.on('ice-candidate', ({ requestId, candidate }) => {
-    if (!requestId || !socket.rooms.has(`request-${requestId}`)) return;
+  const relayIceCandidate = ({ requestId, candidate }) => {
+    if (!requestId) return;
+    socket.join(`request-${requestId}`);
+    socket.to(`request-${requestId}`).emit('webrtc-ice', candidate);
     socket.to(`request-${requestId}`).emit('ice-candidate', candidate);
-  });
+  };
+  socket.on('webrtc-ice', relayIceCandidate);
+  socket.on('ice-candidate', relayIceCandidate);
 
   socket.on('disconnect', () => {
     console.log('Socket disconnected:', socket.id);
+    if (socket.activeCallRequestId && activeCalls.has(socket.activeCallRequestId)) {
+      stopAndSaveActiveCall(io, socket.activeCallRequestId, null, 'peer-disconnected').catch(() => {});
+    }
   });
 });
 
