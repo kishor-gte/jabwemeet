@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BuddyMessagesTab from "./BuddyMessagesTab";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
@@ -56,10 +56,47 @@ export default function BreakupBuddyDashboardPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [selectedChatRequestId, setSelectedChatRequestId] = useState<string | undefined>(undefined);
+  const activeTabRef = useRef(activeTab);
+  const notifiedUserChatRef = useRef<Set<string>>(new Set());
+  const bellDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    if (activeTab === "Messages") {
+      setNotifications((prev) =>
+        prev.map((n) => (n.targetTab === "Messages" ? { ...n, read: true } : n))
+      );
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (bellDropdownRef.current && !bellDropdownRef.current.contains(e.target as Node)) {
+        setShowNotificationsDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const formatNotifTime = (createdAt?: number, fallback?: string) => {
+    if (!createdAt) return fallback || "Just now";
+    const diffSec = Math.max(0, Math.floor((Date.now() - createdAt) / 1000));
+    if (diffSec < 60) return "Just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return `${Math.floor(diffHr / 24)}d ago`;
+  };
 
   const handleNotificationClick = (notif: any) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
+      prev.map((n) =>
+        n.id === notif.id || (notif.targetRequestId && n.targetRequestId === notif.targetRequestId)
+          ? { ...n, read: true }
+          : n
+      )
     );
     setShowNotificationsDropdown(false);
     if (notif.targetRequestId) {
@@ -359,30 +396,77 @@ export default function BreakupBuddyDashboardPage() {
 
     s.on("user-entered-chat", (data) => {
       const uName = data.userName || "User";
-      const newNotif = {
-        id: `notif-${Date.now()}`,
-        title: "User in Chat",
-        message: data.message || `Hey, your user ${uName} is in chat! Go and talk with them.`,
-        timestamp: "Just now",
-        read: false,
-        targetTab: "Messages",
-        targetRequestId: data.requestId,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
+      const reqKey = String(data.requestId || uName);
+      const dedupeKey = `user-chat-${reqKey}`;
+
+      setNotifications((prev) => {
+        const filtered = prev.filter((n) => n.dedupeKey !== dedupeKey);
+        const newNotif = {
+          id: `notif-${Date.now()}`,
+          dedupeKey,
+          icon: "💬",
+          title: "User in Chat",
+          message: data.message || `Hey, your user ${uName} is in chat! Go and talk with them.`,
+          createdAt: Date.now(),
+          timestamp: "Just now",
+          read: false,
+          targetTab: "Messages",
+          targetRequestId: data.requestId,
+        };
+        return [newNotif, ...filtered];
+      });
+    });
+
+    s.on("new-buddy-message", (data) => {
+      // Only notify for messages sent by the user when Buddy is not actively on the Messages tab
+      if (!data?.message || data.message.sender !== "user") return;
+      if (activeTabRef.current === "Messages") return;
+
+      const uName = data.userName || "User";
+      const reqKey = String(data.requestId || uName);
+      const dedupeKey = `chat-msg-${reqKey}`;
+      const msgPreview = data.message.text || "Sent you a message";
+
+      setNotifications((prev) => {
+        const existingUnread = prev.find((n) => n.dedupeKey === dedupeKey && !n.read);
+        const nextCount = existingUnread ? (existingUnread.count || 1) + 1 : 1;
+        const filtered = prev.filter((n) => !(n.dedupeKey === dedupeKey && !n.read));
+        const newNotif = {
+          id: `notif-${Date.now()}`,
+          dedupeKey,
+          count: nextCount,
+          icon: "💬",
+          title: nextCount > 1 ? `${nextCount} new messages from ${uName}` : `New message from ${uName}`,
+          message: msgPreview,
+          createdAt: Date.now(),
+          timestamp: "Just now",
+          read: false,
+          targetTab: "Messages",
+          targetRequestId: data.requestId,
+        };
+        return [newNotif, ...filtered];
+      });
     });
 
     s.on("incoming-call", (data) => {
       const caller = data.callerName || "User";
-      const newNotif = {
-        id: `notif-${Date.now()}`,
-        title: "Incoming Voice Call",
-        message: `Incoming voice call from ${caller}.`,
-        timestamp: "Just now",
-        read: false,
-        targetTab: "Call Log",
-        targetRequestId: data.requestId,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
+      const dedupeKey = `call-${data.requestId || caller}`;
+      setNotifications((prev) => {
+        const filtered = prev.filter((n) => !(n.dedupeKey === dedupeKey && !n.read));
+        const newNotif = {
+          id: `notif-${Date.now()}`,
+          dedupeKey,
+          icon: "📞",
+          title: "Incoming Voice Call",
+          message: `Incoming voice call from ${caller}.`,
+          createdAt: Date.now(),
+          timestamp: "Just now",
+          read: false,
+          targetTab: "Call Log",
+          targetRequestId: data.requestId,
+        };
+        return [newNotif, ...filtered];
+      });
 
       setIncomingCall((currentCall) => {
         if (currentCall) {
@@ -398,15 +482,22 @@ export default function BreakupBuddyDashboardPage() {
 
     s.on("new-broadcast-request", () => {
       handleRefreshRequests();
-      const newNotif = {
-        id: `notif-${Date.now()}`,
-        title: "⚡ New Connection Request",
-        message: "A member requested a Breakup Buddy session! Click to review and claim.",
-        timestamp: "Just now",
-        read: false,
-        targetTab: "Requests",
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
+      setNotifications((prev) => {
+        const dedupeKey = "broadcast-request";
+        const filtered = prev.filter((n) => !(n.dedupeKey === dedupeKey && !n.read));
+        const newNotif = {
+          id: `notif-${Date.now()}`,
+          dedupeKey,
+          icon: "⚡",
+          title: "New Connection Request",
+          message: "A member requested a Breakup Buddy session! Click to review and claim.",
+          createdAt: Date.now(),
+          timestamp: "Just now",
+          read: false,
+          targetTab: "Requests",
+        };
+        return [newNotif, ...filtered];
+      });
     });
 
     s.on("new-buddy-request", () => {
@@ -415,15 +506,22 @@ export default function BreakupBuddyDashboardPage() {
 
     s.on("buddy-request-claimed", () => {
       handleRefreshRequests();
-      const newNotif = {
-        id: `notif-${Date.now()}`,
-        title: "🔒 Request Claimed",
-        message: "A connection request was claimed by another Breakup Buddy.",
-        timestamp: "Just now",
-        read: false,
-        targetTab: "Requests",
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
+      setNotifications((prev) => {
+        const dedupeKey = "request-claimed";
+        const filtered = prev.filter((n) => !(n.dedupeKey === dedupeKey && !n.read));
+        const newNotif = {
+          id: `notif-${Date.now()}`,
+          dedupeKey,
+          icon: "🔒",
+          title: "Request Claimed",
+          message: "A connection request was claimed by another Breakup Buddy.",
+          createdAt: Date.now(),
+          timestamp: "Just now",
+          read: false,
+          targetTab: "Requests",
+        };
+        return [newNotif, ...filtered];
+      });
     });
 
     s.on("broadcast-request-claimed", () => {
@@ -1638,9 +1736,23 @@ export default function BreakupBuddyDashboardPage() {
                             {req.sessionType || "1-on-1 Consultation"}
                           </span>
                         </div>
-                        {req.packagePrice && (
-                          <span className="font-bold text-emerald-700">₹{req.packagePrice}</span>
-                        )}
+                        {(() => {
+                          const limitSec = req.totalLimitSeconds || 1800;
+                          const usedSec = req.totalUsedSeconds ?? Math.min(limitSec, (req.timeUsedSeconds || 0) + (req.voiceCallSeconds || 0));
+                          const remSec = req.remainingSeconds ?? Math.max(0, limitSec - usedSec);
+                          const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+                          return (
+                            <span
+                              className={`font-mono font-bold px-2.5 py-0.5 rounded-lg border text-[11px] ${
+                                remSec === 0
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              }`}
+                            >
+                              ⏱️ {fmt(remSec)} left (Used {fmt(usedSec)}/{fmt(limitSec)})
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       {/* Discussion Topic */}
@@ -1738,7 +1850,19 @@ export default function BreakupBuddyDashboardPage() {
   };
 
   const renderMessages = () => (
-    <BuddyMessagesTab acceptedUsers={acceptedUsers} initialActiveReqId={selectedChatRequestId} />
+    <BuddyMessagesTab
+      acceptedUsers={acceptedUsers}
+      initialActiveReqId={selectedChatRequestId}
+      isCallActive={!!(buddyActiveCall || incomingCall)}
+      onStartCall={(req: any) =>
+        setBuddyActiveCall({
+          requestId: req.id,
+          targetUserId: req.user?.id || req.userId,
+          targetName: req.user?.name || "Client",
+          callerName: displayName || user?.name || "Breakup Buddy",
+        })
+      }
+    />
   );
 
   const renderAvailability = () => {
@@ -3646,22 +3770,16 @@ export default function BreakupBuddyDashboardPage() {
 
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Dynamic Notifications Bell */}
-            <div className="relative">
+            <div className="relative" ref={bellDropdownRef}>
               <button
                 type="button"
-                onClick={() => {
-                  const nextState = !showNotificationsDropdown;
-                  setShowNotificationsDropdown(nextState);
-                  if (nextState) {
-                    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-                  }
-                }}
+                onClick={() => setShowNotificationsDropdown((prev) => !prev)}
                 className="text-slate-500 hover:text-[#7E2248] transition relative p-2 rounded-full hover:bg-rose-50 cursor-pointer"
                 title="Notifications"
               >
                 <span className="text-lg sm:text-xl">🔔</span>
                 {notifications.filter((n) => !n.read).length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 px-1.5 py-0.5 min-w-[16px] text-[9px] font-extrabold text-white bg-[#7E2248] rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-bounce">
+                  <span className="absolute top-0.5 right-0.5 px-1.5 py-0.5 min-w-[16px] text-[9px] font-extrabold text-white bg-[#7E2248] rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                     {notifications.filter((n) => !n.read).length}
                   </span>
                 )}
@@ -3673,18 +3791,33 @@ export default function BreakupBuddyDashboardPage() {
                   <div className="p-3.5 sm:p-4 border-b border-rose-100 flex items-center justify-between bg-rose-50/40">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-900 text-xs sm:text-sm font-serif">Notifications</span>
-                      <span className="px-2 py-0.5 rounded-full bg-rose-100 text-[#7E2248] text-[10px] font-bold">
-                        {notifications.length} Total
-                      </span>
+                      {notifications.filter((n) => !n.read).length > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#7E2248] text-white text-[10px] font-bold">
+                          {notifications.filter((n) => !n.read).length} Unread
+                        </span>
+                      )}
                     </div>
                     {notifications.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setNotifications([])}
-                        className="text-[11px] text-slate-400 hover:text-rose-600 font-bold transition cursor-pointer"
-                      >
-                        Clear All
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {notifications.some((n) => !n.read) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+                            }
+                            className="text-[11px] text-[#7E2248] hover:underline font-bold transition cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setNotifications([])}
+                          className="text-[11px] text-slate-400 hover:text-rose-600 font-bold transition cursor-pointer"
+                        >
+                          Clear All
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -3698,18 +3831,25 @@ export default function BreakupBuddyDashboardPage() {
                         <div
                           key={notif.id}
                           onClick={() => handleNotificationClick(notif)}
-                          className={`p-3.5 hover:bg-rose-50/50 transition cursor-pointer flex gap-3 items-start ${
-                            !notif.read ? "bg-rose-50/30" : ""
+                          className={`p-3.5 hover:bg-rose-50/60 transition cursor-pointer flex gap-3 items-start ${
+                            !notif.read ? "bg-rose-50/40" : "opacity-80"
                           }`}
                         >
-                          <div className="w-7 h-7 rounded-full bg-rose-100 text-[#7E2248] flex items-center justify-center font-bold text-xs shrink-0 border border-rose-200 mt-0.5">
-                            💬
+                          <div className="w-8 h-8 rounded-full bg-rose-100 text-[#7E2248] flex items-center justify-center font-bold text-xs shrink-0 border border-rose-200 mt-0.5">
+                            {notif.icon || "💬"}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                              <span>{notif.title}</span>
-                              <span className="text-[10px] font-normal text-slate-400">{notif.timestamp}</span>
-                            </p>
+                            <div className="text-xs font-bold text-slate-800 flex items-center justify-between gap-2">
+                              <span className="truncate">{notif.title}</span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-[10px] font-normal text-slate-400">
+                                  {formatNotifTime(notif.createdAt, notif.timestamp)}
+                                </span>
+                                {!notif.read && (
+                                  <span className="w-2 h-2 rounded-full bg-[#7E2248]" />
+                                )}
+                              </div>
+                            </div>
                             <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{notif.message}</p>
                           </div>
                         </div>
@@ -3806,9 +3946,14 @@ export default function BreakupBuddyDashboardPage() {
           key={incomingCall.requestId}
           requestId={incomingCall.requestId}
           role="BUDDY"
+          isInitiator={false}
           callerName={incomingCall.callerName}
           autoAccept={incomingCall.autoAccept}
-          onClose={() => setIncomingCall(null)}
+          initialCallLogId={(incomingCall as any).callLogId}
+          onClose={() => {
+            setIncomingCall(null);
+            fetchData();
+          }}
         />
       )}
 

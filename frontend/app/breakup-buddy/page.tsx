@@ -273,6 +273,11 @@ export default function BreakupBuddyPage() {
       return;
     }
 
+    if (!activeConnection) {
+      showToast("Please connect with a Breakup Buddy first to use your 30-min free session!");
+      return;
+    }
+
     setIsProcessingPayment(true);
     const loaded = await loadRazorpayScript();
     if (!loaded) {
@@ -282,21 +287,15 @@ export default function BreakupBuddyPage() {
     }
 
     try {
-      const targetReqId = activeConnection ? activeConnection.id : "new";
+      const targetReqId = activeConnection.id;
 
-      const orderRes = await fetch("/api/subscription/create-order", {
+      const orderRes = await fetch("/api/services/packages/create-razorpay-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          amount: pkg.price,
-          currency: "INR",
-          type: "BREAKUP_BUDDY_PACKAGE",
-          metadata: {
-            packageId: pkg.id,
-            packageName: pkg.name,
-            requestId: targetReqId,
-          }
+          packageId: pkg.id,
+          requestId: targetReqId,
         }),
       });
 
@@ -309,11 +308,11 @@ export default function BreakupBuddyPage() {
 
       const options = {
         key: orderData.keyId || "rzp_test_RIlD5bEKRjyn3h",
-        amount: orderData.order.amount,
-        currency: orderData.order.currency,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
         name: "JabWeMeet",
         description: pkg.name,
-        order_id: orderData.order.id,
+        order_id: orderData.orderId,
         prefill: {
           name: currentUser.name,
           email: currentUser.email,
@@ -324,7 +323,7 @@ export default function BreakupBuddyPage() {
         },
         handler: async (response: any) => {
           try {
-            const verifyRes = await fetch("/api/subscription/verify", {
+            const verifyRes = await fetch("/api/services/packages/verify-razorpay-payment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
@@ -332,12 +331,8 @@ export default function BreakupBuddyPage() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                type: "BREAKUP_BUDDY_PACKAGE",
-                metadata: {
-                  packageId: pkg.id,
-                  packageName: pkg.name,
-                  requestId: targetReqId,
-                }
+                requestId: targetReqId,
+                packageId: pkg.id,
               }),
             });
             const verifyData = await verifyRes.json();
@@ -345,7 +340,7 @@ export default function BreakupBuddyPage() {
               fetchMyRequests();
               showToast(`🎉 ${pkg.name} activated successfully!`);
             } else {
-              alert("Payment verification failed.");
+              alert(verifyData.message || "Payment verification failed.");
             }
           } catch (e) {
             alert("Error verifying payment.");
@@ -362,6 +357,13 @@ export default function BreakupBuddyPage() {
     }
   };
 
+  const formatQuotaTime = (secs: number) => {
+    const safe = Math.max(0, Math.floor(secs || 0));
+    const m = Math.floor(safe / 60);
+    const s = safe % 60;
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFBF9] text-slate-900 font-sans selection:bg-[#7E2248] selection:text-white flex flex-col">
       {/* Voice Call Overlay */}
@@ -371,13 +373,15 @@ export default function BreakupBuddyPage() {
           buddyId={activeCallBuddyId || ""}
           role="USER"
           isInitiator={!userIncomingCall}
-          autoAccept={!!userIncomingCall}
+          autoAccept={false}
+          initialCallLogId={(userIncomingCall as any)?.callLogId}
           callerName={currentUser?.name || "Member"}
           targetName={userIncomingCall?.callerName || buddyDisplayName}
           onClose={() => {
             setActiveCallReqId(null);
             setActiveCallBuddyId(null);
             setUserIncomingCall(null);
+            fetchMyRequests();
           }}
         />
       )}
@@ -500,7 +504,7 @@ export default function BreakupBuddyPage() {
       <header className="pt-14 pb-14 px-6 text-center relative overflow-hidden bg-gradient-to-b from-[#FAF3F6] via-[#FDFBF9] to-white border-b border-rose-100">
         <div className="max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-[#7E2248]">
-            🎁 100% Confidential • First 30 Mins Free Call & Chat
+            🎁 100% Confidential • First 30 Mins Free Call &amp; Chat
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 tracking-tight font-serif leading-tight">
@@ -613,24 +617,26 @@ export default function BreakupBuddyPage() {
                   </h3>
 
                   <p className="text-xs text-slate-600 mt-1">
-                    Your 30 minutes free session is active. You can freely call or chat with {buddyDisplayName} below.
+                    You have 30 minutes of free Call &amp; Chat combined (time counts only when both you and {buddyDisplayName} are active).
                   </p>
                 </div>
               </div>
 
-              {/* Free Minutes / Package Badges */}
+              {/* Shared 30-Min Quota Badges */}
               <div className="flex items-center gap-2 shrink-0">
-                <div className="px-3.5 py-2 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Free Chat</div>
-                  <div className="text-sm font-bold text-[#7E2248]">
-                    {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.chatMinutesLeft || 30}m Left`}
+                <div className="px-4 py-2 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-center min-w-[115px]">
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">
+                    {activeConnection.hasActivePackage ? "Pass Time Left" : "Free Time Left"}
+                  </div>
+                  <div className="text-sm font-mono font-bold text-[#7E2248]">
+                    {formatQuotaTime(activeConnection.remainingSeconds ?? 1800)}
                   </div>
                 </div>
 
-                <div className="px-3.5 py-2 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Free Call</div>
-                  <div className="text-sm font-bold text-[#7E2248]">
-                    {activeConnection.hasActivePackage ? "Unlimited" : `${activeConnection.callMinutesLeft || 30}m Left`}
+                <div className="px-4 py-2 bg-[#FDFBF9] border border-rose-100 rounded-2xl text-center min-w-[115px]">
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Used (Call + Chat)</div>
+                  <div className="text-sm font-mono font-bold text-slate-800">
+                    {formatQuotaTime(activeConnection.totalUsedSeconds ?? 0)} / {formatQuotaTime(activeConnection.totalLimitSeconds ?? 1800)}
                   </div>
                 </div>
               </div>
@@ -639,7 +645,7 @@ export default function BreakupBuddyPage() {
             {/* Action Buttons: Chat and Call */}
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
               <Link
-                href="/messages"
+                href={`/dashboard?tab=messages&requestId=${activeConnection.id}`}
                 className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3.5 px-6 bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold rounded-2xl shadow-xs transition"
               >
                 <MessageCircle className="w-4 h-4" /> Open Chat with {buddyDisplayName}

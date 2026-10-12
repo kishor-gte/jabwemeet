@@ -5,15 +5,14 @@ import {
   MessageCircle,
   Send,
   ShieldCheck,
-  Search,
-  CheckCheck,
   User,
   Clock,
   Lock,
-  CreditCard,
   Phone
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { io } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socketUrl";
 import VoiceCallOverlay from "@/components/VoiceCallOverlay";
 
 interface MessagesViewProps {
@@ -25,17 +24,18 @@ interface MessagesViewProps {
 export default function MessagesView({ userName, userId, connections = [] }: MessagesViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialRequestId = searchParams.get('requestId');
+  const initialRequestId = searchParams.get("requestId");
 
   const [requests, setRequests] = useState<any[]>([]);
   const [activeReqId, setActiveReqId] = useState<string | null>(initialRequestId);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [timerSeconds, setTimerSeconds] = useState(15 * 60); // 15 mins
-  const [chatLimitSeconds, setChatLimitSeconds] = useState(900);
-  const [remainingVoiceMinutes, setRemainingVoiceMinutes] = useState(5);
+  const [timerSeconds, setTimerSeconds] = useState(30 * 60); // 30 mins shared pool
+  const [chatLimitSeconds, setChatLimitSeconds] = useState(1800);
+  const [hasActivePackage, setHasActivePackage] = useState(false);
+  const [quotaLoaded, setQuotaLoaded] = useState(false);
   const [availablePackages, setAvailablePackages] = useState<any[]>([]);
-  const [packagesViewMode, setPackagesViewMode] = useState<"summary" | "plans">("summary");
+  const [packagesViewMode, setPackagesViewMode] = useState<"summary" | "plans">("plans");
   const [activeCallOverlay, setActiveCallOverlay] = useState<any | null>(null);
   const [bothActive, setBothActive] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
@@ -49,6 +49,41 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
     return () => clearInterval(interval);
   }, []);
 
+  // Listen for incoming calls and real-time buddy messages on /dashboard?tab=messages
+  useEffect(() => {
+    const s = io(getSocketUrl(), { withCredentials: true });
+    s.on("connect", () => {
+      if (userId) {
+        s.emit("join-user-room", userId);
+      }
+    });
+
+    s.on("incoming-call", (data) => {
+      if (data?.callerRole === "BUDDY") {
+        setActiveCallOverlay({
+          requestId: data.requestId,
+          callerName: data.callerName || "Breakup Buddy",
+          targetName: data.callerName || "Breakup Buddy",
+          role: "USER",
+          isInitiator: false,
+          autoAccept: false,
+          initialCallLogId: data.callLogId,
+        });
+      }
+    });
+
+    s.on("new-buddy-message", (data) => {
+      if (data?.requestId && data.requestId === activeReqId) {
+        fetchMessages();
+      }
+      fetchRequests();
+    });
+
+    return () => {
+      s.disconnect();
+    };
+  }, [userId, activeReqId]);
+
   const fetchPackages = async () => {
     try {
       const res = await fetch("/api/services/packages/breakup-buddy", { credentials: "include" });
@@ -59,33 +94,101 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
     } catch (e) {}
   };
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && (window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePayment = async (pkg: any) => {
+    if (!activeReqId) return;
     setPaymentStatus("processing");
     try {
-      if (activeReqId) {
-        const res = await fetch(`/api/services/buddy-subscribe/${activeReqId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ packageId: pkg.id, durationHours: pkg.durationHours }),
-          credentials: "include"
-        });
-        const data = await res.json();
-        if (data.success) {
-          const durSec = (pkg.durationHours || 1) * 3600;
-          setChatLimitSeconds(durSec);
-          setTimerSeconds(durSec); // update UI timer
-          setPaymentStatus("success");
-          setTimeout(() => {
-            setShowSubscription(false);
-            setPaymentStatus("idle");
-            setPackagesViewMode("summary");
-          }, 1500);
-        } else {
-          alert(data.message || "Failed to activate subscription");
-          setPaymentStatus("idle");
-        }
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        alert("Failed to load Razorpay payment gateway.");
+        setPaymentStatus("idle");
+        return;
       }
-    } catch(e) {
+
+      const orderRes = await fetch("/api/services/packages/create-razorpay-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          packageId: pkg.id,
+          requestId: activeReqId,
+        }),
+      });
+      const orderData = await orderRes.json();
+      if (!orderData.success) {
+        alert(orderData.message || "Failed to create payment order.");
+        setPaymentStatus("idle");
+        return;
+      }
+
+      const options = {
+        key: orderData.keyId || "rzp_test_RIlD5bEKRjyn3h",
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "JabWeMeet",
+        description: pkg.name,
+        order_id: orderData.orderId,
+        theme: {
+          color: "#7E2248",
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch("/api/services/packages/verify-razorpay-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                requestId: activeReqId,
+                packageId: pkg.id,
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setHasActivePackage(true);
+              setPaymentStatus("success");
+              await fetchMessages();
+              await fetchRequests();
+              setTimeout(() => {
+                setShowSubscription(false);
+                setPaymentStatus("idle");
+                setPackagesViewMode("plans");
+              }, 1500);
+            } else {
+              alert(verifyData.message || "Payment verification failed.");
+              setPaymentStatus("idle");
+            }
+          } catch (e) {
+            alert("Error verifying payment.");
+            setPaymentStatus("idle");
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setPaymentStatus("idle");
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (e) {
       alert("Error activating subscription");
       setPaymentStatus("idle");
     }
@@ -103,7 +206,7 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
 
   // Combine buddy requests and connections into a unified list
   const activeChats = [
-    ...requests.map(req => {
+    ...requests.map((req) => {
       const buddyName = req.buddy?.displayName || req.buddy?.name || "Breakup Buddy";
       return {
         id: req.id,
@@ -114,38 +217,41 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
         raw: req,
       };
     }),
-    ...connections.filter(c => c.status === "DateFixed" || c.status === "BothApproved").map(conn => {
-      const isClient = conn.client.id === userId;
-      const otherPerson = isClient ? conn.suggestedProfile : conn.client;
-      return {
-        id: conn.id,
-        type: "connection" as const,
-        name: otherPerson.name,
-        subtitle: "Match Connection",
-        initial: otherPerson.name[0],
-        raw: conn,
-      };
-    })
+    ...connections
+      .filter((c) => c.status === "DateFixed" || c.status === "BothApproved")
+      .map((conn) => {
+        const isClient = conn.client.id === userId;
+        const otherPerson = isClient ? conn.suggestedProfile : conn.client;
+        return {
+          id: conn.id,
+          type: "connection" as const,
+          name: otherPerson.name,
+          subtitle: "Match Connection",
+          initial: otherPerson.name[0],
+          raw: conn,
+        };
+      }),
   ];
 
-  const activeChat = activeChats.find(c => c.id === activeReqId);
+  const activeChat = activeChats.find((c) => c.id === activeReqId);
 
   useEffect(() => {
     // If activeReqId is invalid or null but we have chats, select the first one
-    if ((!activeReqId || !activeChats.find(c => c.id === activeReqId)) && activeChats.length > 0) {
-      // Prioritize selecting the initial request id if it exists in chats, else the first
-      const initMatch = activeChats.find(c => c.id === initialRequestId);
+    if ((!activeReqId || !activeChats.find((c) => c.id === activeReqId)) && activeChats.length > 0) {
+      const initMatch = activeChats.find((c) => c.id === initialRequestId);
       setActiveReqId(initMatch ? initMatch.id : activeChats[0].id);
     }
-  }, [requests, connections, activeReqId, initialRequestId, activeChats]);
+  }, [requests, connections, activeReqId, initialRequestId]);
 
   useEffect(() => {
     if (!activeReqId || !activeChat) return;
+    setQuotaLoaded(false);
+    setShowSubscription(false);
     fetchMessages();
-    sendPresence(); // Call immediately on mount
-    
+    sendPresence(true); // Notify Breakup Buddy ONCE when user enters chat
+
     const msgInterval = setInterval(fetchMessages, 3000);
-    const presenceInterval = setInterval(sendPresence, 5000);
+    const presenceInterval = setInterval(() => sendPresence(false), 4000);
 
     // Visibility change to instantly pause when changing tabs
     const handleVisibilityChange = () => {
@@ -154,7 +260,7 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
           navigator.sendBeacon(`/api/services/buddy-away/${activeReqId}`);
         }
       } else {
-        sendPresence();
+        sendPresence(false);
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -173,66 +279,73 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
     if (!activeReqId || !activeChat) return;
     try {
       if (activeChat.type === "buddy") {
-        const res = await fetch(`/api/services/buddy-chat/${activeReqId}?t=${Date.now()}`, { 
-          credentials: "include", cache: 'no-store' 
+        const res = await fetch(`/api/services/buddy-chat/${activeReqId}?t=${Date.now()}`, {
+          credentials: "include",
+          cache: "no-store",
         });
         const data = await res.json();
         if (data.success) {
           setMessages(data.data);
-          if (data.chatLimitSeconds) setChatLimitSeconds(data.chatLimitSeconds);
-          if (data.timeUsedSeconds !== undefined) {
-            const limit = data.chatLimitSeconds || 900;
-            setTimerSeconds(Math.max(0, limit - data.timeUsedSeconds));
-          }
-          if (data.voiceCallLimitSeconds !== undefined) {
-            const voiceLeft = Math.max(0, (data.voiceCallLimitSeconds || 300) - (data.voiceCallSeconds || 0));
-            setRemainingVoiceMinutes(Math.ceil(voiceLeft / 60));
-          }
+          const limit = data.totalLimitSeconds ?? data.chatLimitSeconds ?? 1800;
+          const used = data.totalUsedSeconds ?? ((data.timeUsedSeconds || 0) + (data.voiceCallSeconds || 0));
+          const rem = data.remainingSeconds ?? Math.max(0, limit - used);
+          setChatLimitSeconds(limit);
+          setTimerSeconds(rem);
+          setHasActivePackage(!!data.hasActivePackage);
+          setQuotaLoaded(true);
           scrollToBottom();
         }
       } else if (activeChat.type === "connection") {
-        const res = await fetch(`/api/auth/connections/${activeReqId}/messages?t=${Date.now()}`, { 
-          credentials: "include", cache: 'no-store' 
+        const res = await fetch(`/api/auth/connections/${activeReqId}/messages?t=${Date.now()}`, {
+          credentials: "include",
+          cache: "no-store",
         });
         const data = await res.json();
         if (data.success) {
-          setMessages(data.messages.map((m: any) => ({
-            id: m.id,
-            text: m.content,
-            senderRole: m.senderId === userId ? "USER" : "OTHER",
-            createdAt: m.createdAt
-          })));
+          setMessages(
+            data.messages.map((m: any) => ({
+              id: m.id,
+              text: m.content,
+              senderRole: m.senderId === userId ? "USER" : "OTHER",
+              createdAt: m.createdAt,
+            }))
+          );
           scrollToBottom();
         }
       }
     } catch (e) {}
   };
 
-  const sendPresence = async () => {
+  const sendPresence = async (isInitialEntry = false) => {
     if (!activeReqId || !activeChat) return;
     if (activeChat.type !== "buddy") return; // Presence only for buddy chat
+    if (activeCallOverlay) return; // Do not double-count chat presence while in an active voice call
     try {
-      const res = await fetch(`/api/services/buddy-presence/${activeReqId}`, { 
-        method: 'POST',
-        credentials: "include" 
+      const res = await fetch(`/api/services/buddy-presence/${activeReqId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ entered: isInitialEntry }),
       });
       const data = await res.json();
       if (data.success) {
         setBothActive(data.data.bothActive);
-        if (data.data.chatLimitSeconds) setChatLimitSeconds(data.data.chatLimitSeconds);
-        if (data.data.timeUsedSeconds !== undefined) {
-          const limit = data.data.chatLimitSeconds || 900;
-          setTimerSeconds(Math.max(0, limit - data.data.timeUsedSeconds));
-        }
+        const limit = data.data.totalLimitSeconds ?? data.data.chatLimitSeconds ?? 1800;
+        const used = data.data.totalUsedSeconds ?? ((data.data.timeUsedSeconds || 0) + (data.data.voiceCallSeconds || 0));
+        const rem = data.data.remainingSeconds ?? Math.max(0, limit - used);
+        setChatLimitSeconds(limit);
+        setTimerSeconds(rem);
+        setHasActivePackage(!!data.data.hasActivePackage);
+        setQuotaLoaded(true);
       }
     } catch (e) {}
   };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (activeChat?.type === "buddy" && bothActive && timerSeconds > 0 && !showSubscription) {
+    if (activeChat?.type === "buddy" && bothActive && !activeCallOverlay && !showSubscription) {
       interval = setInterval(() => {
-        setTimerSeconds(prev => {
+        setTimerSeconds((prev) => {
           if (prev <= 1) {
             setShowSubscription(true);
             return 0;
@@ -242,14 +355,20 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [bothActive, timerSeconds, showSubscription, activeChat?.type]);
+  }, [bothActive, showSubscription, activeChat?.type, activeCallOverlay]);
 
-  // Force show subscription if timer hits 0 on load or any other time
+  // Show subscription modal when the 30-min free quota hits 0
   useEffect(() => {
-    if (activeChat?.type === "buddy" && timerSeconds === 0 && !showSubscription && paymentStatus === "idle") {
+    if (
+      activeChat?.type === "buddy" &&
+      quotaLoaded &&
+      timerSeconds === 0 &&
+      !showSubscription &&
+      paymentStatus === "idle"
+    ) {
       setShowSubscription(true);
     }
-  }, [timerSeconds, showSubscription, paymentStatus, activeChat?.type]);
+  }, [timerSeconds, quotaLoaded, showSubscription, paymentStatus, activeChat?.type]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -258,25 +377,34 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeReqId || !activeChat) return;
-    if (activeChat.type === "buddy" && timerSeconds === 0) return;
+    if (activeChat.type === "buddy" && timerSeconds === 0) {
+      setShowSubscription(true);
+      return;
+    }
 
     try {
       const text = newMessage;
       setNewMessage(""); // Optimistic clear
-      
+
       if (activeChat.type === "buddy") {
-        await fetch(`/api/services/buddy-chat/${activeReqId}`, {
+        const res = await fetch(`/api/services/buddy-chat/${activeReqId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text }),
         });
+        const data = await res.json();
+        if (!data.success && data.limitReached) {
+          setTimerSeconds(0);
+          setShowSubscription(true);
+          return;
+        }
       } else {
         await fetch(`/api/auth/connections/${activeReqId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ content: text })
+          body: JSON.stringify({ content: text }),
         });
       }
       fetchMessages();
@@ -286,8 +414,10 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
+
+  const usedSeconds = Math.max(0, chatLimitSeconds - timerSeconds);
 
   return (
     <div className="space-y-6 relative">
@@ -324,14 +454,23 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                       : "hover:bg-rose-50/60"
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-xs ${
-                    chat.type === 'buddy' ? 'bg-gradient-to-br from-[#7E2248] to-[#5c1331]' : 'bg-gradient-to-br from-[#7E2248] to-[#9b315b]'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-xs ${
+                      chat.type === "buddy"
+                        ? "bg-gradient-to-br from-[#7E2248] to-[#5c1331]"
+                        : "bg-gradient-to-br from-[#7E2248] to-[#9b315b]"
+                    }`}
+                  >
                     {chat.initial}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-serif font-bold text-slate-900 truncate">{chat.name}</span>
+                      {chat.type === "buddy" && chat.raw?.remainingSeconds !== undefined && (
+                        <span className="text-[10px] font-mono font-bold text-[#7E2248] bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200">
+                          {formatTime(chat.id === activeReqId ? timerSeconds : chat.raw.remainingSeconds)}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">{chat.subtitle}</p>
                   </div>
@@ -346,11 +485,15 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
           {activeChat ? (
             <>
               {/* Header */}
-              <div className="p-4 border-b border-rose-100 flex items-center justify-between bg-white/90 backdrop-blur-xs">
+              <div className="p-4 border-b border-rose-100 flex flex-wrap items-center justify-between gap-2 bg-white/90 backdrop-blur-xs">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-xs ${
-                    activeChat.type === 'buddy' ? 'bg-gradient-to-br from-[#7E2248] to-[#5c1331]' : 'bg-gradient-to-br from-[#7E2248] to-[#9b315b]'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-xs ${
+                      activeChat.type === "buddy"
+                        ? "bg-gradient-to-br from-[#7E2248] to-[#5c1331]"
+                        : "bg-gradient-to-br from-[#7E2248] to-[#9b315b]"
+                    }`}
+                  >
                     {activeChat.initial}
                   </div>
                   <div>
@@ -361,36 +504,72 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                     <p className="text-[11px] text-slate-500">{activeChat.subtitle}</p>
                   </div>
                 </div>
-                
+
                 {activeChat.type === "buddy" && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <button
-                      onClick={() => setActiveCallOverlay({
-                        requestId: activeReqId,
-                        targetName: activeChat.name,
-                        role: "USER",
-                        isInitiator: true,
-                      })}
-                      className="p-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                      onClick={() => {
+                        if (timerSeconds <= 0) {
+                          setShowSubscription(true);
+                          return;
+                        }
+                        setActiveCallOverlay({
+                          requestId: activeReqId,
+                          buddyId: activeChat.raw?.buddyId,
+                          callerName: userName,
+                          targetName: activeChat.name,
+                          role: "USER",
+                          isInitiator: true,
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                       title="Voice Call"
                     >
                       <Phone className="w-3.5 h-3.5" />
                       <span>Call</span>
                     </button>
 
-                    {chatLimitSeconds > 900 ? (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-800">
-                        <span className="text-xs font-bold">Unlimited Pass</span>
-                      </div>
-                    ) : (
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${timerSeconds < 300 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-rose-50 border-rose-200 text-[#7E2248]'}`}>
-                        <Clock className="w-3.5 h-3.5" />
-                        <span className="text-xs font-mono font-bold">{formatTime(timerSeconds)}</span>
+                    <div
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+                        timerSeconds === 0
+                          ? "bg-red-100 border-red-300 text-red-800"
+                          : timerSeconds < 300
+                          ? "bg-red-50 border-red-200 text-red-700"
+                          : "bg-rose-50 border-rose-200 text-[#7E2248]"
+                      }`}
+                      title="Shared 30-minute free quota across Call & Chat (counts only when both are active)"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span className="text-xs font-mono font-bold">
+                        {formatTime(timerSeconds)} left
+                      </span>
+                      <span className="text-[10px] font-mono opacity-75 hidden sm:inline">
+                        (Used {formatTime(usedSeconds)}/{formatTime(chatLimitSeconds)})
+                      </span>
+                    </div>
+
+                    {hasActivePackage && (
+                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-800">
+                        <span className="text-[10px] font-bold">Pass Active</span>
                       </div>
                     )}
-                    <span className={`text-[11px] font-medium flex items-center gap-1 ${bothActive ? 'text-emerald-700' : 'text-amber-700'}`}>
-                      <span className={`w-2 h-2 rounded-full ${bothActive ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
-                      {bothActive ? 'Live' : 'Away'}
+
+                    <span
+                      className={`text-[11px] font-medium flex items-center gap-1 ${
+                        bothActive ? "text-emerald-700" : "text-amber-700"
+                      }`}
+                      title={
+                        bothActive
+                          ? "Both you and Breakup Buddy are active — timer is counting"
+                          : "Waiting for both to be active — timer is paused"
+                      }
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          bothActive ? "bg-emerald-600 animate-pulse" : "bg-amber-500"
+                        }`}
+                      />
+                      {bothActive ? "Live" : "Paused"}
                     </span>
                   </div>
                 )}
@@ -420,7 +599,7 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                       <p>{msg.text}</p>
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 px-1">
-                      {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                 ))}
@@ -433,18 +612,32 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={activeChat.type === 'buddy' && timerSeconds === 0 ? "Free chat time over. Subscription required." : "Type your message..."}
-                  disabled={activeChat.type === 'buddy' && timerSeconds === 0}
+                  placeholder={
+                    activeChat.type === "buddy" && timerSeconds === 0
+                      ? "30-minute free session ended. Subscription required."
+                      : "Type your message..."
+                  }
+                  disabled={activeChat.type === "buddy" && timerSeconds === 0}
                   className="flex-1 bg-[#FDFBF9] border border-rose-200 rounded-full px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#7E2248] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <button
-                  type="submit"
-                  disabled={activeChat.type === 'buddy' && timerSeconds === 0}
-                  className="px-5 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer transform hover:-translate-y-0.5"
-                >
-                  <span>Send</span>
-                  <Send className="w-3.5 h-3.5" />
-                </button>
+                {activeChat.type === "buddy" && timerSeconds === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSubscription(true)}
+                    className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Buy Pass</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={activeChat.type === "buddy" && timerSeconds === 0}
+                    className="px-5 py-2.5 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white text-xs font-bold shadow-md shadow-[#7E2248]/20 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer transform hover:-translate-y-0.5"
+                  >
+                    <span>Send</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </form>
             </>
           ) : (
@@ -456,13 +649,15 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
       </div>
 
       {/* Subscription Paywall Modal */}
-      {showSubscription && activeChat?.type === 'buddy' && (
+      {showSubscription && activeChat?.type === "buddy" && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-rose-100 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative transition-all">
             {paymentStatus === "success" ? (
               <div className="text-center py-10 space-y-4 animate-in zoom-in duration-300">
                 <div className="w-20 h-20 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center text-emerald-600 mx-auto">
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
                 </div>
                 <h2 className="text-2xl font-serif font-bold text-slate-900">Subscription Activated!</h2>
                 <p className="text-slate-600 text-sm">Unlimited calls and chats are now active with {activeChat.name}.</p>
@@ -478,76 +673,69 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                   <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto">
                     <Clock className="w-7 h-7" />
                   </div>
-                  <h2 className="text-2xl font-serif font-bold text-slate-900 tracking-tight">15-Minute Free Chat Ended</h2>
-                  
+                  <h2 className="text-2xl font-serif font-bold text-slate-900 tracking-tight">
+                    30-Minute Free Session Ended
+                  </h2>
+
                   <div className="space-y-3">
                     <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                      You have hit your <strong>15 minutes of free chat</strong> with <strong>{activeChat.name}</strong>.
+                      You have completed your <strong>30 minutes of free Call &amp; Chat</strong> with{" "}
+                      <strong>{activeChat.name}</strong>.
                     </p>
-                    
-                    {remainingVoiceMinutes > 0 ? (
-                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 max-w-md mx-auto">
-                        📞 You still have <strong>{remainingVoiceMinutes} minutes of free voice call</strong> available with {activeChat.name} to use!
-                      </div>
-                    ) : (
-                      <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 max-w-md mx-auto">
-                        ⚠️ You have also used all free voice call time with {activeChat.name}.
-                      </div>
-                    )}
+
+                    <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 max-w-md mx-auto">
+                      ⚠️ To continue calling or chatting with {activeChat.name}, please subscribe to a package below.
+                    </div>
                   </div>
                 </div>
 
                 {packagesViewMode === "summary" ? (
                   <div className="space-y-3 max-w-md mx-auto">
-                    {remainingVoiceMinutes > 0 && (
-                      <button
-                        onClick={() => {
-                          setShowSubscription(false);
-                          setActiveCallOverlay({
-                            requestId: activeReqId,
-                            targetName: activeChat.name,
-                            role: "USER",
-                            isInitiator: true,
-                          });
-                        }}
-                        className="w-full py-3 px-4 rounded-full bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Phone className="w-4 h-4" />
-                        <span>📞 Start Free Call ({remainingVoiceMinutes}m remaining)</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setPackagesViewMode("plans")}
+                      className="w-full py-3 px-4 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#7E2248]/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>⭐ Select a Subscription Plan</span>
+                    </button>
 
                     <button
                       onClick={() => {
                         setShowSubscription(false);
                         router.push("/dashboard?tab=packages");
                       }}
-                      className="w-full py-3 px-4 rounded-full bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#7E2248]/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3 px-4 rounded-full bg-rose-50 hover:bg-rose-100 text-[#7E2248] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <span>⭐ View Packages / Buy Unlimited Pass</span>
+                      <span>View All Packages</span>
                     </button>
 
                     <div className="text-center pt-2">
-                      <button onClick={() => setShowSubscription(false)} className="text-xs text-slate-500 hover:text-slate-800 transition underline cursor-pointer">
-                        Close & View Chat
+                      <button
+                        onClick={() => setShowSubscription(false)}
+                        className="text-xs text-slate-500 hover:text-slate-800 transition underline cursor-pointer"
+                      >
+                        Close &amp; View Chat
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pb-2 border-b border-rose-100">
-                      <button
-                        onClick={() => setPackagesViewMode("summary")}
-                        className="text-xs text-slate-500 hover:text-slate-800 transition flex items-center gap-1 cursor-pointer"
-                      >
-                        ← Back
-                      </button>
-                      <span className="text-xs text-emerald-800 font-bold">Unlimited Calls & Chats</span>
+                      <span className="text-xs text-slate-600 font-semibold">Choose a Pass</span>
+                      <span className="text-xs text-emerald-800 font-bold">Unlimited Calls &amp; Chats</span>
                     </div>
 
                     {availablePackages.length === 0 ? (
-                      <div className="p-6 text-center text-slate-500 text-xs bg-rose-50/40 rounded-2xl border border-rose-100">
-                        No packages currently available.
+                      <div className="p-6 text-center text-slate-500 text-xs bg-rose-50/40 rounded-2xl border border-rose-100 space-y-3">
+                        <p>No packages currently loaded.</p>
+                        <button
+                          onClick={() => {
+                            setShowSubscription(false);
+                            router.push("/dashboard?tab=packages");
+                          }}
+                          className="px-4 py-2 rounded-full bg-[#7E2248] text-white font-bold text-xs cursor-pointer"
+                        >
+                          Go to Packages Tab
+                        </button>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
@@ -561,9 +749,7 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                               <div className="text-xs text-purple-700 font-semibold mt-0.5">
                                 {pkg.durationHours || 1} {pkg.durationHours === 1 ? "Hour" : "Hours"} Pass
                               </div>
-                              <div className="text-lg font-serif font-black text-emerald-700 mt-2">
-                                ₹{pkg.price}
-                              </div>
+                              <div className="text-lg font-serif font-black text-emerald-700 mt-2">₹{pkg.price}</div>
                               {pkg.description && (
                                 <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{pkg.description}</p>
                               )}
@@ -573,15 +759,23 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
                               onClick={() => handlePayment(pkg)}
                               className="mt-3 w-full py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
                             >
-                              Buy & Continue
+                              Buy &amp; Continue
                             </button>
                           </div>
                         ))}
                       </div>
                     )}
 
-                    <div className="flex justify-center text-slate-400 text-[11px] items-center gap-1.5 pt-2">
-                      <Lock className="w-3.5 h-3.5" /> 100% Secure & Confidential
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex text-slate-400 text-[11px] items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5" /> 100% Secure &amp; Confidential
+                      </div>
+                      <button
+                        onClick={() => setShowSubscription(false)}
+                        className="text-xs text-slate-500 hover:text-slate-800 transition underline cursor-pointer"
+                      >
+                        Close &amp; View Chat
+                      </button>
                     </div>
                   </div>
                 )}
@@ -595,12 +789,17 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
       {activeCallOverlay && (
         <VoiceCallOverlay
           requestId={activeCallOverlay.requestId}
+          buddyId={activeCallOverlay.buddyId}
+          callerName={activeCallOverlay.callerName || userName}
           targetName={activeCallOverlay.targetName}
           role={activeCallOverlay.role}
           isInitiator={activeCallOverlay.isInitiator}
+          autoAccept={activeCallOverlay.autoAccept}
+          initialCallLogId={activeCallOverlay.initialCallLogId}
           onClose={() => {
             setActiveCallOverlay(null);
             fetchMessages();
+            fetchRequests();
           }}
         />
       )}

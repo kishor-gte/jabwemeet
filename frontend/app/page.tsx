@@ -61,11 +61,55 @@ export default function HomePage() {
     totalUsers: 0,
     verifiedMembers: 0,
     totalEvents: 0,
+    offlinePercentage: 100,
     totalCafes: 0,
     totalBookings: 0,
     averageRating: 4.9,
     activeCities: ["Bengaluru", "Mumbai"],
   });
+  const [statsLoaded, setStatsLoaded] = useState(false);
+  const [activeDilemma, setActiveDilemma] = useState<string>("Ghosting");
+
+  const dilemmaItems = [
+    {
+      label: "Endless swipe",
+      titleLine1: "Thousands of swipes.",
+      titleLine2: "zero real chemistry.",
+      desc1:
+        "Dating apps turn real human beings into an endless deck of cards—training you to judge a life story in half a second while keeping you hooked to the screen.",
+      desc2:
+        "JabWeMeet replaces the swipe loop with curated offline mixers and personal Relationship Managers who introduce you in the real world.",
+    },
+    {
+      label: "Ghosting",
+      titleLine1: "Too many matches.",
+      titleLine2: "not enough moments.",
+      desc1:
+        "Dating apps promised effortless human connection. Instead, they delivered algorithmic addiction, endless ghosting, superficial judgments, and hours wasted on dry chats that lead nowhere.",
+      desc2:
+        "JabWeMeet changes that by bringing connection back to where it belongs: the real world.",
+    },
+    {
+      label: "Digital Deception",
+      titleLine1: "Curated filters.",
+      titleLine2: "hidden intentions.",
+      desc1:
+        "Behind heavily edited photos and scripted bios, it is harder than ever on dating apps to know if the person on your screen is genuine, single, or even real.",
+      desc2:
+        "JabWeMeet protects your trust with verified member profiles, human matchmaker screening, and safe Partner Cafe venues.",
+    },
+    {
+      label: "Conversations that go Nowhere",
+      titleLine1: "Weeks of texting.",
+      titleLine2: "never actually meeting.",
+      desc1:
+        "\"Hey, how was your weekend?\" repeated twenty times a week—only for the conversation to fade out before anyone ever suggests a real cup of coffee.",
+      desc2:
+        "JabWeMeet skips endless texting by arranging real face-to-face Blind Dates, curated group events, and supportive Breakup Buddy sessions.",
+    },
+  ];
+  const currentDilemma = dilemmaItems.find((d) => d.label === activeDilemma) || dilemmaItems[1];
+
   const [eventCities, setEventCities] = useState<string[]>([]);
   const [showCityPickerDropdown, setShowCityPickerDropdown] = useState(false);
 
@@ -92,11 +136,12 @@ export default function HomePage() {
   };
 
   const fetchPlatformStats = () => {
-    fetch("/api/services/stats")
+    fetch(`/api/services/stats?t=${Date.now()}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.success && data?.stats) {
           setPlatformStats(data.stats);
+          setStatsLoaded(true);
         }
       })
       .catch((e) => console.error("Error fetching platform stats:", e));
@@ -435,31 +480,29 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-rose-100 text-center">
             <div className="pt-2 md:pt-0 md:px-4">
               <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                {platformStats.verifiedMembers > 0 
-                  ? (platformStats.verifiedMembers >= 1000 
-                      ? `${(platformStats.verifiedMembers / 1000).toFixed(1)}k+` 
-                      : `${platformStats.verifiedMembers.toLocaleString()}+`) 
-                  : "10,000+"}
+                {statsLoaded
+                  ? platformStats.verifiedMembers >= 1000
+                    ? `${(platformStats.verifiedMembers / 1000).toFixed(1)}k+`
+                    : `${(platformStats.verifiedMembers || 0).toLocaleString()}+`
+                  : "..."}
               </div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Verified Members</div>
             </div>
             <div className="pt-4 md:pt-0 md:px-4">
               <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                {platformStats.totalEvents > 0 
-                  ? (platformStats.totalEvents >= 100 
-                      ? `${platformStats.totalEvents}+` 
-                      : `${platformStats.totalEvents}+`) 
-                  : "250+"}
+                {statsLoaded ? `${(platformStats.totalEvents || 0).toLocaleString()}+` : "..."}
               </div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Curated Events</div>
             </div>
             <div className="pt-4 md:pt-0 md:px-4">
-              <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">100%</div>
+              <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                {statsLoaded ? `${platformStats.offlinePercentage ?? 100}%` : "..."}
+              </div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Offline First</div>
             </div>
             <div className="pt-4 md:pt-0 md:px-4">
               <div className="text-3xl sm:text-4xl font-extrabold text-[#7E2248] tracking-tight">
-                {platformStats.averageRating ? `${platformStats.averageRating} ★` : "4.9 ★"}
+                {statsLoaded ? `${Number(platformStats.averageRating || 4.9).toFixed(1)} ★` : "..."}
               </div>
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Community Trust</div>
             </div>
@@ -482,36 +525,41 @@ export default function HomePage() {
           </div>
 
           {/* Right: Copywriting */}
-          <div className="md:col-span-7 space-y-6">
+          <div className="md:col-span-7 space-y-6 transition-all duration-300">
             <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
-              Too many matches.
+              {currentDilemma.titleLine1}
               <br />
-              <span className="font-serif italic font-normal text-[#7E2248]">not enough moments.</span>
+              <span className="font-serif italic font-normal text-[#7E2248]">{currentDilemma.titleLine2}</span>
             </h2>
 
             <p className="text-slate-600 text-base leading-relaxed">
-              Dating apps promised effortless human connection. Instead, they delivered algorithmic addiction, endless ghosting, superficial judgments, and hours wasted on dry chats that lead nowhere.
+              {currentDilemma.desc1}
             </p>
             <p className="text-slate-600 text-base leading-relaxed">
-              JabWeMeet changes that by bringing connection back to where it belongs: <strong className="text-slate-900">the real world</strong>.
+              {currentDilemma.desc2}
             </p>
           </div>
         </div>
 
         {/* Fatigue Tags Row */}
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-3 pt-2 pb-6">
-          <span className="px-5 py-2.5 rounded-full border border-rose-200 text-rose-900 text-xs font-semibold bg-rose-50/50">
-            Endless swipe
-          </span>
-          <span className="px-6 py-2.5 rounded-full bg-[#7E2248] text-white text-xs font-bold shadow-sm">
-            Ghosting
-          </span>
-          <span className="px-5 py-2.5 rounded-full border border-rose-200 text-rose-900 text-xs font-semibold bg-rose-50/50">
-            Digital Deception
-          </span>
-          <span className="px-6 py-2.5 rounded-full bg-[#7E2248] text-white text-xs font-bold shadow-sm">
-            Conversations that go Nowhere
-          </span>
+          {dilemmaItems.map((item) => {
+            const isActive = activeDilemma === item.label;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => setActiveDilemma(item.label)}
+                className={
+                  isActive
+                    ? "px-6 py-2.5 rounded-full bg-[#7E2248] text-white text-xs font-bold shadow-sm transition-all cursor-pointer transform scale-105"
+                    : "px-5 py-2.5 rounded-full border border-rose-200 text-rose-900 text-xs font-semibold bg-rose-50/50 hover:bg-rose-100 transition-all cursor-pointer"
+                }
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       </section>
 
