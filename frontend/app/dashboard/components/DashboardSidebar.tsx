@@ -561,7 +561,9 @@ export default function DashboardSidebar({
           initialCallLogId={incomingCall.callLogId}
           role="USER"
           isInitiator={false}
+          autoAccept={false}
           callerName={incomingCall.callerName}
+          targetName={incomingCall.callerName || "Breakup Buddy"}
           onClose={() => setIncomingCall(null)}
         />
       )}

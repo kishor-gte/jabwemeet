@@ -58,19 +58,7 @@ export default function MessagesView({ userName, userId, connections = [] }: Mes
       }
     });
 
-    s.on("incoming-call", (data) => {
-      if (data?.callerRole === "BUDDY") {
-        setActiveCallOverlay({
-          requestId: data.requestId,
-          callerName: data.callerName || "Breakup Buddy",
-          targetName: data.callerName || "Breakup Buddy",
-          role: "USER",
-          isInitiator: false,
-          autoAccept: false,
-          initialCallLogId: data.callLogId,
-        });
-      }
-    });
+    // Global incoming calls handled by DashboardSidebar
 
     s.on("new-buddy-message", (data) => {
       if (data?.requestId && data.requestId === activeReqId) {

@@ -6,10 +6,10 @@ const transporter = {
   },
 };
 
-const FROM_HEADER = `"JabWeMeet Official" <${process.env.MAIL_USERNAME || 'noreply@jabweemeet.com'}>`;
+const FROM_HEADER = `"JabWeMeet Official" <${process.env.SMTP_FROM_EMAIL || process.env.MAIL_FROM || process.env.SMTP_USERNAME || process.env.MAIL_USERNAME || 'noreply@jabweemeet.com'}>`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const DASHBOARD_URL = `${FRONTEND_URL}/breakup-buddy/dashboard`;
-const ADMIN_EMAIL = process.env.ADMIN_ALERT_EMAIL || process.env.MAIL_USERNAME || 'admin@jabweemeet.com';
+const ADMIN_EMAIL = process.env.ADMIN_ALERT_EMAIL || process.env.SMTP_USERNAME || process.env.MAIL_USERNAME || 'admin@jabweemeet.com';
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -94,37 +94,38 @@ function wrapTemplate({ title, badge, contentHtml, buttonText, buttonUrl }) {
 // 1. USER VERIFICATION & STATUS
 // ==========================================
 
-/** User Verification Approved */
+/** User Verification & Account Approved */
 async function sendUserVerificationApprovedEmail({ userEmail, userName }) {
   if (!userEmail) return;
   try {
     const html = wrapTemplate({
-      title: 'Identity Verified - JabWeMeet',
-      badge: { text: '⭐ Profile Verified', type: 'badge-success' },
+      title: 'Account Approved - JabWeMeet',
+      badge: { text: '⭐ Account Approved', type: 'badge-success' },
       contentHtml: `
         <h2 style="color:#ffffff; margin-top:0;">Congratulations, ${userName || 'Member'}! 🎉</h2>
-        <p>Your identity documents have been reviewed and <strong style="color:#34d399;">APPROVED</strong> by our trust and safety team.</p>
+        <p>Great news! Your JabWeMeet account registration has been reviewed and <strong style="color:#34d399;">APPROVED</strong> by our administrative team.</p>
+        <p>Your login access is now active. You can log into your JabWeMeet dashboard right away!</p>
         <div class="card">
-          <p style="margin:0 0 10px 0; color:#e2e8f0; font-weight:700;">🌟 Your Verified Benefits are now active:</p>
+          <p style="margin:0 0 10px 0; color:#e2e8f0; font-weight:700;">🌟 Your Account Privileges are now active:</p>
           <ul style="margin:0; padding-left:20px; color:#94a3b8; line-height:1.7;">
-            <li><strong style="color:#ffffff;">Verified Badge:</strong> Blue checkmark displayed on your profile.</li>
-            <li><strong style="color:#ffffff;">Priority Matching:</strong> Top recommendation in matchmaking feeds.</li>
-            <li><strong style="color:#ffffff;">VIP Access:</strong> RSVP directly for offline curated events and mixers.</li>
+            <li><strong style="color:#ffffff;">Login Access:</strong> Sign in with your registered email and password.</li>
+            <li><strong style="color:#ffffff;">Offline Events:</strong> RSVP for curated offline mixers and speed-dating tables.</li>
+            <li><strong style="color:#ffffff;">Real Connections:</strong> Match with verified members in your city.</li>
           </ul>
         </div>
-        <p>Explore verified connections and upcoming mixers in your city today!</p>
+        <p style="margin-top:16px;">We look forward to seeing you at our upcoming offline events!</p>
       `,
-      buttonText: 'Explore Events & Matches 💫',
-      buttonUrl: `${FRONTEND_URL}/dashboard`,
+      buttonText: 'Login to JabWeMeet 💫',
+      buttonUrl: `${FRONTEND_URL}/login`,
     });
 
     await transporter.sendMail({
       from: FROM_HEADER,
       to: userEmail,
-      subject: '⭐ Congratulations! Your JabWeMeet Profile is Officially Verified',
+      subject: '⭐ Congratulations! Your JabWeMeet Account is Approved - You Can Now Log In',
       html,
     });
-    console.log(`[Mailer] User Verified Approved email sent to ${userEmail}`);
+    console.log(`[Mailer] User Account Approved email sent to ${userEmail}`);
   } catch (err) {
     console.error(`[Mailer Error] User Verified Approved:`, err.message);
   }
@@ -1530,68 +1531,89 @@ async function sendTestEmail({ toEmail, email, subject, previewNote }) {
 
 /** Registration OTP */
 async function sendRegistrationOTP({ userEmail, userName, otp }) {
-  if (!userEmail) return { success: false, message: 'No recipient email specified' };
+  if (!userEmail) return { success: false, error: 'No recipient email specified' };
   try {
-    const fromAddress = process.env.MAIL_USERNAME || 'noreply@jabweemeet.com';
+    const fromAddress = process.env.SMTP_FROM_EMAIL || process.env.MAIL_FROM || process.env.SMTP_USERNAME || process.env.MAIL_USERNAME || 'noreply@jabweemeet.com';
     const fromHeader = `"JabWeMeet Official" <${fromAddress}>`;
 
     const html = wrapTemplate({
-      title: 'Your Registration OTP - JabWeMeet',
+      title: 'JabWeMeet Email Verification',
       badge: { text: '🔐 Verification Code', type: 'badge-info' },
       contentHtml: `
         <h2 style="color:#ffffff; margin-top:0;">Hello ${userName || 'Member'},</h2>
-        <p>Thank you for registering on JabWeMeet. Please use the following One-Time Password (OTP) to complete your registration:</p>
+        <p>Thank you for registering on JabWeMeet. Please use the following One-Time Password (OTP) to complete your email verification:</p>
         <div class="card" style="text-align: center; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #ec4899; padding: 22px; background: #162238; border-radius: 16px; border: 1px solid rgba(236,72,153,0.35);">
           ${otp}
         </div>
         <p style="font-size: 13px; color: #94a3b8; margin-top: 14px;">
-          This OTP is valid for <strong>10 minutes</strong>. If you did not request this verification, please ignore this email.
+          This OTP is valid for <strong>5 minutes</strong>. If you did not request this verification, please ignore this email.
         </p>
       `,
     });
 
-    const text = `Hello ${userName || 'Member'},\n\nYour JabWeMeet verification OTP is: ${otp}\n\nThis OTP is valid for 10 minutes.\n\nBest regards,\nJabWeMeet Technologies`;
+    const text = `Hello ${userName || 'Member'},\n\nYour JabWeMeet verification OTP is: ${otp}\n\nThis OTP is valid for 5 minutes.\n\nBest regards,\nJabWeMeet Technologies`;
 
     const mailOptions = {
       from: fromHeader,
       to: userEmail.trim(),
       replyTo: fromAddress,
-      subject: `${otp} is your JabWeMeet verification code`,
+      subject: 'JabWeMeet Email Verification Code',
       text,
       html,
     };
 
-    console.log(`📤 [Dispatching OTP Email] to: ${userEmail} (Code: ${otp})`);
+    console.log(`📤 [Dispatching OTP Email] to: ${userEmail}`);
     const info = await sendQueuedMail(mailOptions, true);
+    if (!info || info.success === false) {
+      throw new Error(info?.error || 'Email delivery failed');
+    }
     console.log(`✅ [OTP Email Sent Successfully] to: ${userEmail}`);
     return { success: true, info };
   } catch (err) {
     console.error(`❌ [Failed Sending OTP Email] to ${userEmail}:`, err.message || err);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || 'Failed to deliver OTP email' };
   }
 }
 
-/** Registration Success */
+/** Registration Success - Pending Admin Approval */
 async function sendRegistrationSuccessEmail({ userEmail, userName, role }) {
   if (!userEmail) return;
   try {
-    let extraContent = '';
-    if (role === 'MATCHMAKER' || role === 'BREAKUP_BUDDY' || role === 'HOST') {
-      extraContent = '<p>Your application has been received and is currently under review by our admin team. You will be notified once approved.</p>';
-    }
+    const isMember = role === 'USER';
+    const roleTitle = isMember ? 'Member' : (role || 'User');
+    const extraContent = `
+      <div class="card" style="margin-top:16px;">
+        <p style="margin:0 0 8px 0; color:#fbbf24; font-weight:700;">⏳ Admin Approval Pending:</p>
+        <p style="margin:0; color:#cbd5e1; font-size:14px; line-height:1.6;">
+          Your ${roleTitle} registration has been received and is currently awaiting approval from our administrative team.
+          To maintain safety and quality across all JabWeMeet events, all new accounts are verified before login access is granted.
+        </p>
+        <p style="margin:8px 0 0 0; color:#94a3b8; font-size:13px;">
+          You will receive an email confirmation with login instructions as soon as an Administrator approves your account.
+        </p>
+      </div>
+    `;
     const html = wrapTemplate({
-      title: 'Registration Successful - JabWeMeet',
-      badge: { text: '🎉 Welcome', type: 'badge-success' },
+      title: 'Registration Received - JabWeMeet',
+      badge: { text: '⏳ Pending Admin Approval', type: 'badge-warning' },
       contentHtml: `
         <h2 style="color:#ffffff; margin-top:0;">Welcome to JabWeMeet, ${userName || 'Member'}! 🎉</h2>
-        <p>Your registration was successful.</p>
+        <p>Thank you for completing your registration.</p>
         ${extraContent}
       `,
-      buttonText: 'Login Now',
+      buttonText: 'Check Login Status',
       buttonUrl: `${FRONTEND_URL}/login`,
     });
-    await transporter.sendMail({ from: FROM_HEADER, to: userEmail, subject: '🎉 Welcome to JabWeMeet! Registration Successful', html });
-  } catch (err) {}
+    await transporter.sendMail({
+      from: FROM_HEADER,
+      to: userEmail,
+      subject: '⏳ Registration Received - Pending Admin Approval - JabWeMeet',
+      html,
+    });
+    console.log(`[Mailer] Registration pending approval email sent to ${userEmail}`);
+  } catch (err) {
+    console.error('[Mailer Error] sendRegistrationSuccessEmail:', err.message);
+  }
 }
 
 module.exports = {

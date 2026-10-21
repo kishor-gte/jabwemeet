@@ -78,7 +78,7 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '2mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 app.use(cookieParser());
 
@@ -159,6 +159,7 @@ app.use('/api/cafe', cafeRouter);
 app.use('/api/matchmaker', matchmakerRouter);
 app.use('/api/buddy', require('./routes/buddy'));
 app.use('/api/subscription', subscriptionRouter);
+app.use('/api/payments', require('./routes/payments'));
 app.use('/api/places', placesRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api', servicesRouter);

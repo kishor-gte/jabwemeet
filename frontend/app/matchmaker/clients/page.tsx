@@ -34,6 +34,7 @@ export default function ClientsPage() {
   // AI Modal State
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [connectingMatchId, setConnectingMatchId] = useState<string | null>(null);
   const [connectNotice, setConnectNotice] = useState<string | null>(null);
@@ -59,15 +60,19 @@ export default function ClientsPage() {
   const handleShowCompatibility = async (client: Client) => {
     setActiveClient(client);
     setMatches([]);
+    setMatchError(null);
     setLoadingMatches(true);
     try {
       const res = await fetch(`/api/matchmaker/clients/${client.id}/compatibility`, { credentials: "include" });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setMatches(data.matches || []);
+      } else {
+        setMatchError(data?.message || "AI compatibility service is temporarily unavailable.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching matches", err);
+      setMatchError(err?.message || "Failed to load AI compatibility scores.");
     } finally {
       setLoadingMatches(false);
     }
@@ -158,6 +163,11 @@ export default function ClientsPage() {
                 <div className="flex flex-col items-center justify-center py-10 space-y-3">
                   <Sparkles className="w-8 h-8 text-[#7E2248] animate-pulse" />
                   <p className="text-slate-600 text-xs font-medium animate-pulse">Gemini AI is analyzing compatibility scores...</p>
+                </div>
+              ) : matchError ? (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs text-center space-y-1">
+                  <p className="font-bold">⚠️ AI Compatibility Unavailable</p>
+                  <p className="text-amber-800">{matchError}</p>
                 </div>
               ) : matches.length === 0 ? (
                 <div className="text-center py-8 text-slate-500 text-xs">

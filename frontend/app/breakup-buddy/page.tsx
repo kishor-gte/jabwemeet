@@ -40,8 +40,7 @@ export default function BreakupBuddyPage() {
   // Calling State
   const [activeCallReqId, setActiveCallReqId] = useState<string | null>(null);
   const [activeCallBuddyId, setActiveCallBuddyId] = useState<string | null>(null);
-  const [userIncomingCall, setUserIncomingCall] = useState<{ requestId: string; callerName: string } | null>(null);
-
+  
   // Connect State
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -177,9 +176,7 @@ export default function BreakupBuddyPage() {
     s.on("connect", () => {
       s.emit("join-user-room", currentUser.id);
     });
-    s.on("incoming-call", (data) => {
-      setUserIncomingCall(data);
-    });
+    // Global incoming calls handled by DashboardSidebar
     s.on("buddy-request-accepted", () => {
       fetchMyRequests();
     });
@@ -367,20 +364,17 @@ export default function BreakupBuddyPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF9] text-slate-900 font-sans selection:bg-[#7E2248] selection:text-white flex flex-col">
       {/* Voice Call Overlay */}
-      {(activeCallReqId || userIncomingCall) && (
+      {activeCallReqId && (
         <VoiceCallOverlay
-          requestId={activeCallReqId || userIncomingCall?.requestId || ""}
+          requestId={activeCallReqId}
           buddyId={activeCallBuddyId || ""}
           role="USER"
-          isInitiator={!userIncomingCall}
-          autoAccept={false}
-          initialCallLogId={(userIncomingCall as any)?.callLogId}
+          isInitiator={true}
           callerName={currentUser?.name || "Member"}
-          targetName={userIncomingCall?.callerName || buddyDisplayName}
+          targetName={buddyDisplayName}
           onClose={() => {
             setActiveCallReqId(null);
             setActiveCallBuddyId(null);
-            setUserIncomingCall(null);
             fetchMyRequests();
           }}
         />

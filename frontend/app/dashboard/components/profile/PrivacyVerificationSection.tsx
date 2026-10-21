@@ -10,6 +10,7 @@ import {
   AlertCircle,
   KeyRound,
   Shield,
+  Clock,
 } from "lucide-react";
 
 export interface PrivacyVerificationData {
@@ -96,13 +97,29 @@ export default function PrivacyVerificationSection({
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4" />
+          <div className={`p-4 rounded-2xl flex items-center gap-3 border ${
+            userVerification.isMemberVerified
+              ? "bg-emerald-50/50 border-emerald-200"
+              : "bg-amber-50/50 border-amber-200"
+          }`}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              userVerification.isMemberVerified
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-amber-100 text-amber-700"
+            }`}>
+              {userVerification.isMemberVerified ? (
+                <ShieldCheck className="w-4 h-4" />
+              ) : (
+                <Clock className="w-4 h-4" />
+              )}
             </div>
             <div>
               <div className="font-bold text-slate-900">Member Tier</div>
-              <div className="text-[11px] text-emerald-700 font-medium">Verified Offline Member</div>
+              <div className={`text-[11px] font-medium ${
+                userVerification.isMemberVerified ? "text-emerald-700" : "text-amber-700"
+              }`}>
+                {userVerification.isMemberVerified ? "Verified Offline Member" : "Pending Admin Verification"}
+              </div>
             </div>
           </div>
         </div>

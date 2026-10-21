@@ -83,10 +83,15 @@ export default function DashboardHeader({
         <div className="space-y-4 max-w-3xl">
           {/* Dynamic Badges */}
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            {user.isVerified !== false && (
+            {user.isVerified ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 Verified Account
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs" title="Pending verification by platform administrator">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                Pending Verification
               </span>
             )}
 

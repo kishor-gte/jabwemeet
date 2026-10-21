@@ -82,10 +82,7 @@ export default function LoginPage() {
               Your account is under review by the admin team. You will be able to log in once approved.
             </p>
             <p className="text-slate-500">
-              Admin can approve your account at{" "}
-              <Link href="/admin" className="text-[#7E2248] underline font-semibold">
-                /admin → Staff &amp; Host Approvals
-              </Link>
+              You will receive an email notification as soon as an Administrator reviews and approves your account.
             </p>
           </div>
         )}

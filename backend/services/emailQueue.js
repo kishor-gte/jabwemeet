@@ -5,34 +5,30 @@ const nodemailer = require('nodemailer');
 const Redis = require('ioredis');
 
 // 1. Initialize Nodemailer Transporter
+const mailUser = process.env.SMTP_USERNAME || process.env.SMTP_USER || process.env.MAIL_USERNAME;
+const mailPass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS || process.env.MAIL_PASSWORD;
+const mailHost = process.env.SMTP_HOST || process.env.MAIL_HOST || 'smtp.gmail.com';
+const mailPort = parseInt(process.env.SMTP_PORT || process.env.MAIL_PORT, 10) || 587;
+const isSecure = (process.env.SMTP_PORT || process.env.MAIL_PORT) == '465' || process.env.SMTP_SECURE === 'true';
+
 let transporter;
 try {
-  if (process.env.MAIL_USERNAME && process.env.MAIL_PASSWORD) {
+  if (mailUser && mailPass) {
     transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.MAIL_PORT, 10) || 587,
-      secure: process.env.MAIL_PORT == '465',
+      host: mailHost,
+      port: mailPort,
+      secure: isSecure,
       auth: {
-        user: process.env.MAIL_USERNAME,
-        pass: process.env.MAIL_PASSWORD,
+        user: mailUser,
+        pass: mailPass,
       },
     });
   } else {
-    transporter = {
-      sendMail: async (options) => {
-        console.log(`[EmailQueue Sim] To: ${options.to} | Subject: ${options.subject}`);
-        return { messageId: 'simulated-' + Date.now() };
-      },
-    };
+    transporter = null;
   }
 } catch (err) {
   console.warn('⚠️ [EmailQueue] Failed to initialize nodemailer transport:', err.message);
-  transporter = {
-    sendMail: async (options) => {
-      console.log(`[EmailQueue Sim] To: ${options.to} | Subject: ${options.subject}`);
-      return { messageId: 'simulated-' + Date.now() };
-    },
-  };
+  transporter = null;
 }
 
 // 2. Initialize Redis Client with Auto-Fallback
@@ -225,17 +221,28 @@ setInterval(processNextEmail, RATE_INTERVAL_MS);
 async function sendQueuedMail(mailOptions, immediate = false) {
   if (!mailOptions || !mailOptions.to) {
     console.warn('⚠️ [EmailQueue] Attempted to send email without recipient.');
-    return { success: false, message: 'Recipient is required' };
+    return { success: false, error: 'Recipient is required' };
   }
 
   if (immediate) {
+    if (!transporter) {
+      const errMsg = 'SMTP credentials not configured. Please set SMTP_USERNAME and SMTP_PASSWORD in environment.';
+      console.error(`❌ [Immediate Email Failed] for ${mailOptions.to}:`, errMsg);
+      return { success: false, error: errMsg };
+    }
     try {
       const result = await transporter.sendMail(mailOptions);
       console.log(`📬 [Immediate Email Sent] To: ${mailOptions.to} | ID: ${result.messageId}`);
       return { success: true, messageId: result.messageId };
     } catch (err) {
-      console.warn(`⚠️ [Immediate Email Failed] Falling back to queue for ${mailOptions.to}:`, err.message);
+      console.error(`❌ [Immediate Email Failed] for ${mailOptions.to}:`, err.message);
+      return { success: false, error: err.message || 'SMTP delivery rejected' };
     }
+  }
+
+  if (!transporter) {
+    console.warn('[EmailQueue Sim] SMTP unconfigured. Simulated queueing.');
+    return { success: true, queued: true, simulated: true };
   }
 
   return enqueueEmail({ mailOptions });

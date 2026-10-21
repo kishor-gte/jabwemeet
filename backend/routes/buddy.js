@@ -5,6 +5,56 @@ const { sendSessionScheduledEmail, sendRequestClaimedByOtherEmail } = require('.
 
 const router = express.Router();
 
+// GET /api/buddy/ice-servers - Supplies STUN + TURN relay configurations for voice calls
+router.get('/ice-servers', (req, res) => {
+  const customTurnUrls = process.env.TURN_URLS || process.env.TURN_URL;
+  const customTurnUsername = process.env.TURN_USERNAME;
+  const customTurnCredential = process.env.TURN_CREDENTIAL || process.env.TURN_PASSWORD;
+
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+  ];
+
+  if (customTurnUrls) {
+    const urls = customTurnUrls.split(',').map(u => u.trim());
+    iceServers.push({
+      urls,
+      username: customTurnUsername || '',
+      credential: customTurnCredential || '',
+    });
+  }
+
+  iceServers.push(
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    }
+  );
+
+  return res.json({ success: true, iceServers });
+});
+
 router.use(authenticateToken);
 router.use(requireRole(['BREAKUP_BUDDY']));
 
@@ -72,12 +122,28 @@ router.get('/requests', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    const formattedRequests = rawRequests.map((r) => ({
-      ...r,
-      isBroadcast: r.status === 'Pending',
-      isClaimedByMe: r.buddyId === currentBuddyId && r.status === 'Accepted',
-      isClaimedByOther: r.buddyId !== currentBuddyId && r.status === 'Accepted',
-    }));
+    const formattedRequests = rawRequests.map((r) => {
+      const isAcceptedByMe = r.buddyId === currentBuddyId && r.status === 'Accepted';
+      const sanitizedUser = r.user ? {
+        id: r.user.id,
+        name: r.user.name,
+        city: r.user.city,
+        gender: r.user.gender,
+        profileImage: r.user.profileImage,
+        // Personal Information Privacy: Protect sensitive PII (email, phone, DOB) before acceptance
+        email: isAcceptedByMe ? r.user.email : null,
+        phone: isAcceptedByMe ? r.user.phone : null,
+        dateOfBirth: isAcceptedByMe ? r.user.dateOfBirth : null,
+      } : null;
+
+      return {
+        ...r,
+        user: sanitizedUser,
+        isBroadcast: r.status === 'Pending',
+        isClaimedByMe: isAcceptedByMe,
+        isClaimedByOther: r.buddyId !== currentBuddyId && r.status === 'Accepted',
+      };
+    });
 
     res.json({ success: true, data: formattedRequests });
   } catch (error) {

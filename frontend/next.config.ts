@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    cpus: 1,
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_URL || "http://127.0.0.1:5001";

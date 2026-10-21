@@ -30,11 +30,19 @@ interface UserProfile {
   email: string;
   phone: string;
   city: string;
+  hometown?: string | null;
   gender: string | null;
   relationshipIntent: string | null;
   role: string;
+  isVerified?: boolean;
+  emailVerified?: boolean;
   createdAt: string;
   dateOfBirth?: string;
+  profileVisibility?: string;
+  allowRmMatchmaking?: boolean;
+  showAgePublicly?: boolean;
+  showHometownPublicly?: boolean;
+  cityVisibility?: boolean;
 }
 
 interface AnnouncementItem {
@@ -163,18 +171,11 @@ function DashboardContent() {
         }
         const data = await res.json();
         if (data.success && data.user) {
-          // Check if there are local saved preferences for this user
-          const savedUserOverrides = localStorage.getItem(`jwm_user_overrides_${data.user.id}`);
-          if (savedUserOverrides) {
-            try {
-              const overrides = JSON.parse(savedUserOverrides);
-              setUser({ ...data.user, ...overrides });
-            } catch {
-              setUser(data.user);
-            }
-          } else {
-            setUser(data.user);
-          }
+          // Always use the latest authenticated user profile from the database
+          setUser(data.user);
+          try {
+            localStorage.removeItem(`jwm_user_overrides_${data.user.id}`);
+          } catch {}
 
           // Load user-specific interactive state
           try {
@@ -338,9 +339,6 @@ function DashboardContent() {
     if (!user) return;
     const updated = { ...user, ...updatedFields };
     setUser(updated);
-    try {
-      localStorage.setItem(`jwm_user_overrides_${user.id}`, JSON.stringify(updatedFields));
-    } catch {}
   };
 
   // Helper to dynamically load Razorpay SDK

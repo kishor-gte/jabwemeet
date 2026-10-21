@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
     open: boolean;
     userId: string;
     userName: string;
-    action: "SUSPEND" | "BLOCK" | "ACTIVATE" | "VERIFY";
+    action: "SUSPEND" | "BLOCK" | "ACTIVATE" | "VERIFY" | "APPROVE";
     title: string;
     message: string;
   } | null>(null);
@@ -91,6 +91,7 @@ export default function AdminUsersPage() {
       else if (confirmDialog.action === "BLOCK") body = { status: "BLOCKED", reason: "Account blocked for safety violations" };
       else if (confirmDialog.action === "ACTIVATE") body = { status: "ACTIVE", reason: "Account reactivated by admin" };
       else if (confirmDialog.action === "VERIFY") body = { isVerified: true, reason: "Verified member profile" };
+      else if (confirmDialog.action === "APPROVE") body = { isApproved: true, isVerified: true, status: "ACTIVE", reason: "Registration approved by administrator" };
 
       const res = await fetch(`/api/admin/users/${confirmDialog.userId}/status`, {
         method: "PATCH",
@@ -176,6 +177,7 @@ export default function AdminUsersPage() {
             >
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE">Active</option>
+              <option value="PENDING">Pending Approval</option>
               <option value="SUSPENDED">Suspended</option>
               <option value="BLOCKED">Blocked</option>
             </select>
@@ -303,13 +305,15 @@ export default function AdminUsersPage() {
 
                     <td className="px-4 py-4">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        u.status === "ACTIVE"
+                        u.status === "ACTIVE" && u.isApproved
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : u.status === "SUSPENDED"
+                          : u.status === "PENDING" || (!u.isApproved && u.role !== "ADMIN")
                           ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : u.status === "SUSPENDED"
+                          ? "bg-orange-50 text-orange-700 border border-orange-200"
                           : "bg-rose-50 text-rose-700 border border-rose-200"
                       }`}>
-                        {u.status || "ACTIVE"}
+                        {(!u.isApproved && u.role !== "ADMIN") || u.status === "PENDING" ? "PENDING APPROVAL" : (u.status || "ACTIVE")}
                       </span>
                     </td>
 
@@ -330,6 +334,25 @@ export default function AdminUsersPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </a>
+
+                        {(!u.isApproved || u.status === "PENDING") && u.role !== "ADMIN" && (
+                          <button
+                            onClick={() =>
+                              setConfirmDialog({
+                                open: true,
+                                userId: u.id,
+                                userName: u.name,
+                                action: "APPROVE",
+                                title: "Approve Member Registration",
+                                message: `Approve registration for ${u.name}? This will activate their account and send them an approval email so they can log in.`,
+                              })
+                            }
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
+                            title="Approve Member Registration"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        )}
 
                         {!u.isVerified && u.role !== "ADMIN" && (
                           <button

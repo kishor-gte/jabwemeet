@@ -79,32 +79,66 @@ The platform supports 5 specialized operational roles with strict access control
 
 ---
 
-## 3. Database Schema & Data Models
+## 3. Database Schema & Data Models (43 Active Prisma Models)
 
-### Core Prisma Models
-* **`User`**: Base profile storing credentials, demographics, intent, verification state, and role-specific polymorphic attributes (e.g. Breakup Buddy languages/expertise, Matchmaker document links).
-* **`Event`**: Offline gathering details (category, pricing, capacity, age range, location, itinerary).
-* **`MatchmakingRequest`**: Member submissions requesting professional matchmaker assistance.
-* **`MatchSuggestion`**: Curated pair suggestions created by matchmakers with status tracking for both client and suggested candidate.
-* **`Appointment`**: Scheduled consultations between clients and matchmakers.
-* **`Conversation` & `Message`**: Matchmaker-client messaging thread.
-* **`BuddyRequest`**: 1-on-1 emotional recovery connection holding session limits (`chatLimitSeconds`, `voiceCallSeconds`, `voiceCallLimitSeconds`).
-* **`BuddyMessage`**: Messages exchanged within a buddy session.
-* **`BuddyPresence`**: Real-time heartbeat tracking for buddy and user presence.
-* **`BuddySession`**: Scheduled formal coaching calls with duration and earnings calculations.
-* **`BuddyReview`**: Rating and feedback left by members for buddies.
+The JabWeMeet architecture comprises **43 relational database models** in `backend/prisma/schema.prisma`, categorized across 7 architectural domains:
 
-### Dynamic Admin Schema Extensions (`backend/db/adminInit.js`)
-* **`EventRegistration`**: Ticket codes, check-in status, and attendee payment references.
-* **`Payment`**: Financial records tracking payment gateway status, amounts, and references.
-* **`Refund`**: Payment refund requests, reason codes, processing notes, and staff attribution.
-* **`Invoice`**: Tax calculations, serial invoice numbers, and billing records.
-* **`ServicePackage`**: Tiered offerings for Matchmaking and Buddy services (session limits, call quotas).
-* **`Subscription`**: Active member package subscriptions and auto-renewal states.
-* **`Report`**: Safety reports categorizing user misconduct or event incidents.
-* **`SupportTicket`**: Multi-message ticketing system with priority categorization and staff assignments.
-* **`Coupon`**: Promotional discount codes (percentage/flat, usage limits, validity periods).
-* **`AuditLog`**: Append-only security tracking recording action, target, staff identity, IP, and diff snapshots.
+### 1. Core Identity & Authentication (4 Models)
+* **`User`**: Master profile storing credentials, demographics, role (`USER`, `ADMIN`, `MATCHMAKER`, `BREAKUP_BUDDY`, `HOST`, `CAFE`), staffRole (`SUPER_ADMIN`, `SUPPORT_AGENT`, `MODERATOR`), verification state, profile visibility, and contact information.
+* **`OtpVerification`**: Cryptographically salted 6-digit OTP codes with 5-minute expirations and brute-force attempt limits.
+* **`PasswordReset`**: Time-limited single-use security tokens for password reset workflows.
+* **`AuditLog`**: Append-only security audit log recording administrative actions, staff identity, targets, timestamps, and diff snapshots.
+
+### 2. Events, Bookings & Ticketing (4 Models)
+* **`Event`**: Offline social gatherings, parties, and meetups with dates, capacities, price, location, age ranges, and host references.
+* **`EventBooking`**: Member reservations tracking booked spots, payment statuses, and reservation cancellation flags.
+* **`EventRegistration`**: Attendee check-in tickets with unique alphanumeric codes, QR codes, and entry verification logs.
+* **`Coupon`**: Discount codes supporting flat/percentage discounts, usage limits, minimum order amounts, and expiration dates.
+
+### 3. Matchmaking & Relationship Services (4 Models)
+* **`MatchmakingRequest`**: Member applications for dedicated relationship management and matchmaker introductions.
+* **`MatchSuggestion`**: Curated profile introductions proposed by matchmakers, with client feedback and date readiness tracking.
+* **`Appointment`**: Scheduled video and voice consultations between matchmakers and clients.
+* **`DateFeedback`**: Post-date ratings and qualitative feedback submitted after introductions.
+
+### 4. Breakup Buddy & Emotional Healing (6 Models)
+* **`BuddyRequest`**: 1-on-1 emotional recovery requests holding session limits (`chatLimitSeconds`, `voiceCallSeconds`) with sensitive PII protection before acceptance.
+* **`BuddyMessage`**: End-to-end encrypted chat messages exchanged within an active buddy support connection.
+* **`BuddyPresence`**: Real-time heartbeat presence tracking online availability of buddies and users.
+* **`BuddySession`**: Scheduled coaching and emotional support calls with duration and earnings calculations.
+* **`BuddyReview`**: Transparent member reviews, star ratings, and testimonials for Breakup Buddies.
+* **`CallLog`**: Audio and video session call records tracking durations, call types, and connection quality.
+
+### 5. Cafe Partners & Offline Venues (11 Models)
+* **`CafeProfile`**: Approved cafe and lounge venue partners hosting JabWeMeet offline dates.
+* **`MenuItem`**: Cafe food and beverage menus with pricing, categories, and availability.
+* **`CafeReservation`**: Table and seating reservations made by members for offline date meetups.
+* **`CafeOrder`**: In-venue date orders placed by attendees.
+* **`CafeOrderItem`**: Specific line items and quantities linked to cafe orders.
+* **`CafeStaff`**: Cafe manager and server staff accounts assigned to venue operations.
+* **`CafeOffer`**: Special promotional offers and vouchers valid at partner cafes.
+* **`CafeCustomer`**: Loyalty and visit history tracking for recurring cafe members.
+* **`CafeReview`**: Venue ambiance, service, and privacy ratings provided by date attendees.
+* **`CafeTransaction`**: Settlement and payout transactions processed between JabWeMeet and cafe partners.
+* **`CafeNotification`**: Operational notifications delivered to venue staff.
+
+### 6. Subscriptions, Payments & Financials (7 Models)
+* **`Payment`**: Financial transactions tracking Razorpay orders, payment IDs, amounts, currencies, and statuses.
+* **`Refund`**: Customer refund requests, reason codes, processing notes, and administrative approvals.
+* **`Invoice`**: Tax-compliant billing invoices with serial numbering, GST breakdowns, and download references.
+* **`ServicePackage`**: Tiered subscription tiers for Matchmaking, Breakup Buddy, and Cafe memberships.
+* **`Subscription`**: Active member recurring subscriptions with expiration dates and renewal flags.
+* **`HostSubscription`**: Event host hosting plans (Starter, Pro, Enterprise) tracking event publication quotas.
+* **`HostPayment`**: Fee payments processed for host event publishing quotas.
+
+### 7. Communications, Safety & Support (7 Models)
+* **`Conversation`**: Direct and group conversation channels.
+* **`Message`**: Text messages exchanged across platform conversations.
+* **`ConnectionMessage`**: Direct messages exchanged between matched members.
+* **`Report`**: User misconduct, profile violation, and safety reports submitted by members.
+* **`SupportTicket`**: Customer service support tickets with priority levels, categories, and staff response histories.
+* **`SystemSetting`**: Global key-value platform configurations (feature toggles, service limits).
+* **`NotificationAnnouncement`**: Broadcast and targeted platform alerts sent to members and staff.
 
 ---
 

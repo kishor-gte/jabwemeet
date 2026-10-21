@@ -50,11 +50,19 @@ export interface UserProfile {
   email: string;
   phone: string;
   city: string;
+  hometown?: string | null;
   gender: string | null;
   relationshipIntent: string | null;
   role: string;
+  isVerified?: boolean;
+  emailVerified?: boolean;
   createdAt: string;
   dateOfBirth?: string;
+  profileVisibility?: string;
+  allowRmMatchmaking?: boolean;
+  showAgePublicly?: boolean;
+  showHometownPublicly?: boolean;
+  cityVisibility?: boolean;
 }
 
 interface ProfileViewProps {
@@ -92,7 +100,7 @@ export default function ProfileView({
     phone: user.phone || "",
     dateOfBirth: user.dateOfBirth ? user.dateOfBirth.slice(0, 10) : "",
     city: user.city || "",
-    hometown: "",
+    hometown: user.hometown || "",
     gender: user.gender || "",
     profession: "",
     industry: "",
@@ -167,43 +175,79 @@ export default function ProfileView({
 
   // 7. Privacy & Verification State
   const [privacy, setPrivacy] = useState<PrivacyVerificationData>({
-    profileVisibility: "all_members",
-    allowRmMatchmaking: true,
-    showAgePublicly: true,
-    showHometownPublicly: true,
+    profileVisibility: user.profileVisibility || "all_members",
+    allowRmMatchmaking: user.allowRmMatchmaking ?? true,
+    showAgePublicly: user.showAgePublicly ?? true,
+    showHometownPublicly: user.showHometownPublicly ?? true,
   });
 
-  // Hydrate from localStorage on initial mount
+  // Hydrate profile data on mount and fetch fresh settings from database
   useEffect(() => {
     if (!user || !user.id) return;
+
+    // 1. Initialize from authenticated user prop
+    setPrivacy({
+      profileVisibility: user.profileVisibility || "all_members",
+      allowRmMatchmaking: user.allowRmMatchmaking ?? true,
+      showAgePublicly: user.showAgePublicly ?? true,
+      showHometownPublicly: user.showHometownPublicly ?? true,
+    });
+
+    if (user.hometown) {
+      setPersonalInfo((prev) => ({ ...prev, hometown: user.hometown || prev.hometown }));
+    }
+
+    // 2. Fetch fresh profile & visibility settings directly from the backend API
+    let isCancelled = false;
+    fetch("/api/auth/profile", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!isCancelled && data?.success && data.user) {
+          const freshUser = data.user;
+          onUpdateUser(freshUser);
+          setPrivacy({
+            profileVisibility: freshUser.profileVisibility || "all_members",
+            allowRmMatchmaking: freshUser.allowRmMatchmaking ?? true,
+            showAgePublicly: freshUser.showAgePublicly ?? true,
+            showHometownPublicly: freshUser.showHometownPublicly ?? true,
+          });
+          setPersonalInfo((prev) => ({
+            ...prev,
+            fullName: freshUser.name || prev.fullName,
+            email: freshUser.email || prev.email,
+            phone: freshUser.phone || prev.phone,
+            city: freshUser.city !== undefined && freshUser.city !== null ? freshUser.city : prev.city,
+            gender: freshUser.gender !== undefined && freshUser.gender !== null ? freshUser.gender : prev.gender,
+            relationshipIntent: freshUser.relationshipIntent !== undefined && freshUser.relationshipIntent !== null ? freshUser.relationshipIntent : prev.relationshipIntent,
+            dateOfBirth: freshUser.dateOfBirth ? freshUser.dateOfBirth.slice(0, 10) : prev.dateOfBirth,
+            hometown: freshUser.hometown !== undefined && freshUser.hometown !== null ? freshUser.hometown : prev.hometown,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch latest backend profile:", err);
+      });
+
+    // 3. Load non-sensitive extended preferences (questionnaire, lifestyle, interests) from localStorage
     try {
       const stored = localStorage.getItem(`jwm_matching_profile_${user.id}`);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.personalInfo) {
-          setPersonalInfo((prev) => ({
-            ...prev,
-            ...parsed.personalInfo,
-            fullName: user.name, // Keep verified
-            email: user.email, // Keep verified
-            phone: user.phone, // Keep verified
-            city: parsed.personalInfo.city || user.city || "",
-            gender: parsed.personalInfo.gender || user.gender || "",
-            relationshipIntent: parsed.personalInfo.relationshipIntent || user.relationshipIntent || "",
-            dateOfBirth: parsed.personalInfo.dateOfBirth || (user.dateOfBirth ? user.dateOfBirth.slice(0, 10) : ""),
-          }));
-        }
+        // Extended matching preferences only; core personalInfo is strictly mastered by the database
         if (parsed.lifestyle) setLifestyle(parsed.lifestyle);
         if (parsed.interests) setInterests(parsed.interests);
         if (parsed.partnerPreferences) setPartnerPreferences(parsed.partnerPreferences);
         if (parsed.eventPreferences) setEventPreferences(parsed.eventPreferences);
         if (parsed.questionnaire) setQuestionnaire(parsed.questionnaire);
-        if (parsed.privacy) setPrivacy(parsed.privacy);
       }
     } catch (e) {
       console.warn("Could not load matching profile from storage", e);
     }
-  }, [user]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user.id]);
 
   // Validation Checks
   const dobAge = useMemo(() => {
@@ -301,19 +345,23 @@ export default function ProfileView({
   // Save Function
   const handleSave = async () => {
     setErrorMessage("");
+    setSavedMessage("");
 
     // Validate inputs
     if (dobError) {
+      setSavedMessage("");
       setErrorMessage(dobError);
       setActiveTab("personal");
       return;
     }
     if (ageRangeError) {
+      setSavedMessage("");
       setErrorMessage(ageRangeError);
       setActiveTab("partner");
       return;
     }
     if (!personalInfo.city.trim()) {
+      setSavedMessage("");
       setErrorMessage("Please enter your current city.");
       setActiveTab("personal");
       return;
@@ -322,41 +370,39 @@ export default function ProfileView({
     setIsSaving(true);
 
     try {
-      // 1. Call Backend API to persist core attributes
-      const payload: Partial<UserProfile> = {
+      // 1. Call Backend API to persist core attributes & profile visibility settings
+      const payload: any = {
         city: personalInfo.city.trim(),
         gender: personalInfo.gender.trim() || null,
         relationshipIntent: personalInfo.relationshipIntent.trim() || null,
-        dateOfBirth: personalInfo.dateOfBirth ? personalInfo.dateOfBirth : undefined,
+        dateOfBirth: personalInfo.dateOfBirth ? personalInfo.dateOfBirth : null,
+        hometown: personalInfo.hometown ? personalInfo.hometown.trim() : null,
+        profileVisibility: privacy.profileVisibility,
+        allowRmMatchmaking: privacy.allowRmMatchmaking,
+        showAgePublicly: privacy.showAgePublicly,
+        showHometownPublicly: privacy.showHometownPublicly,
       };
 
-      try {
-        const res = await fetch("/api/auth/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            ...payload,
-            dateOfBirth: personalInfo.dateOfBirth || null,
-          }),
-        });
+      const res = await fetch("/api/auth/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.user) {
-            onUpdateUser(data.user);
-          } else {
-            onUpdateUser(payload);
-          }
-        } else {
-          onUpdateUser(payload);
-        }
-      } catch (apiErr) {
-        // Fallback gracefully to parent update
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || "Failed to save profile settings to the database.");
+      }
+
+      if (data.user) {
+        onUpdateUser(data.user);
+      } else {
         onUpdateUser(payload);
       }
 
-      // 2. Persist extended matching profile in localStorage
+      // 2. Persist extended matching profile in localStorage only after successful database save
       const fullProfileState = {
         personalInfo,
         lifestyle,
@@ -368,54 +414,64 @@ export default function ProfileView({
         updatedAt: new Date().toISOString(),
       };
 
-      localStorage.setItem(`jwm_matching_profile_${user.id}`, JSON.stringify(fullProfileState));
+      try {
+        localStorage.setItem(`jwm_matching_profile_${user.id}`, JSON.stringify(fullProfileState));
+      } catch (storageErr) {
+        console.warn("Storage sync notice:", storageErr);
+      }
 
       setIsDirty(false);
       setSavedMessage("Profile & matching preferences saved successfully!");
       setTimeout(() => setSavedMessage(""), 4500);
     } catch (err: any) {
       console.error("Save error:", err);
-      setErrorMessage("Could not save changes. Please check your inputs and try again.");
+      setSavedMessage("");
+      setErrorMessage(err?.message || "Could not save changes. Please check your inputs and try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
   // Discard changes
-  const handleDiscard = () => {
+  const handleDiscard = async () => {
     if (confirm("Discard all unsaved changes and reload your last saved profile?")) {
+      setErrorMessage("");
+      setSavedMessage("");
       try {
+        // Reload fresh server data directly from backend database
+        const res = await fetch("/api/auth/profile", { credentials: "include" });
+        const data = await res.json().catch(() => null);
+        const u = (data?.success && data.user) ? data.user : user;
+        setPersonalInfo((prev) => ({
+          ...prev,
+          fullName: u.name || "",
+          email: u.email || "",
+          phone: u.phone || "",
+          city: u.city || "",
+          gender: u.gender || "",
+          relationshipIntent: u.relationshipIntent || "",
+          dateOfBirth: u.dateOfBirth ? u.dateOfBirth.slice(0, 10) : "",
+          hometown: u.hometown || "",
+        }));
+        setPrivacy({
+          profileVisibility: u.profileVisibility || "all_members",
+          allowRmMatchmaking: u.allowRmMatchmaking ?? true,
+          showAgePublicly: u.showAgePublicly ?? true,
+          showHometownPublicly: u.showHometownPublicly ?? true,
+        });
         const stored = localStorage.getItem(`jwm_matching_profile_${user.id}`);
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (parsed.personalInfo) setPersonalInfo(parsed.personalInfo);
           if (parsed.lifestyle) setLifestyle(parsed.lifestyle);
           if (parsed.interests) setInterests(parsed.interests);
           if (parsed.partnerPreferences) setPartnerPreferences(parsed.partnerPreferences);
           if (parsed.eventPreferences) setEventPreferences(parsed.eventPreferences);
           if (parsed.questionnaire) setQuestionnaire(parsed.questionnaire);
-          if (parsed.privacy) setPrivacy(parsed.privacy);
-        } else {
-          setPersonalInfo({
-            fullName: user.name || "",
-            email: user.email || "",
-            phone: user.phone || "",
-            dateOfBirth: user.dateOfBirth ? user.dateOfBirth.slice(0, 10) : "",
-            city: user.city || "",
-            hometown: "",
-            gender: user.gender || "",
-            profession: "",
-            industry: "",
-            education: "",
-            languages: "",
-            height: "",
-            relationshipIntent: user.relationshipIntent || "",
-            aboutMe: "",
-          });
         }
-      } catch (e) {}
-      setIsDirty(false);
-      setErrorMessage("");
+        setIsDirty(false);
+      } catch (discardErr) {
+        console.warn("Could not reload profile from server:", discardErr);
+      }
     }
   };
 
@@ -596,9 +652,9 @@ export default function ProfileView({
               data={privacy}
               onChange={handlePrivacyChange}
               userVerification={{
-                emailVerified: true,
-                phoneVerified: true,
-                isMemberVerified: true,
+                emailVerified: Boolean(user?.emailVerified ?? true),
+                phoneVerified: Boolean(user?.phone),
+                isMemberVerified: Boolean(user?.isVerified),
               }}
             />
           </div>
@@ -629,6 +685,7 @@ export default function ProfileView({
               showAgePublicly={privacy.showAgePublicly}
               showHometownPublicly={privacy.showHometownPublicly}
               role={user.role}
+              isVerified={Boolean(user?.isVerified)}
             />
           </div>
         )}

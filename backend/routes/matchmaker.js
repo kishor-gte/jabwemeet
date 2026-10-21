@@ -706,20 +706,28 @@ router.get('/clients/:id/compatibility', aiCompatibilityLimiter, async (req, res
           gender: {
             equals: oppositeGender,
             mode: 'insensitive'
-          }
+          },
+          allowRmMatchmaking: { not: false },
+          profileVisibility: { in: ['all_members', 'event_co_attendees'] },
         } : {
           id: { not: id },
           role: 'USER',
-          gender: { not: client.gender }
+          gender: { not: client.gender },
+          allowRmMatchmaking: { not: false },
+          profileVisibility: { in: ['all_members', 'event_co_attendees'] },
         },
       select: {
         id: true,
         name: true,
         gender: true,
         city: true,
+        hometown: true,
         dateOfBirth: true,
         relationshipIntent: true,
         profileImage: true,
+        showAgePublicly: true,
+        showHometownPublicly: true,
+        cityVisibility: true,
       },
       take: 15
     });
@@ -729,15 +737,10 @@ router.get('/clients/:id/compatibility', aiCompatibilityLimiter, async (req, res
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      // Mock response if no API key
-      const mockMatches = otherUsers.slice(0, 3).map((u, i) => ({
-        id: u.id,
-        name: u.name,
-        profileImage: u.profileImage,
-        score: 95 - (i * 5),
-        reason: 'Mock compatibility reason due to missing GEMINI_API_KEY.'
-      }));
-      return res.json({ success: true, matches: mockMatches });
+      return res.status(503).json({
+        success: false,
+        message: 'AI compatibility service is temporarily unavailable. Missing GEMINI_API_KEY configuration.'
+      });
     }
 
     const { GoogleGenAI } = require('@google/genai');
@@ -822,26 +825,10 @@ Respond ONLY with valid JSON (an array of objects).
 
   } catch (error) {
     console.error('Error in AI compatibility:', error);
-    // Graceful fallback to prevent UI failure
-    try {
-      const fallbackMatches = otherUsers.slice(0, 3).map((u, i) => ({
-        id: u.id,
-        name: u.name,
-        profileImage: u.profileImage,
-        score: 85 - (i * 5),
-        reason: `${u.name} is based in ${u.city || 'your area'} and seeking ${u.relationshipIntent || 'a relationship'}.`
-      }));
-      const existingConns = await prisma.matchSuggestion.findMany({
-        where: { OR: [{ clientId: id }, { suggestedProfileId: id }] }
-      });
-      const finalMatches = fallbackMatches.map(m => ({
-        ...m,
-        isConnected: existingConns.some(c => (c.clientId === id && c.suggestedProfileId === m.id) || (c.clientId === m.id && c.suggestedProfileId === id))
-      }));
-      return res.json({ success: true, matches: finalMatches, isFallback: true });
-    } catch (fallbackErr) {
-      return res.status(500).json({ success: false, message: 'AI compatibility check failed' });
-    }
+    return res.status(503).json({
+      success: false,
+      message: 'AI compatibility check failed. Please check AI service configuration or try again later.'
+    });
   }
 });
 

@@ -16,6 +16,67 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || "",
 });
 
+/**
+ * GET /api/services/ice-servers & /api/services/webrtc/ice-servers
+ * Supplies STUN and TURN relay configuration for WebRTC voice/video calls.
+ * Resolves Bug 29: Provides TURN relay credentials for carriers/mobile networks (Symmetric NAT/CGNAT).
+ */
+const getIceServersHandler = (req, res) => {
+  const customTurnUrls = process.env.TURN_URLS || process.env.TURN_URL;
+  const customTurnUsername = process.env.TURN_USERNAME;
+  const customTurnCredential = process.env.TURN_CREDENTIAL || process.env.TURN_PASSWORD;
+
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+  ];
+
+  if (customTurnUrls) {
+    const urls = customTurnUrls.split(',').map(u => u.trim());
+    iceServers.push({
+      urls,
+      username: customTurnUsername || '',
+      credential: customTurnCredential || '',
+    });
+  }
+
+  // Global OpenRelay TURN relay fallback (supports UDP 80/443, TCP 443, and TLS 443)
+  iceServers.push(
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    }
+  );
+
+  return res.json({
+    success: true,
+    iceServers,
+  });
+};
+
+router.get('/ice-servers', getIceServersHandler);
+router.get('/webrtc/ice-servers', getIceServersHandler);
+
 // 1. GET /api/services/relationship-managers (or /api/relationship-managers)
 // Fetch all relationship managers who are registered and approved by admin
 router.get("/relationship-managers", async (req, res) => {

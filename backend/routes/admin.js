@@ -80,7 +80,7 @@ router.get('/overview', async (req, res) => {
       prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "BuddySession"`),
       prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "Report" WHERE "status" = 'OPEN'`),
       prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "SupportTicket" WHERE "status" = 'OPEN'`),
-      prisma.user.count({ where: { role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY'] }, isApproved: false } }),
+      prisma.user.count({ where: { isApproved: false, role: { not: 'ADMIN' } } }),
     ]);
 
     // Quick Alerts Center data
@@ -313,9 +313,13 @@ router.get('/users', async (req, res) => {
     }
 
     if (status && status !== 'ALL') {
-      whereClauses.push(`"status" = $${pIdx}`);
-      params.push(status);
-      pIdx++;
+      if (status === 'PENDING') {
+        whereClauses.push('("status" = \'PENDING\' OR "isApproved" = false)');
+      } else {
+        whereClauses.push(`"status" = $${pIdx}`);
+        params.push(status);
+        pIdx++;
+      }
     }
 
     if (city && city !== 'ALL') {
@@ -469,15 +473,15 @@ router.get('/users/:id', async (req, res) => {
 
 router.patch('/users/:id/status', async (req, res) => {
   try {
-    const { id } = req.params;
+    let { id } = req.params;
     const { status, isVerified, isApproved, staffRole, internalNotes, reason } = req.body;
 
     let lookupId = id; if(id.startsWith('USR-')) lookupId = id.replace('USR-', '').toLowerCase();
     const existingUser = await prisma.user.findFirst({ where: id.startsWith('USR-') ? { id: { endsWith: lookupId } } : { id } });
-    if (existingUser) id = existingUser.id;
     if (!existingUser) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    id = existingUser.id;
 
     const updates = [];
     const params = [];
@@ -496,8 +500,12 @@ router.patch('/users/:id/status', async (req, res) => {
       params.push(Boolean(isApproved));
     }
     if (staffRole !== undefined) {
+      const allowedRoles = ['SUPPORT_AGENT', 'MODERATOR', 'EVENT_MANAGER', 'SUPER_ADMIN'];
+      const normalizedStaffRole = allowedRoles.includes(String(staffRole).toUpperCase().trim())
+        ? String(staffRole).toUpperCase().trim()
+        : 'SUPPORT_AGENT';
       updates.push(`"staffRole" = $${pIdx++}`);
-      params.push('SUPER_ADMIN');
+      params.push(normalizedStaffRole);
     }
     if (internalNotes !== undefined) {
       updates.push(`"internalNotes" = $${pIdx++}`);
@@ -513,6 +521,15 @@ router.patch('/users/:id/status', async (req, res) => {
 
       // Trigger Email Notifications
       if (existingUser.email) {
+        let approvedEmailSent = false;
+        if (isApproved !== undefined && Boolean(isApproved) && !existingUser.isApproved) {
+          sendUserVerificationApprovedEmail({
+            userEmail: existingUser.email,
+            userName: existingUser.name,
+          }).catch(err => console.warn('Verification approval email note:', err.message));
+          approvedEmailSent = true;
+        }
+
         // 1. Account Status (ACTIVE, SUSPENDED, BLOCKED)
         if (status && status !== existingUser.status) {
           sendUserStatusUpdatedEmail({
@@ -2547,9 +2564,11 @@ router.get('/verification', async (req, res) => {
     const pendingUsers = await prisma.user.findMany({
       where: {
         OR: [
-          { role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY'] }, isApproved: false },
+          { isApproved: false },
           { isVerified: false },
+          { status: 'PENDING' },
         ],
+        role: { not: 'ADMIN' },
       },
       select: {
         id: true,
@@ -2595,6 +2614,7 @@ router.post('/verification/:id', async (req, res) => {
       data: {
         isApproved: Boolean(approved),
         isVerified: Boolean(approved),
+        status: Boolean(approved) ? 'ACTIVE' : (user.status === 'PENDING' ? 'REJECTED' : 'SUSPENDED'),
       },
     });
 
@@ -2660,8 +2680,8 @@ router.get('/pending', async (req, res) => {
   try {
     const pendingUsers = await prisma.user.findMany({
       where: {
-        role: { in: ['MATCHMAKER', 'BREAKUP_BUDDY', 'HOST'] },
         isApproved: false,
+        role: { not: 'ADMIN' },
       },
       select: {
         id: true, name: true, email: true, phone: true, role: true,
@@ -2682,7 +2702,7 @@ router.post('/approve/:id', async (req, res) => {
     const { id } = req.params;
     const user = await prisma.user.update({
       where: { id },
-      data: { isApproved: true, isVerified: true },
+      data: { isApproved: true, isVerified: true, status: 'ACTIVE' },
     });
     if (user.email) {
       try {
@@ -3420,7 +3440,7 @@ router.patch('/coupons/:id', async (req, res) => {
 router.get('/staff', async (req, res) => {
   try {
     const staffMembers = await prisma.$queryRawUnsafe(`
-      SELECT "id", "name", "email", "phone", "role", COALESCE("staffRole", 'SUPER_ADMIN') as "staffRole",
+      SELECT "id", "name", "email", "phone", "role", COALESCE("staffRole", 'SUPPORT_AGENT') as "staffRole",
              COALESCE("status", 'ACTIVE') as "status", "createdAt", "lastActiveAt"
       FROM "User"
       WHERE "role" = 'ADMIN'
@@ -3461,9 +3481,15 @@ router.patch('/staff/:id', async (req, res) => {
       updates.push(`"status" = $${pIdx++}`);
       params.push(status);
     }
-    // Always ensure SUPER_ADMIN
-    updates.push(`"staffRole" = $${pIdx++}`);
-    params.push('SUPER_ADMIN');
+    const allowedStaffRoles = ['SUPPORT_AGENT', 'MODERATOR', 'EVENT_MANAGER', 'SUPER_ADMIN'];
+    if (staffRole) {
+      const normalizedRole = String(staffRole).toUpperCase().trim();
+      if (!allowedStaffRoles.includes(normalizedRole)) {
+        return res.status(400).json({ success: false, message: 'Invalid staffRole. Allowed: SUPPORT_AGENT, MODERATOR, EVENT_MANAGER, SUPER_ADMIN' });
+      }
+      updates.push(`"staffRole" = $${pIdx++}`);
+      params.push(normalizedRole);
+    }
 
     if (updates.length > 0) {
       params.push(id);
@@ -3475,7 +3501,7 @@ router.patch('/staff/:id', async (req, res) => {
       targetType: 'STAFF',
       targetId: id,
       before: { staffRole: 'SUPER_ADMIN', status: existing.status },
-      after: { staffRole: 'SUPER_ADMIN', status: status || existing.status },
+      after: { staffRole: staffRole || existing.staffRole, status: status || existing.status },
       reason: reason || 'Admin account status updated by Super Admin',
     });
 

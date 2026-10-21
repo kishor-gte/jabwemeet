@@ -15,9 +15,11 @@ import {
   Calendar,
   Layers,
   Ticket,
+  Clock,
 } from "lucide-react";
 
 interface ProfilePreviewCardProps {
+  isVerified?: boolean;
   fullName: string;
   city: string;
   hometown: string;
@@ -42,6 +44,7 @@ interface ProfilePreviewCardProps {
 }
 
 export default function ProfilePreviewCard({
+  isVerified,
   fullName,
   city,
   hometown,
@@ -118,10 +121,17 @@ export default function ProfilePreviewCard({
                 <h3 className="text-xl sm:text-2xl font-serif font-bold text-slate-900 tracking-tight">
                   {fullName || "Verified Member"}
                 </h3>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  Verified
-                </span>
+                {isVerified ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Verified
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Pending Verification
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-600 mt-1">

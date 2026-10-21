@@ -208,20 +208,40 @@ router.post('/', authenticateToken, requireRole(['ADMIN', 'HOST', 'EVENT_MANAGER
       },
     });
 
-    // Asynchronously notify all users about the new event without blocking response
+    // Notify host & targeted local city members asynchronously without unconstrained DB blasting
     (async () => {
       try {
-        const users = await prisma.user.findMany({
-          where: {
-            email: { not: '' },
-          },
-          select: { id: true, email: true, name: true, status: true },
+        const hostUser = await prisma.user.findUnique({
+          where: { id: hostId },
+          select: { email: true, name: true },
         });
 
-        // Filter out suspended or banned accounts if status is set
-        const activeUsers = users.filter(u => u.status !== 'BANNED' && u.status !== 'SUSPENDED');
+        if (hostUser?.email) {
+          const { sendEventPublishedEmail } = require('../utils/mailer');
+          sendEventPublishedEmail({
+            hostEmail: hostUser.email,
+            hostName: hostUser.name || 'Host',
+            eventTitle: newEvent.title,
+            eventDate: newEvent.date,
+            eventCity: newEvent.city,
+          }).catch(err => console.warn('[Host Publish Mail] Note:', err.message));
+        }
 
-        console.log(`📢 [JabWeMeet Broadcast] Found ${activeUsers.length} user(s) to notify for new event "${newEvent.title}".`);
+        // Targeted city notifications (limited to verified local users in same city, avoiding full DB blast)
+        const cityUsers = await prisma.user.findMany({
+          where: {
+            city: { equals: newEvent.city, mode: 'insensitive' },
+            status: 'ACTIVE',
+            isVerified: true,
+            role: 'USER',
+            id: { not: hostId },
+          },
+          select: { id: true, email: true, name: true },
+          take: 20, // Guard against unbounded memory & SMTP saturation
+        });
+
+        console.log(`📢 [JabWeMeet Targeted City Notice] Found ${cityUsers.length} local user(s) in ${newEvent.city} to notify for event "${newEvent.title}".`);
+        const activeUsers = cityUsers;
 
         const formattedDate = new Date(newEvent.date).toLocaleDateString('en-IN', {
           weekday: 'long',
@@ -704,8 +724,7 @@ router.post('/:id/verify-payment', authenticateToken, async (req, res) => {
               <div style="background-color: #fdf6f0; border-left: 4px solid #e06d53; padding: 16px; border-radius: 6px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #e06d53; font-size: 17px;">👤 Attendee Information</h3>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>👤 Name:</strong> ${attendee.name}</p>
-                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📧 Email:</strong> ${attendee.email}</p>
-                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📱 Phone:</strong> ${attendee.phone || 'N/A'}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🔒 Contact Info:</strong> <span style="color: #888; font-style: italic;">Protected for member privacy</span></p>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 City:</strong> ${attendee.city || 'N/A'}</p>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Spots Booked:</strong> ${spots}</p>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>💰 Amount Paid:</strong> ₹${paidAmount}</p>
@@ -959,8 +978,7 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
               <div style="background-color: #fdf6f0; border-left: 4px solid #e06d53; padding: 16px; border-radius: 6px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #e06d53; font-size: 17px;">👤 Attendee Information</h3>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>👤 Name:</strong> ${attendee.name}</p>
-                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📧 Email:</strong> ${attendee.email}</p>
-                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📱 Phone:</strong> ${attendee.phone || 'N/A'}</p>
+                <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🔒 Contact Info:</strong> <span style="color: #888; font-style: italic;">Protected for member privacy</span></p>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>📍 City:</strong> ${attendee.city || 'N/A'}</p>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>🎟️ Spots Booked:</strong> ${spots}</p>
                 <p style="margin: 6px 0; color: #444; font-size: 14px;"><strong>💰 Amount Paid:</strong> Free Entry (₹0)</p>
@@ -1008,31 +1026,37 @@ router.post('/:id/book', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/events/:id/cancel - Ticket cancellation policy (Attendee cancellations disallowed)
+// POST /api/events/:id/cancel - Ticket cancellation policy (Regular attendees & admin supported)
 router.post('/:id/cancel', authenticateToken, async (req, res) => {
   try {
+    const requesterId = req.user.userId || req.user.id;
     const isAdmin = req.user.role === 'ADMIN';
-    if (!isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'Tickets and reservations are final and cannot be cancelled by attendees.',
-      });
-    }
-
     const { id } = req.params;
-    const userId = req.body.userId || req.user.userId || req.user.id;
+    const targetUserId = (isAdmin && req.body.userId) ? req.body.userId : requesterId;
 
     const booking = await prisma.eventBooking.findUnique({
       where: {
         eventId_userId: {
           eventId: id,
-          userId,
+          userId: targetUserId,
         },
+      },
+      include: {
+        event: true,
       },
     });
 
     if (!booking) {
-      return res.status(404).json({ success: false, message: 'Reservation not found' });
+      return res.status(404).json({ success: false, message: 'Reservation not found.' });
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return res.status(400).json({ success: false, message: 'This reservation has already been cancelled.' });
+    }
+
+    // Event date check
+    if (booking.event && new Date(booking.event.date).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'Cannot cancel reservation for an event that has already passed.' });
     }
 
     const updated = await prisma.eventBooking.update({
@@ -1040,7 +1064,17 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
       data: { status: 'CANCELLED' },
     });
 
-    return res.json({ success: true, message: 'Reservation cancelled by administrator.', booking: updated });
+    // Also update EventRegistration if present
+    await prisma.eventRegistration.updateMany({
+      where: { eventId: id, email: req.user.email },
+      data: { status: 'CANCELLED' },
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: (isAdmin && req.body.userId) ? 'Reservation cancelled by administrator.' : 'Your booking has been cancelled successfully.',
+      booking: updated,
+    });
   } catch (error) {
     console.error('Error cancelling reservation:', error);
     return res.status(500).json({ success: false, message: 'Failed to cancel reservation' });

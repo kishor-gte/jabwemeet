@@ -38,6 +38,58 @@ export default function AdminUserProfilePage() {
   const [statusUpdate, setStatusUpdate] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  async function handleToggleVerify() {
+    if (!data?.user) return;
+    const nextVerify = !data.user.isVerified;
+    const confirmed = await confirm({
+      title: nextVerify ? "Verify Member Profile" : "Revoke Verification",
+      message: nextVerify
+        ? `Are you sure you want to verify ${data.user.name}? This will grant them the Verified Account badge on their dashboard and platform profile.`
+        : `Are you sure you want to revoke verification for ${data.user.name}? Their status will return to pending verification.`,
+      type: nextVerify ? "info" : "danger",
+    });
+    if (!confirmed) return;
+
+    setVerifying(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          isVerified: nextVerify,
+          reason: nextVerify ? "Administrator verified user profile" : "Administrator revoked verification",
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast(
+          nextVerify ? "Member verified successfully! 🎉" : "Verification revoked successfully.",
+          "success"
+        );
+        setData((prev: any) => ({
+          ...prev,
+          user: { ...prev.user, isVerified: nextVerify },
+        }));
+      } else {
+        alert({
+          title: "Update Failed",
+          message: json.message || "Failed to update verification status.",
+          type: "danger",
+        });
+      }
+    } catch (e) {
+      alert({
+        title: "Server Error",
+        message: "An error occurred while updating verification status.",
+        type: "danger",
+      });
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   async function fetchUserDetail() {
     try {
@@ -149,6 +201,13 @@ export default function AdminUserProfilePage() {
             }`}>
               {user.status || "ACTIVE"}
             </span>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+              user.isVerified
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
+            }`}>
+              {user.isVerified ? "Verified Member" : "Pending Verification"}
+            </span>
           </h2>
           <span className="text-xs text-slate-500">ID: {"USR-" + user.id.slice(-6).toUpperCase()}</span>
         </div>
@@ -187,24 +246,50 @@ export default function AdminUserProfilePage() {
           </div>
         </div>
 
-        {/* Status Control */}
-        <div className="flex flex-col sm:flex-row items-end gap-3 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-rose-100">
-          <select
-            value={statusUpdate}
-            onChange={(e) => setStatusUpdate(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#7E2248] focus:bg-white"
-          >
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="SUSPENDED">SUSPENDED</option>
-            <option value="BLOCKED">BLOCKED</option>
-          </select>
+        {/* Verification & Status Control */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-rose-100">
           <button
-            onClick={handleSaveStatus}
-            disabled={saving}
-            className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs transition shadow-xs disabled:opacity-50"
+            type="button"
+            onClick={handleToggleVerify}
+            disabled={verifying}
+            className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-2xs border ${
+              user.isVerified
+                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+            }`}
+            title={user.isVerified ? "Click to Revoke Member Verification" : "Click to Verify Member Profile"}
           >
-            {saving ? "Saving..." : "Save Status"}
+            {user.isVerified ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>{verifying ? "Updating..." : "Verified (Revoke)"}</span>
+              </>
+            ) : (
+              <>
+                <UserCheck className="w-4 h-4" />
+                <span>{verifying ? "Verifying..." : "Verify User"}</span>
+              </>
+            )}
           </button>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={statusUpdate}
+              onChange={(e) => setStatusUpdate(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-[#FAF3F6]/50 border border-rose-200 text-xs text-slate-800 font-semibold focus:outline-none focus:border-[#7E2248] focus:bg-white"
+            >
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="SUSPENDED">SUSPENDED</option>
+              <option value="BLOCKED">BLOCKED</option>
+            </select>
+            <button
+              onClick={handleSaveStatus}
+              disabled={saving}
+              className="px-4 py-2 rounded-xl bg-[#7E2248] hover:bg-[#681938] text-white font-bold text-xs transition shadow-xs disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Status"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -240,9 +325,36 @@ export default function AdminUserProfilePage() {
               Identity & Verification
             </h4>
             <div className="space-y-2.5">
-              <div className="flex justify-between py-1.5 border-b border-rose-50">
+              <div className="flex items-center justify-between py-2 border-b border-rose-50">
                 <span className="text-slate-500">Profile Status</span>
-                <span className="font-bold text-emerald-700">{user.isVerified ? "Verified Member" : "Pending Verification"}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                    user.isVerified
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                  }`}>
+                    {user.isVerified ? "Verified Member" : "Pending Verification"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggleVerify}
+                    disabled={verifying}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                      user.isVerified
+                        ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                    }`}
+                  >
+                    {user.isVerified ? (
+                      "Revoke"
+                    ) : (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5" />
+                        Verify
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="flex justify-between py-1.5 border-b border-rose-50">
                 <span className="text-slate-500">Date of Birth</span>

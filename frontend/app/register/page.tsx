@@ -55,7 +55,6 @@ function RegisterContent() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
-  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState("");
@@ -224,7 +223,6 @@ function RegisterContent() {
         if (data.requiresOtp) {
           setOtpSent(true);
           setRegisteredEmail(data.email);
-          if (data.devOtp) setDevOtp(data.devOtp);
           setResendCooldown(60);
           setError("");
         } else if (data.pendingApproval) {
@@ -263,7 +261,6 @@ function RegisterContent() {
       const data = await res.json();
       if (res.ok && data.success) {
         setResendSuccess(data.message || "A new OTP code has been sent to your email.");
-        if (data.devOtp) setDevOtp(data.devOtp);
         setResendCooldown(60);
       } else {
         setError(data.message || "Failed to resend OTP. Please try again.");
@@ -296,9 +293,11 @@ function RegisterContent() {
         setOtpSent(false);
         const target = data.redirectUrl || (data.pendingApproval ? "/login" : "/dashboard");
         setRedirectTarget(target);
-        setTimeout(() => {
-          router.push(target);
-        }, 1500);
+        if (!data.pendingApproval) {
+          setTimeout(() => {
+            router.push(target);
+          }, 1500);
+        }
       } else {
         setError(data.message || "OTP verification failed.");
       }
@@ -407,19 +406,6 @@ function RegisterContent() {
               📬 <strong>Check your Spam or Junk folder</strong> if you don't see it in your primary inbox within 30 seconds.
             </p>
 
-            {devOtp && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between">
-                <span>🧪 Testing Code: <strong className="text-slate-900 tracking-widest text-sm font-mono">{devOtp}</strong></span>
-                <button
-                  type="button"
-                  onClick={() => setOtp(devOtp)}
-                  className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-[10px] font-bold uppercase transition"
-                >
-                  Fill Code
-                </button>
-              </div>
-            )}
-
             {resendSuccess && (
               <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs">
                 {resendSuccess}
@@ -477,14 +463,16 @@ function RegisterContent() {
             {pendingApproval ? (
               <div className="space-y-4">
                 <h2 className="text-2xl font-bold font-serif text-slate-900">
-                  {role === "HOST" ? "Application Submitted! 🎉" : "Application Submitted!"}
+                  {role === "HOST" ? "Application Submitted! 🎉" : role === "USER" ? "Registration Submitted! ⏳" : "Application Submitted!"}
                 </h2>
                 <p className="text-xs text-slate-600 leading-relaxed">
                   {role === "HOST"
                     ? "Your Event Manager (Host) account has been registered and is awaiting admin approval."
                     : role === "MATCHMAKER"
                     ? "Your Relationship Manager registration has been submitted for admin verification."
-                    : "Your Breakup Buddy registration has been submitted for admin verification."}
+                    : role === "BREAKUP_BUDDY"
+                    ? "Your Breakup Buddy registration has been submitted for admin verification."
+                    : "Your account registration has been successfully received and is awaiting Admin approval."}
                 </p>
                 <div className={`p-4 rounded-2xl text-xs text-left leading-relaxed border ${
                   role === "HOST"
@@ -493,12 +481,9 @@ function RegisterContent() {
                 }`}>
                   <strong>Next Steps:</strong>
                   <ul className="mt-1.5 space-y-1 list-disc list-inside">
-                    <li>Admin will review your application at{" "}
-                      <Link href="/admin" className="underline font-bold text-[#7E2248]">
-                        /admin
-                      </Link>
-                    </li>
-                    <li>Once approved, you can log in at{" "}
+                    <li>An Administrator will review your account registration.</li>
+                    <li>You will receive an approval email notification once your account is activated.</li>
+                    <li>Once approved, you will be able to log in at{" "}
                       <Link href="/login" className="underline font-bold text-[#7E2248]">
                         /login
                       </Link>

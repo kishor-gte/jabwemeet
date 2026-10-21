@@ -17,7 +17,7 @@ model User {
   gender                             String?
   relationshipIntent                 String?
   role                               Role                 @default(USER)
-  isVerified                         Boolean              @default(true)
+  isVerified                         Boolean              @default(false)
   createdAt                          DateTime             @default(now())
   updatedAt                          DateTime             @updatedAt
   addressProof                       String?
@@ -39,12 +39,19 @@ model User {
   shortBio                           String?
   workExperience                     String?
   status                             String?              @default("ACTIVE")
-  staffRole                          String?              @default("SUPER_ADMIN")
+  staffRole                          String?              @default("SUPPORT_AGENT")
   identityVerified                   Boolean?             @default(false)
   mobileVerified                     Boolean?             @default(true)
+  emailVerified                      Boolean?             @default(false)
   lastActiveAt                       DateTime?            @default(now())
   internalNotes                      String?
   isAvailableForRequests             Boolean              @default(true)
+  profileVisibility                  String?              @default("all_members")
+  allowRmMatchmaking                 Boolean?             @default(true)
+  showAgePublicly                    Boolean?             @default(true)
+  showHometownPublicly               Boolean?             @default(true)
+  cityVisibility                     Boolean?             @default(true)
+  hometown                           String?
   weeklySchedule                     Json?
   blockedDates                       String[]             @default([])
   bbCallMinutesRemaining             Int                  @default(5)
@@ -697,6 +704,21 @@ model SystemSetting {
   value     Json
   updatedBy String?
   updatedAt DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model OtpVerification {
+  id         String    @id @default(cuid())
+  email      String
+  otpHash    String
+  purpose    String    @default("REGISTRATION") @db.VarChar(50)
+  expiresAt  DateTime  @db.Timestamp(6)
+  verified   Boolean   @default(false)
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([email, purpose])
+  @@index([expiresAt])
 }
 
 enum Role {

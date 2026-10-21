@@ -4,27 +4,60 @@ async function initAdminDb() {
   try {
     console.log('[AdminInit] Checking & running idempotent admin schema migrations...');
 
-    // 1. Extend User table
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "User" 
       ADD COLUMN IF NOT EXISTS "status" VARCHAR(50) DEFAULT 'ACTIVE',
-      ADD COLUMN IF NOT EXISTS "staffRole" VARCHAR(50) DEFAULT 'SUPER_ADMIN',
+      ADD COLUMN IF NOT EXISTS "staffRole" VARCHAR(50) DEFAULT 'SUPPORT_AGENT',
       ADD COLUMN IF NOT EXISTS "identityVerified" BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS "mobileVerified" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "emailVerified" BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS "lastActiveAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS "internalNotes" TEXT,
       ADD COLUMN IF NOT EXISTS "isAvailableForRequests" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "profileVisibility" VARCHAR(50) DEFAULT 'all_members',
+      ADD COLUMN IF NOT EXISTS "allowRmMatchmaking" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "showAgePublicly" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "showHometownPublicly" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "cityVisibility" BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "hometown" VARCHAR(100),
       ADD COLUMN IF NOT EXISTS "weeklySchedule" JSONB DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS "blockedDates" TEXT[] DEFAULT ARRAY[]::TEXT[];
+
+      ALTER TABLE "User" ALTER COLUMN "isVerified" SET DEFAULT false;
+      ALTER TABLE "User" ALTER COLUMN "staffRole" SET DEFAULT 'SUPPORT_AGENT';
     `);
 
-    // Ensure ADMIN users have default staffRole and status ONLY if unset (never overwrite deactivated/suspended statuses)
+    // Ensure primary system administrator has SUPER_ADMIN role while other staff default to least privilege
     await prisma.$executeRawUnsafe(`
       UPDATE "User" 
-      SET "staffRole" = COALESCE("staffRole", 'SUPER_ADMIN'),
+      SET "staffRole" = 'SUPER_ADMIN',
+          "status" = 'ACTIVE',
+          "identityVerified" = true
+      WHERE "email" = 'admin@jabweemeet.com';
+    `);
+    await prisma.$executeRawUnsafe(`
+      UPDATE "User" 
+      SET "staffRole" = COALESCE("staffRole", 'SUPPORT_AGENT'),
           "status" = COALESCE("status", 'ACTIVE'),
           "identityVerified" = COALESCE("identityVerified", true)
-      WHERE "role" = 'ADMIN' AND ("staffRole" IS NULL OR "status" IS NULL OR "identityVerified" IS NULL);
+      WHERE "role" = 'ADMIN' AND "staffRole" IS NULL;
+    `);
+
+    // 1b. OtpVerification table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "OtpVerification" (
+        "id" TEXT PRIMARY KEY,
+        "email" TEXT NOT NULL,
+        "otpHash" TEXT NOT NULL,
+        "purpose" VARCHAR(50) DEFAULT 'REGISTRATION',
+        "expiresAt" TIMESTAMP NOT NULL,
+        "verified" BOOLEAN DEFAULT false,
+        "attempts" INTEGER DEFAULT 0,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS "idx_otp_email_purpose" ON "OtpVerification"("email", "purpose");
+      CREATE INDEX IF NOT EXISTS "idx_otp_expires_at" ON "OtpVerification"("expiresAt");
     `);
 
     // 2. Extend Event table

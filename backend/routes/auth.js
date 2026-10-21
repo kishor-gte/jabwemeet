@@ -307,9 +307,9 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
     // Duplicate email check
     const existingEmail = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true, isVerified: true, role: true },
+      select: { id: true, isVerified: true, emailVerified: true, role: true },
     });
-    if (existingEmail && existingEmail.isVerified) {
+    if (existingEmail && (existingEmail.isVerified || existingEmail.emailVerified)) {
       return res.status(409).json({
         success: false,
         message: 'An account with this email already exists. Please login instead.',
@@ -319,9 +319,9 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
     // Duplicate phone check
     const existingPhone = await prisma.user.findUnique({
       where: { phone: cleanPhone },
-      select: { id: true, isVerified: true },
+      select: { id: true, isVerified: true, emailVerified: true },
     });
-    if (existingPhone && existingPhone.isVerified && (!existingEmail || existingPhone.id !== existingEmail.id)) {
+    if (existingPhone && (existingPhone.isVerified || existingPhone.emailVerified) && (!existingEmail || existingPhone.id !== existingEmail.id)) {
       return res.status(409).json({
         success: false,
         message: 'An account with this mobile number already exists. Please login instead.',
@@ -340,7 +340,7 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
 
     // Create or update unverified user in PostgreSQL database
     let userRecord;
-    if (existingEmail && !existingEmail.isVerified) {
+    if (existingEmail && !existingEmail.isVerified && !existingEmail.emailVerified) {
       userRecord = await prisma.user.update({
         where: { id: existingEmail.id },
         data: {
@@ -354,7 +354,8 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
           role: normalizedRole,
           isVerified: false,
           identityVerified: false,
-          isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+          isApproved: false,
+          status: 'PENDING',
           idType: idType ? String(idType).trim() : null,
           idDocument: idDocument ? String(idDocument).trim() : null,
           profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
@@ -389,7 +390,8 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
           role: normalizedRole,
           isVerified: false,
           identityVerified: false,
-          isApproved: (normalizedRole !== 'MATCHMAKER' && normalizedRole !== 'BREAKUP_BUDDY' && normalizedRole !== 'HOST' && normalizedRole !== 'CAFE'),
+          isApproved: false,
+          status: 'PENDING',
           idType: idType ? String(idType).trim() : null,
           idDocument: idDocument ? String(idDocument).trim() : null,
           profilePhoto: profilePhoto ? String(profilePhoto).trim() : null,
@@ -412,39 +414,82 @@ router.post('/register', registerLimiter, handleUpload, async (req, res) => {
       });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    global.registrationOtpStore = global.registrationOtpStore || new Map();
-    const now = Date.now();
-    for (const [key, record] of global.registrationOtpStore.entries()) {
-      if (!record || record.expiresAt < now) {
-        global.registrationOtpStore.delete(key);
-      }
+    // 1. Enforce 60-second cooldown on registration OTP generation for same email
+    const recentOtp = await prisma.otpVerification.findFirst({
+      where: {
+        email: cleanEmail,
+        purpose: 'REGISTRATION',
+        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (recentOtp) {
+      const waitSeconds = Math.max(1, Math.ceil((recentOtp.createdAt.getTime() + 60000 - Date.now()) / 1000));
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${waitSeconds} seconds before requesting a new verification code.`,
+      });
     }
-    if (global.registrationOtpStore.size > 1000) {
-      const oldestKey = global.registrationOtpStore.keys().next().value;
-      if (oldestKey) global.registrationOtpStore.delete(oldestKey);
+
+    // 2. Limit total registration OTP requests per email in 1 hour (max 5)
+    const hourlyCount = await prisma.otpVerification.count({
+      where: {
+        email: cleanEmail,
+        purpose: 'REGISTRATION',
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+      },
+    });
+    if (hourlyCount >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again after an hour.',
+      });
     }
-    global.registrationOtpStore.set(cleanEmail, {
-      otp,
-      userId: userRecord.id,
-      role: userRecord.role,
-      expiresAt: Date.now() + 10 * 60 * 1000,
+
+    // 3. Invalidate any existing pending OTPs for this email & purpose
+    await prisma.otpVerification.updateMany({
+      where: { email: cleanEmail, purpose: 'REGISTRATION', verified: false },
+      data: { verified: true },
     });
 
-    console.log(`🔐 [Registration OTP for ${cleanEmail}]: ${otp}`);
-    const { sendRegistrationOTP } = require('../utils/mailer');
-    sendRegistrationOTP({ userEmail: cleanEmail, userName: userRecord.name, otp }).catch((err) => {
-      console.error(`Error sending registration OTP email to ${cleanEmail}:`, err);
+    // 4. Generate cryptographically secure 6-digit OTP and bcrypt hash
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    // 5. Store OTP record persistently in database (5-minute expiration)
+    await prisma.otpVerification.create({
+      data: {
+        email: cleanEmail,
+        otpHash,
+        purpose: 'REGISTRATION',
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        verified: false,
+        attempts: 0,
+      },
     });
+
+    // 6. Deliver OTP via email service and await confirmation
+    const { sendRegistrationOTP } = require('../utils/mailer');
+    const emailResult = await sendRegistrationOTP({
+      userEmail: cleanEmail,
+      userName: userRecord.name,
+      otp,
+    });
+
+    if (!emailResult || !emailResult.success) {
+      console.error(`❌ [Registration Email Failed] to ${cleanEmail}:`, emailResult?.error);
+      return res.status(503).json({
+        success: false,
+        message: 'Failed to deliver verification code to your email. Please verify your email address or try again shortly.',
+      });
+    }
 
     return res.status(200).json({
       success: true,
       requiresOtp: true,
-      message: 'OTP sent to your email. Please check your Inbox and Spam folder to complete registration.',
+      message: 'A verification code has been sent to your email address.',
       email: cleanEmail,
       role: userRecord.role,
-      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (error) {
     console.error('Error during registration:', error);
@@ -471,47 +516,107 @@ router.post('/verify-registration-otp', verifyOtpLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
     }
     const cleanEmail = email.trim().toLowerCase();
-    
-    global.registrationOtpStore = global.registrationOtpStore || new Map();
-    const stored = global.registrationOtpStore.get(cleanEmail);
+    const cleanOtp = String(otp).trim();
 
-    if (!stored || stored.otp !== otp.trim()) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please try again or click Resend OTP.' });
-    }
-    
-    if (Date.now() > stored.expiresAt) {
-      global.registrationOtpStore.delete(cleanEmail);
-      return res.status(400).json({ success: false, message: 'OTP has expired. Please click Resend OTP.' });
+    // 1. Validate OTP format: exactly 6 digits
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code format. Please enter a 6-digit code.' });
     }
 
-    // OTP is valid
-    global.registrationOtpStore.delete(cleanEmail);
+    // 2. Fetch the latest active OTP record for this email
+    const otpRecord = await prisma.otpVerification.findFirst({
+      where: {
+        email: cleanEmail,
+        purpose: 'REGISTRATION',
+        verified: false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active verification code found or code has already been used. Please click Resend OTP.',
+      });
+    }
+
+    // 3. Check expiration timestamp (5-minute expiration)
+    if (new Date() > new Date(otpRecord.expiresAt)) {
+      await prisma.otpVerification.update({
+        where: { id: otpRecord.id },
+        data: { verified: true },
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please click Resend OTP.',
+      });
+    }
+
+    // 4. Rate-limit failed verification attempts per OTP (max 5 attempts)
+    if (otpRecord.attempts >= 5) {
+      await prisma.otpVerification.update({
+        where: { id: otpRecord.id },
+        data: { verified: true },
+      });
+      return res.status(429).json({
+        success: false,
+        message: 'Too many incorrect attempts. This code has been invalidated. Please click Resend OTP.',
+      });
+    }
+
+    // 5. Compare secure hash
+    const isMatch = await bcrypt.compare(cleanOtp, otpRecord.otpHash);
+    if (!isMatch) {
+      const updated = await prisma.otpVerification.update({
+        where: { id: otpRecord.id },
+        data: { attempts: { increment: 1 } },
+      });
+      const remaining = Math.max(0, 5 - updated.attempts);
+      return res.status(400).json({
+        success: false,
+        message: remaining > 0
+          ? `Invalid verification code. You have ${remaining} attempts remaining.`
+          : 'Invalid verification code. Maximum attempts exceeded. Please request a new code.',
+      });
+    }
+
+    // 6. Invalidate OTP (mark consumed)
+    await prisma.otpVerification.update({
+      where: { id: otpRecord.id },
+      data: { verified: true },
+    });
+
+    await prisma.otpVerification.updateMany({
+      where: { email: cleanEmail, purpose: 'REGISTRATION', verified: false },
+      data: { verified: true },
+    });
+
+    // 7. Mark user contact channel as verified, keep isApproved false for admin approval
     const user = await prisma.user.update({
       where: { email: cleanEmail },
-      data: { isVerified: true },
+      data: {
+        emailVerified: true,
+        mobileVerified: true,
+        isVerified: false,
+        isApproved: false,
+        status: 'PENDING',
+      },
     });
     
     const { sendRegistrationSuccessEmail } = require('../utils/mailer');
     sendRegistrationSuccessEmail({ userEmail: cleanEmail, userName: user.name, role: user.role }).catch(() => {});
 
-    const pendingApproval = (user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST' || user.role === 'CAFE');
+    // ALL newly registered users must wait for Admin approval before login
+    const pendingApproval = true;
 
-    // Auto-login Member (USER) immediately upon OTP verification
-    if (!pendingApproval) {
-      const token = jwt.sign(
-        { userId: user.id, role: user.role, email: user.email },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-      res.cookie('token', token, getCookieOptions());
-    }
+    // Do not issue login session cookie to pending users
+    res.clearCookie('token', getCookieOptions());
 
     return res.status(200).json({
       success: true,
-      message: 'Registration and email verification successful! 🎉',
-      pendingApproval,
-      redirectUrl: pendingApproval ? '/login' : '/dashboard'
+      message: 'Registration and email verification successful! 🎉 Your account has been submitted and is awaiting Admin approval. You will receive an email once approved.',
+      pendingApproval: true,
+      redirectUrl: '/login'
     });
   } catch (error) {
     console.error('Error in verify-registration-otp:', error);
@@ -529,37 +634,87 @@ router.post('/resend-registration-otp', registerLimiter, async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true, name: true, role: true, isVerified: true }
+      select: { id: true, name: true, role: true, isVerified: true, emailVerified: true }
     });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'No registration found with this email.' });
     }
 
-    if (user.isVerified) {
+    if (user.emailVerified || user.isVerified) {
       return res.status(400).json({ success: false, message: 'This account is already verified. Please log in.' });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    global.registrationOtpStore = global.registrationOtpStore || new Map();
-    global.registrationOtpStore.set(cleanEmail, {
-      otp,
-      userId: user.id,
-      role: user.role,
-      expiresAt: Date.now() + 10 * 60 * 1000,
+    // 1. Enforce 60-second cooldown on backend
+    const recentOtp = await prisma.otpVerification.findFirst({
+      where: {
+        email: cleanEmail,
+        purpose: 'REGISTRATION',
+        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (recentOtp) {
+      const waitSeconds = Math.max(1, Math.ceil((recentOtp.createdAt.getTime() + 60000 - Date.now()) / 1000));
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${waitSeconds} seconds before requesting a new verification code.`,
+      });
+    }
+
+    // 2. Limit to max 5 OTP requests per hour per email
+    const hourlyCount = await prisma.otpVerification.count({
+      where: {
+        email: cleanEmail,
+        purpose: 'REGISTRATION',
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+      },
+    });
+    if (hourlyCount >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again after an hour.',
+      });
+    }
+
+    // 3. Invalidate previous OTPs for this email
+    await prisma.otpVerification.updateMany({
+      where: { email: cleanEmail, purpose: 'REGISTRATION', verified: false },
+      data: { verified: true },
     });
 
-    console.log(`🔐 [Resent OTP for ${cleanEmail}]: ${otp}`);
-    const { sendRegistrationOTP } = require('../utils/mailer');
-    sendRegistrationOTP({ userEmail: cleanEmail, userName: user.name, otp }).catch((err) => {
-      console.error(`Error resending registration OTP email to ${cleanEmail}:`, err);
+    // 4. Generate cryptographically secure OTP & hash
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    // 5. Store in OtpVerification table (5-minute expiration)
+    await prisma.otpVerification.create({
+      data: {
+        email: cleanEmail,
+        otpHash,
+        purpose: 'REGISTRATION',
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        verified: false,
+        attempts: 0,
+      },
     });
+
+    // 6. Deliver OTP via email service and await confirmation
+    const { sendRegistrationOTP } = require('../utils/mailer');
+    const mailResult = await sendRegistrationOTP({ userEmail: cleanEmail, userName: user.name, otp });
+
+    if (!mailResult || !mailResult.success) {
+      console.error(`❌ [Resend OTP Email Failed] to ${cleanEmail}:`, mailResult?.error);
+      return res.status(503).json({
+        success: false,
+        message: 'Failed to deliver verification code to your email. Please try again shortly.',
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: `A new OTP has been sent to ${cleanEmail}. Please check your Inbox and Spam folder.`,
+      message: `A new verification code has been sent to ${cleanEmail}. Please check your Inbox and Spam folder.`,
       email: cleanEmail,
-      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (error) {
     console.error('Error in resend-registration-otp:', error);
@@ -609,18 +764,19 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     // Block deactivated, suspended, or blocked accounts
-    if (user.status && user.status !== 'ACTIVE') {
+    if (user.status && user.status !== 'ACTIVE' && user.status !== 'PENDING') {
       return res.status(403).json({
         success: false,
         message: `Your account has been ${user.status.toLowerCase()}. Please contact platform administration.`,
       });
     }
 
-    if ((user.role === 'MATCHMAKER' || user.role === 'BREAKUP_BUDDY' || user.role === 'HOST' || user.role === 'CAFE') && !user.isApproved) {
+    // Require Admin approval for all non-admin users
+    if (user.role !== 'ADMIN' && (!user.isApproved || user.status === 'PENDING')) {
       return res.status(403).json({
         success: false,
         pendingApproval: true,
-        message: 'Your account is pending admin approval. You will be notified once approved.',
+        message: 'Your account is pending admin approval. You will receive an email once an administrator approves your registration.',
       });
     }
 
@@ -653,6 +809,10 @@ router.post('/login', loginLimiter, async (req, res) => {
         gender: user.gender,
         relationshipIntent: user.relationshipIntent,
         role: user.role,
+        isVerified: Boolean(user.isVerified),
+        emailVerified: Boolean(user.emailVerified),
+        isApproved: Boolean(user.isApproved),
+        status: user.status || 'ACTIVE',
       },
       redirectUrl,
     });
@@ -701,6 +861,10 @@ router.get('/me', async (req, res) => {
         gender: true,
         relationshipIntent: true,
         role: true,
+        isVerified: true,
+        emailVerified: true,
+        isApproved: true,
+        status: true,
         dateOfBirth: true,
         createdAt: true,
         idType: true,
@@ -717,6 +881,12 @@ router.get('/me', async (req, res) => {
         isAvailableForRequests: true,
         weeklySchedule: true,
         blockedDates: true,
+        profileVisibility: true,
+        allowRmMatchmaking: true,
+        showAgePublicly: true,
+        showHometownPublicly: true,
+        cityVisibility: true,
+        hometown: true,
       },
     });
 
@@ -727,7 +897,15 @@ router.get('/me', async (req, res) => {
     return res.json({
       success: true,
       authenticated: true,
-      user,
+      user: {
+        ...user,
+        profileVisibility: user.profileVisibility || 'all_members',
+        allowRmMatchmaking: user.allowRmMatchmaking ?? true,
+        showAgePublicly: user.showAgePublicly ?? true,
+        showHometownPublicly: user.showHometownPublicly ?? true,
+        cityVisibility: user.cityVisibility ?? true,
+        hometown: user.hometown || '',
+      },
       redirectUrl: getRoleRedirect(user.role),
     });
   } catch (error) {
@@ -736,9 +914,78 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// 4b. PUT /api/auth/profile - Update editable member profile fields
+// 4a. GET /api/auth/profile - Retrieve authenticated user's profile & visibility settings
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        email: true,
+        phone: true,
+        city: true,
+        hometown: true,
+        gender: true,
+        relationshipIntent: true,
+        role: true,
+        profilePhoto: true,
+        profileImage: true,
+        shortBio: true,
+        languages: true,
+        areasOfExpertise: true,
+        sessionTypes: true,
+        availableDays: true,
+        availableTimeStart: true,
+        availableTimeEnd: true,
+        isAvailableForRequests: true,
+        weeklySchedule: true,
+        blockedDates: true,
+        dateOfBirth: true,
+        createdAt: true,
+        isVerified: true,
+        emailVerified: true,
+        profileVisibility: true,
+        allowRmMatchmaking: true,
+        showAgePublicly: true,
+        showHometownPublicly: true,
+        cityVisibility: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    return res.json({
+      success: true,
+      user: {
+        ...user,
+        profileVisibility: user.profileVisibility || 'all_members',
+        allowRmMatchmaking: user.allowRmMatchmaking ?? true,
+        showAgePublicly: user.showAgePublicly ?? true,
+        showHometownPublicly: user.showHometownPublicly ?? true,
+        cityVisibility: user.cityVisibility ?? true,
+        hometown: user.hometown || '',
+      },
+    });
+  } catch (error) {
+    console.error('Error in GET /profile:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve profile.' });
+  }
+});
+
+// 4b. PUT /api/auth/profile - Update editable member profile fields and visibility settings
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
+    // Authorization check: Ensure users can update only their own visibility and profile settings
+    if ((req.body.id && req.body.id !== req.user.userId) || (req.body.userId && req.body.userId !== req.user.userId)) {
+      if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ success: false, message: 'Unauthorized: You can only update your own profile settings.' });
+      }
+    }
+
     const {
       city,
       gender,
@@ -752,7 +999,13 @@ router.put('/profile', authenticateToken, async (req, res) => {
       sessionTypes,
       availableDays,
       availableTimeStart,
-      availableTimeEnd
+      availableTimeEnd,
+      profileVisibility,
+      allowRmMatchmaking,
+      showAgePublicly,
+      showHometownPublicly,
+      cityVisibility,
+      hometown,
     } = req.body;
     const updateData = {};
 
@@ -771,11 +1024,36 @@ router.put('/profile', authenticateToken, async (req, res) => {
     if (availableTimeStart !== undefined) updateData.availableTimeStart = availableTimeStart;
     if (availableTimeEnd !== undefined) updateData.availableTimeEnd = availableTimeEnd;
 
+    // Validate and update Profile Visibility settings
+    if (profileVisibility !== undefined) {
+      if (!['all_members', 'event_co_attendees', 'connections_only'].includes(profileVisibility)) {
+        return res.status(400).json({ success: false, message: 'Invalid profile visibility option.' });
+      }
+      updateData.profileVisibility = profileVisibility;
+    }
+    if (allowRmMatchmaking !== undefined) {
+      updateData.allowRmMatchmaking = Boolean(allowRmMatchmaking);
+    }
+    if (showAgePublicly !== undefined) {
+      updateData.showAgePublicly = Boolean(showAgePublicly);
+    }
+    if (showHometownPublicly !== undefined) {
+      updateData.showHometownPublicly = Boolean(showHometownPublicly);
+    }
+    if (cityVisibility !== undefined) {
+      updateData.cityVisibility = Boolean(cityVisibility);
+    }
+    if (hometown !== undefined) {
+      updateData.hometown = typeof hometown === 'string' ? hometown.trim() : null;
+    }
+
     if (dateOfBirth) {
       const parsedDate = new Date(dateOfBirth);
       if (!isNaN(parsedDate.getTime())) {
         updateData.dateOfBirth = parsedDate;
       }
+    } else if (dateOfBirth === null) {
+      updateData.dateOfBirth = null;
     }
 
     const updatedUser = await prisma.user.update({
@@ -788,10 +1066,12 @@ router.put('/profile', authenticateToken, async (req, res) => {
         email: true,
         phone: true,
         city: true,
+        hometown: true,
         gender: true,
         relationshipIntent: true,
         role: true,
         profilePhoto: true,
+        profileImage: true,
         shortBio: true,
         languages: true,
         areasOfExpertise: true,
@@ -802,17 +1082,179 @@ router.put('/profile', authenticateToken, async (req, res) => {
         blockedDates: true,
         dateOfBirth: true,
         createdAt: true,
+        profileVisibility: true,
+        allowRmMatchmaking: true,
+        showAgePublicly: true,
+        showHometownPublicly: true,
+        cityVisibility: true,
       },
     });
 
     return res.json({
       success: true,
-      user: updatedUser,
+      user: {
+        ...updatedUser,
+        profileVisibility: updatedUser.profileVisibility || 'all_members',
+        allowRmMatchmaking: updatedUser.allowRmMatchmaking ?? true,
+        showAgePublicly: updatedUser.showAgePublicly ?? true,
+        showHometownPublicly: updatedUser.showHometownPublicly ?? true,
+        cityVisibility: updatedUser.cityVisibility ?? true,
+        hometown: updatedUser.hometown || '',
+      },
       message: 'Profile updated successfully.',
     });
   } catch (error) {
     console.error('Error in PUT /profile:', error);
     return res.status(500).json({ success: false, message: 'Failed to update profile.' });
+  }
+});
+
+// 4c. GET /api/auth/profile/:id - Fetch another user's profile with visibility rules enforced
+router.get('/profile/:id', authenticateToken, async (req, res) => {
+  try {
+    const targetId = req.params.id;
+    const requesterId = req.user.userId;
+
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: 'User ID is required.' });
+    }
+
+    // Requester viewing their own profile or an Admin viewing any profile
+    if (requesterId === targetId || req.user.role === 'ADMIN') {
+      const user = await prisma.user.findUnique({
+        where: { id: targetId },
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          email: true,
+          phone: true,
+          city: true,
+          hometown: true,
+          gender: true,
+          relationshipIntent: true,
+          role: true,
+          profilePhoto: true,
+          profileImage: true,
+          shortBio: true,
+          languages: true,
+          areasOfExpertise: true,
+          sessionTypes: true,
+          availableDays: true,
+          dateOfBirth: true,
+          createdAt: true,
+          isVerified: true,
+          profileVisibility: true,
+          allowRmMatchmaking: true,
+          showAgePublicly: true,
+          showHometownPublicly: true,
+          cityVisibility: true,
+        },
+      });
+      if (!user) return res.status(404).json({ success: false, message: 'Profile not found.' });
+      return res.json({ success: true, profile: user });
+    }
+
+    // Fetch target user's visibility and profile data
+    const target = await prisma.user.findUnique({
+      where: { id: targetId },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        city: true,
+        hometown: true,
+        gender: true,
+        relationshipIntent: true,
+        role: true,
+        profilePhoto: true,
+        profileImage: true,
+        shortBio: true,
+        languages: true,
+        dateOfBirth: true,
+        createdAt: true,
+        isVerified: true,
+        status: true,
+        profileVisibility: true,
+        allowRmMatchmaking: true,
+        showAgePublicly: true,
+        showHometownPublicly: true,
+        cityVisibility: true,
+      },
+    });
+
+    if (!target || target.status === 'BANNED' || target.status === 'SUSPENDED') {
+      return res.status(404).json({ success: false, message: 'Profile not found.' });
+    }
+
+    const visibility = target.profileVisibility || 'all_members';
+
+    // Check if requester and target are mutual connections
+    const isMutualConnection = await prisma.matchSuggestion.findFirst({
+      where: {
+        OR: [
+          { clientId: requesterId, suggestedProfileId: targetId },
+          { clientId: targetId, suggestedProfileId: requesterId },
+        ],
+        status: { in: ['BothApproved', 'Approved'] },
+      },
+    });
+
+    const isHostOrManager = req.user.role === 'HOST' || req.user.role === 'MATCHMAKER';
+
+    // Enforce Rule: connections_only
+    if (visibility === 'connections_only' && !isMutualConnection && !isHostOrManager) {
+      return res.status(403).json({
+        success: false,
+        message: 'This profile is private and only visible to mutual connections.',
+      });
+    }
+
+    // Enforce Rule: event_co_attendees
+    if (visibility === 'event_co_attendees' && !isMutualConnection && !isHostOrManager) {
+      const sharedBookings = await prisma.$queryRawUnsafe(`
+        SELECT eb1."eventId"
+        FROM "EventBooking" eb1
+        INNER JOIN "EventBooking" eb2 ON eb1."eventId" = eb2."eventId"
+        WHERE eb1."userId" = $1 AND eb2."userId" = $2
+        AND eb1."status" != 'CANCELLED' AND eb2."status" != 'CANCELLED'
+        LIMIT 1
+      `, requesterId, targetId);
+
+      const hasSharedEvent = Array.isArray(sharedBookings) && sharedBookings.length > 0;
+      if (!hasSharedEvent) {
+        return res.status(403).json({
+          success: false,
+          message: 'This profile is only visible to members attending the same event.',
+        });
+      }
+    }
+
+    // Enforce field-level privacy protections
+    const sanitizedProfile = {
+      id: target.id,
+      name: target.name,
+      displayName: target.displayName,
+      gender: target.gender,
+      relationshipIntent: target.relationshipIntent,
+      profilePhoto: target.profilePhoto,
+      profileImage: target.profileImage,
+      shortBio: target.shortBio,
+      languages: target.languages,
+      isVerified: target.isVerified,
+      createdAt: target.createdAt,
+      city: target.cityVisibility === false ? null : target.city,
+      dateOfBirth: target.showAgePublicly === false ? null : target.dateOfBirth,
+      hometown: target.showHometownPublicly === false ? null : target.hometown,
+    };
+
+    return res.json({
+      success: true,
+      profile: sanitizedProfile,
+    });
+  } catch (error) {
+    console.error('Error in GET /profile/:id:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve profile.' });
   }
 });
 
@@ -991,7 +1433,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 });
 
 
-// Get connections for the logged-in user
+// Get connections for the logged-in user with privacy rules enforced
 router.get('/connections', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -1004,10 +1446,32 @@ router.get('/connections', authenticateToken, async (req, res) => {
       },
       include: {
         client: {
-          select: { id: true, name: true, profileImage: true, gender: true, city: true, dateOfBirth: true }
+          select: {
+            id: true,
+            name: true,
+            profileImage: true,
+            gender: true,
+            city: true,
+            hometown: true,
+            dateOfBirth: true,
+            showAgePublicly: true,
+            showHometownPublicly: true,
+            cityVisibility: true,
+          }
         },
         suggestedProfile: {
-          select: { id: true, name: true, profileImage: true, gender: true, city: true, dateOfBirth: true }
+          select: {
+            id: true,
+            name: true,
+            profileImage: true,
+            gender: true,
+            city: true,
+            hometown: true,
+            dateOfBirth: true,
+            showAgePublicly: true,
+            showHometownPublicly: true,
+            cityVisibility: true,
+          }
         },
         matchmaker: {
           select: { id: true, name: true }
@@ -1016,7 +1480,23 @@ router.get('/connections', authenticateToken, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ success: true, connections });
+    // Enforce privacy restrictions on opposite party's profile data
+    const sanitized = connections.map((conn) => {
+      const c = { ...conn };
+      if (c.client && c.client.id !== userId) {
+        if (c.client.showAgePublicly === false) c.client.dateOfBirth = null;
+        if (c.client.showHometownPublicly === false) c.client.hometown = null;
+        if (c.client.cityVisibility === false) c.client.city = null;
+      }
+      if (c.suggestedProfile && c.suggestedProfile.id !== userId) {
+        if (c.suggestedProfile.showAgePublicly === false) c.suggestedProfile.dateOfBirth = null;
+        if (c.suggestedProfile.showHometownPublicly === false) c.suggestedProfile.hometown = null;
+        if (c.suggestedProfile.cityVisibility === false) c.suggestedProfile.city = null;
+      }
+      return c;
+    });
+
+    res.json({ success: true, connections: sanitized });
   } catch (error) {
     console.error('Error fetching connections:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch connections' });

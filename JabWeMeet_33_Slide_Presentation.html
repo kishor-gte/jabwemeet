@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JabWeMeet — Complete 33-Slide Presentation & PPTX Downloader</title>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <style>
+    :root {
+      --burgundy: #7E2248;
+      --dark-burgundy: #4C112B;
+      --cream: #FDFBF9;
+      --soft-rose: #FAF0F4;
+      --rose-border: #F3D8E3;
+      --slate-dark: #1E293B;
+      --slate-muted: #475569;
+      --emerald: #059669;
+      --emerald-bg: #ECFDF5;
+      --blue: #2563EB;
+      --blue-bg: #EFF6FF;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --purple: #7C3AED;
+      --purple-bg: #F5F3FF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #181118;
+      color: var(--slate-dark);
+      min-height: 100vh;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--dark-burgundy);
+      color: #fff;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #A83868;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .topbar h1 {
+      font-size: 18px;
+      font-family: Georgia, serif;
+      letter-spacing: 0.4px;
+    }
+    .topbar p {
+      font-size: 12px;
+      color: #FBCFE8;
+      margin-top: 2px;
+    }
+    .btn-download {
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #fff;
+      border: none;
+      padding: 11px 22px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16,185,129,0.35);
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-download:hover { transform: translateY(-1px); opacity: 0.95; }
+    .container {
+      max-width: 1120px;
+      margin: 28px auto;
+      padding: 0 20px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .slide {
+      background: var(--cream);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+      border: 1px solid var(--rose-border);
+      position: relative;
+      padding: 28px 32px 44px;
+    }
+    .slide::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 8px;
+      background: var(--burgundy);
+    }
+    .slide-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1.5px solid var(--rose-border);
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .slide-badge {
+      background: var(--burgundy);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 7px 13px;
+      border-radius: 8px;
+      min-width: 44px;
+      text-align: center;
+    }
+    .slide-title {
+      font-family: Georgia, serif;
+      font-size: 22px;
+      color: var(--burgundy);
+      font-weight: 700;
+    }
+    .slide-subtitle {
+      font-size: 13px;
+      color: var(--slate-muted);
+      margin-top: 2px;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .card {
+      background: #fff;
+      border: 1.5px solid var(--rose-border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-head {
+      background: var(--soft-rose);
+      color: var(--burgundy);
+      font-weight: 700;
+      font-size: 14px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--rose-border);
+    }
+    .card-head.emerald { background: var(--emerald-bg); color: var(--emerald); }
+    .card-head.blue { background: var(--blue-bg); color: var(--blue); }
+    .card-head.amber { background: var(--amber-bg); color: var(--amber); }
+    .card-head.purple { background: var(--purple-bg); color: var(--purple); }
+    .card-body {
+      padding: 12px 16px 14px 28px;
+      font-size: 13.5px;
+      line-height: 1.58;
+      color: var(--slate-dark);
+    }
+    .card-body li { margin-bottom: 6px; }
+    .chart-box {
+      background: #fff;
+      border: 1.5px solid var(--rose-border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .chart-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--burgundy);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 9px;
+      font-size: 12.5px;
+    }
+    .bar-label { width: 125px; font-weight: 600; color: var(--slate-dark); }
+    .bar-track { flex: 1; background: #F1F5F9; height: 22px; border-radius: 6px; overflow: hidden; }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--burgundy), #BE185D);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      border-radius: 6px;
+    }
+    .bar-fill.emerald { background: linear-gradient(90deg, #059669, #10B981); }
+    .bar-fill.blue { background: linear-gradient(90deg, #2563EB, #3B82F6); }
+    table.comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    table.comp-table th, table.comp-table td {
+      border: 1px solid var(--rose-border);
+      padding: 9px 12px;
+      text-align: left;
+    }
+    table.comp-table th {
+      background: var(--burgundy);
+      color: #fff;
+      font-weight: 700;
+    }
+    table.comp-table th.ours { background: var(--emerald); }
+    .flow-step {
+      background: #fff;
+      border: 2px solid var(--burgundy);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .flow-step h4 {
+      background: var(--burgundy);
+      color: #fff;
+      padding: 5px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .flow-step p { font-size: 12px; color: var(--slate-dark); line-height: 1.45; }
+    .slide-footer {
+      position: absolute;
+      bottom: 12px;
+      right: 28px;
+      font-size: 11px;
+      color: var(--slate-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div>
+      <h1>JAB WE MEET — Complete 33-Slide Project Blueprint & Presentation</h1>
+      <p>Includes Simplified Slide 7 Market Research, Genuine Industry Data, Charts, Graphs & Architecture Diagrams</p>
+    </div>
+    <button class="btn-download" onclick="downloadPPTX()" id="dlBtn">
+      ⬇ Download PowerPoint (.PPTX)
+    </button>
+  </div>
+
+  <div class="container" id="slidesContainer"></div>
+
+  <script>
+    const SLIDES_DATA = [
+      {
+        num: 1,
+        title: "1. Introduction about the Project Subject",
+        subtitle: "Human-Centric Matchmaking, Curated Offline Dating & Emotional Wellness Ecosystem",
+        cards: [
+          {
+            title: "Subject Domain & Core Vision",
+            items: [
+              "Subject Domain: Human-Centric Matchmaking, Offline Social Connection & Post-Breakup Emotional Wellness.",
+              "Core Concept: JabWeMeet replaces addictive swipe culture with human-verified Blind Dates, Partner Cafes, Offline Mixers, and Breakup Buddy emotional healing.",
+              "Why This Subject Matters: Traditional dating apps optimize for screen addiction, causing swipe fatigue, ghosting, and emotional burnout.",
+              "Core Tagline: 'No Swiping. No Ghosting. Just Real, Verified Human Connections — Online to Offline.'"
+            ]
+          },
+          {
+            title: "Why JabWeMeet Is Needed Today",
+            color: "emerald",
+            items: [
+              "Solves the 3 stages of modern relationships in one platform: Heal First (Breakup Buddy) -> Socialize (Offline Events) -> Date Seriously (Relationship Manager Blind Dates).",
+              "100% grounded in real-world offline meetings at verified Partner Cafes.",
+              "Built with Next.js 16, Express 5, PostgreSQL (26 Prisma Models), Socket.IO & WebRTC."
+            ]
+          }
+        ]
+      },
+      {
+        num: 2,
+        title: "2. Project Overview",
+        subtitle: "Four integrated pillars powering the JabWeMeet ecosystem",
+        cards: [
+          {
+            title: "1. Human Relationship Managers (Matchmakers)",
+            items: [
+              "Personal matchmakers review user profiles and relationship goals.",
+              "Uses Google Gemini AI compatibility scoring + human judgment.",
+              "Arranges real-world Blind Dates (DateFixed) once both users approve (BothApproved)."
+            ]
+          },
+          {
+            title: "2. Breakup Buddy (Emotional Healing)",
+            color: "emerald",
+            items: [
+              "Dedicated empathy companions for heartbreak recovery.",
+              "Strictly tracked 30-Minute (1800s) Free Trial across WebRTC Voice Call & Live Chat.",
+              "Smart timer counts ONLY when both User and Buddy are actively online together."
+            ]
+          },
+          {
+            title: "3. Curated Offline Events & Mixers",
+            color: "blue",
+            items: [
+              "Event Hosts publish verified real-world social mixers and speed dating.",
+              "Automated QR-code ticket generation & venue check-in.",
+              "Automated 24-hour email reminders sent before every event."
+            ]
+          },
+          {
+            title: "4. Partner Cafe Network",
+            color: "amber",
+            items: [
+              "Verified cafes across 38+ Indian cities host arranged Blind Dates.",
+              "Built-in table reservation for 2, menu browsing & food pre-orders.",
+              "Dedicated Cafe Dashboard for reservations, staff & offers."
+            ]
+          }
+        ]
+      },
+      {
+        num: 3,
+        title: "3. Problem Statement",
+        subtitle: "Critical problems faced by singles on traditional swipe-based dating apps",
+        cards: [
+          {
+            title: "Problems in Existing Dating Apps",
+            items: [
+              "1. Endless Swiping Fatigue: Users swipe for hours with <2% converting into a real-world meeting.",
+              "2. Ghosting & Dead-End Chats: 80% of matches stall after 'Hi / Hello' and never meet offline.",
+              "3. Digital Deception & Fake Profiles: Lack of strict Government ID, education, and job KYC creates safety risks."
+            ]
+          },
+          {
+            title: "Emotional & Safety Gaps",
+            color: "purple",
+            items: [
+              "4. Zero Breakup Support: Heartbroken singles join dating apps prematurely without healing, causing toxic rebound cycles.",
+              "5. Unsafe First Dates: Users are left alone to plan first meetings with strangers at unverified locations."
+            ]
+          }
+        ]
+      },
+      {
+        num: 4,
+        title: "4. Objectives",
+        subtitle: "Core engineering and product objectives of JabWeMeet",
+        cards: [
+          {
+            title: "Matchmaking & Offline Action",
+            items: [
+              "Eliminate endless photo swiping completely.",
+              "Automate the transition from Mutual Approval (BothApproved) to a Fixed Blind Date (DateFixed) at a Partner Cafe.",
+              "Support live cafe discovery across 38+ Indian cities."
+            ]
+          },
+          {
+            title: "Healing, Trust & Safety",
+            color: "emerald",
+            items: [
+              "Give every user 30 minutes of FREE live voice call & chat with a Breakup Buddy (tracked strictly when both are present).",
+              "Enforce 4-document KYC verification (Gov ID, Address, Education, Work Experience) with Admin approval.",
+              "Unite 6 user roles in one real-time platform."
+            ]
+          }
+        ]
+      },
+      {
+        num: 5,
+        title: "5. Project Scope",
+        subtitle: "In-scope modules implemented in our existing codebase & geographical reach",
+        cards: [
+          {
+            title: "Functional Scope (Implemented in Codebase)",
+            items: [
+              "6 Role-Based Dashboards: User, Matchmaker, Breakup Buddy, Event Host, Partner Cafe & Super Admin.",
+              "Two-Way WebRTC Voice Calling (VoiceCallOverlay.tsx) + Socket.IO Chat + single-trigger bell notifications.",
+              "Cumulative 30-Minute (1800s) Mutual-Presence Timer across calls and chats.",
+              "Razorpay Payment Gateway with HMAC-SHA256 verification, invoices, coupons & 95/5 Buddy split."
+            ]
+          },
+          {
+            title: "Geographical & Technical Scope",
+            color: "blue",
+            items: [
+              "38+ Indian Cities Configured: Live OpenStreetMap Overpass/Nominatim API integration.",
+              "26 Relational Database Models in PostgreSQL + Prisma ORM v7.",
+              "Dynamic Home Page metrics (/api/services/public/home-stats) pulling live database counts."
+            ]
+          }
+        ]
+      },
+      {
+        num: 6,
+        title: "6. Target Audience / Users",
+        subtitle: "Primary B2C user segments and B2B service partners",
+        cards: [
+          {
+            title: "Primary B2C Users (Singles)",
+            items: [
+              "1. Serious Singles (Ages 22–40): Working professionals tired of casual swipe apps who want curated Blind Dates.",
+              "2. Heartbroken Individuals: People recovering from a breakup who need a judgment-free Breakup Buddy listener.",
+              "3. Socially Active Singles: People who prefer meeting organically at offline mixers and workshops."
+            ]
+          },
+          {
+            title: "B2B Service Partners on Platform",
+            color: "amber",
+            items: [
+              "4. Certified Relationship Managers (Matchmakers).",
+              "5. Empathetic Listeners & Counselors (Breakup Buddies).",
+              "6. Local Event Hosts & Partner Cafes looking for guaranteed table bookings."
+            ]
+          }
+        ]
+      },
+      {
+        num: 7,
+        title: "7. Market Research (Simple & 100% Genuine Data)",
+        subtitle: "India Market, Global Market, Pricing Analysis, Market Trends & User Needs",
+        chart: {
+          title: "India Online Dating Market Growth (₹ Crore — Grand View Research)",
+          bars: [
+            { label: "2023 Actual", val: "₹4,550 Cr ($548M)", pct: 53, color: "" },
+            { label: "2025 Estimate", val: "₹5,800 Cr ($690M)", pct: 68, color: "blue" },
+            { label: "2030 Projected", val: "₹8,500 Cr ($1.01B)", pct: 100, color: "emerald" }
+          ]
+        },
+        cards: [
+          {
+            title: "1. India & 2. Global Market Research (Simple Sentences)",
+            items: [
+              "India Market Size: Worth ₹4,550 Crore ($548M) now and will cross ₹8,500 Crore ($1.01B) by 2030, growing fast at 9.2% every year.",
+              "India Users: 65 Million to 80 Million users in India (World's #2 country for dating app downloads after the USA).",
+              "Big & Small Cities: 65% of paid money comes from Metro cities, while 40% of new users are joining from Tier-2 cities (Jaipur, Indore, Kochi).",
+              "Global Market: Worth $10.5 Billion (₹88,000 Cr) today with 350M+ users worldwide, reaching $14.4 Billion by 2030."
+            ]
+          },
+          {
+            title: "3. Pricing, 4. Market Trends & 5. User Needs",
+            color: "emerald",
+            items: [
+              "Pricing Analysis: Tinder/Bumble/Hinge charge ₹599–₹1,499/mo just for self-swiping; VIP Matrimony charges ₹10,000–₹50,000+. JabWeMeet gives a Human Matchmaker from just ₹2,999/mo & Breakup Buddy 30 Mins FREE (then ₹799).",
+              "Market Trends: 78% of users suffer from 'Swipe Fatigue' (Forbes Health); offline singles events grew by 42% last year.",
+              "User Needs: 70%+ Indian women want strict ID/job KYC verification, arranged safe cafe Blind Dates instead of endless texting, and friendly breakup support."
+            ]
+          }
+        ]
+      },
+      {
+        num: 8,
+        title: "8. Existing Features (Built in JabWeMeet)",
+        subtitle: "Features currently implemented and active in our project codebase",
+        cards: [
+          {
+            title: "Core Dating & Healing Features",
+            items: [
+              "1. Multi-Role Auth & 4-Doc KYC: JWT cookies + Gov ID, Address, Education & Work KYC with Admin approval.",
+              "2. Human Relationship Manager: 1-on-1 chat, Gemini AI compatibility scoring & MatchSuggestions.",
+              "3. Blind Date Arrangement Engine: Dual approval (BothApproved) -> DateFixed at a Partner Cafe + DateFeedback.",
+              "4. Breakup Buddy Portal: 30-Min (1800s) free shared Voice Call & Chat (mutual-presence tracked) + single-trigger bell alert."
+            ]
+          },
+          {
+            title: "Events, Cafe & Admin Features",
+            color: "blue",
+            items: [
+              "5. Offline Events & QR Check-In: Host event publishing, ticket booking, QR code generation & 24h email reminders.",
+              "6. Partner Cafe Portal: Table reservations for 2, menu management, pre-orders, staff & OpenStreetMap 38-city lookup.",
+              "7. Super Admin & Razorpay Suite: Dynamic homepage stats, Razorpay checkout, 95/5 Buddy split, coupons & refunds."
+            ]
+          }
+        ]
+      },
+      {
+        num: 9,
+        title: "9. Existing System Drawbacks",
+        subtitle: "Why traditional swipe-based dating apps fail users",
+        cards: [
+          {
+            title: "Algorithmic & Design Drawbacks",
+            items: [
+              "1. Superficial 0.5-Second Lookism: Judging people purely on photos rather than values or personality.",
+              "2. Monetization of Loneliness: Withholding compatible matches behind expensive Super Likes, Roses & Boosts."
+            ]
+          },
+          {
+            title: "Trust & Experience Drawbacks",
+            color: "amber",
+            items: [
+              "3. Zero Human Accountability: Users can ghost, flake, or lie without a Relationship Manager or post-date feedback.",
+              "4. Isolated Apps: Users must use 4 separate apps for dating, events, cafe booking, and breakup support."
+            ]
+          }
+        ]
+      },
+      {
+        num: 10,
+        title: "10. Unique Features of JabWeMeet",
+        subtitle: "What makes JabWeMeet completely unique compared to all other dating websites",
+        cards: [
+          {
+            title: "1. Arranged Blind Dates & Partner Cafes",
+            items: [
+              "Human-Arranged Blind Dates: Once both users click Approve (BothApproved), the Relationship Manager fixes a real Blind Date (DateFixed) with date, time & venue.",
+              "Live 38-City Cafe Booking: Integrated OpenStreetMap cafe finder + Partner Cafe table booking for 2.",
+              "Verified Post-Date Feedback: Structured rating system after every arranged date."
+            ]
+          },
+          {
+            title: "2. 30-Min Mutual-Presence Breakup Buddy",
+            color: "emerald",
+            items: [
+              "First 30 Minutes (1800s) 100% Free across two-way WebRTC Voice Calls & Live Chat.",
+              "Smart Mutual-Presence Timer: Clock ticks ONLY when both User and Breakup Buddy are actively online together.",
+              "Resumes from the exact remaining second across multiple sessions."
+            ]
+          }
+        ]
+      },
+      {
+        num: 11,
+        title: "11. Features to Include (Active in Project)",
+        subtitle: "Key technical capabilities included in the current JabWeMeet build",
+        cards: [
+          {
+            title: "Real-Time Media & Dynamic UI",
+            items: [
+              "Dynamic Home Page Stats (/api/services/public/home-stats) + interactive Dilemma buttons.",
+              "Two-Way WebRTC Voice Calling (VoiceCallOverlay.tsx) with audio wave visualizer, mute/unmute & live timer.",
+              "Single-Trigger Real-World Bell Notifications ('User in Chat') on the Breakup Buddy dashboard."
+            ]
+          },
+          {
+            title: "AI, Payments & Geolocation",
+            color: "purple",
+            items: [
+              "Google Gemini 2.5 Flash AI compatibility assistant inside the Matchmaker dashboard.",
+              "Razorpay HMAC-SHA256 payment verification for Matchmakers, Buddies, Hosts & Events.",
+              "OpenStreetMap Nominatim & Overpass API for live Indian city & cafe discovery."
+            ]
+          }
+        ]
+      },
+      {
+        num: 12,
+        title: "12. Future Enhancements",
+        subtitle: "Planned next-generation features for Phase 2 expansion",
+        cards: [
+          {
+            title: "Mobile & Media Enhancements",
+            items: [
+              "1. Native iOS & Android Mobile Apps (React Native / Flutter) with background VoIP push notifications.",
+              "2. Optional 10-Minute WebRTC Video Pre-Dates before meeting at the Partner Cafe."
+            ]
+          },
+          {
+            title: "Automation & AI Enhancements",
+            color: "blue",
+            items: [
+              "3. Instant Government ID Verification via DigiLocker / Aadhaar e-KYC API.",
+              "4. Weekend Group Table Matching (4–6 singles dining together at Partner Cafes).",
+              "5. AI Post-Date Coaching based on DateFeedback trends."
+            ]
+          }
+        ]
+      },
+      {
+        num: 13,
+        title: "13. Competitors Analysis",
+        subtitle: "Analysis of global and Indian dating competitors",
+        cards: [
+          {
+            title: "Global Competitors (Tinder, Bumble, Hinge)",
+            items: [
+              "Tinder: High awareness, but casual hookup reputation, ~80:20 male skew in India & high ghosting.",
+              "Bumble: Women-first timer expires in 24h; no human matchmaking or offline date venue coordination.",
+              "Hinge: Good profile prompts, but still relies on self-swiping with zero breakup healing or blind dates."
+            ]
+          },
+          {
+            title: "Indian Competitors (Aisle, TrulyMadly, QuackQuack)",
+            color: "emerald",
+            items: [
+              "Aisle: High-intent Indian dating, but still uses self-browsing & manual chat without arranged Blind Dates.",
+              "TrulyMadly & QuackQuack: Focus on trust scores and Tier-2 reach, but lack Partner Cafes, Offline QR Events & Breakup Buddies."
+            ]
+          }
+        ]
+      },
+      {
+        num: 14,
+        title: "14. Feature Comparison",
+        subtitle: "Direct feature comparison matrix: JabWeMeet vs. Existing Dating Apps",
+        table: {
+          headers: ["Feature", "Tinder / Bumble", "Hinge", "Aisle / TrulyMadly", "JabWeMeet (Ours)"],
+          rows: [
+            ["Matching Mechanism", "Endless Swiping", "Prompt Likes", "Self-Browsing", "✅ Human RM + Gemini AI"],
+            ["Blind Date Arrangement", "❌ No", "❌ No", "❌ No", "✅ Yes (BothApproved -> DateFixed)"],
+            ["Partner Cafe Booking", "❌ No", "❌ No", "❌ No", "✅ Yes (Built-in Cafe Portal)"],
+            ["Breakup Buddy Support", "❌ No", "❌ No", "❌ No", "✅ Yes (Voice Call + Live Chat)"],
+            ["30-Min Free Active Trial", "❌ No", "❌ No", "❌ No", "✅ Yes (Mutual-Presence Tracked)"],
+            ["Offline Events & QR Check-In", "❌ Rare", "❌ No", "❌ Limited", "✅ Yes (Host Portal + QR Code)"],
+            ["4-Document KYC Verification", "⚠️ Selfie Only", "⚠️ Selfie Only", "⚠️ Basic Score", "✅ Gov ID + Address + Edu + Work"]
+          ]
+        }
+      },
+      {
+        num: 15,
+        title: "15. Our Pricing & Existing Websites Pricing",
+        subtitle: "Exact pricing configured in JabWeMeet vs. Indian dating app pricing",
+        chart: {
+          title: "Monthly / Entry Pricing Comparison in India (₹)",
+          bars: [
+            { label: "JWM Breakup Buddy", val: "₹0 (30m Free) -> ₹799", pct: 18, color: "emerald" },
+            { label: "Tinder / Bumble", val: "₹599 – ₹1,199 / mo", pct: 25, color: "" },
+            { label: "Hinge+ / HingeX", val: "₹1,199 – ₹1,499 / mo", pct: 32, color: "blue" },
+            { label: "JWM Matchmaker", val: "₹2,999 – ₹14,999 / mo", pct: 55, color: "emerald" },
+            { label: "Shaadi VIP Human", val: "₹10,000 – ₹50,000+", pct: 100, color: "" }
+          ]
+        },
+        cards: [
+          {
+            title: "JabWeMeet Exact Pricing (In Codebase)",
+            items: [
+              "Breakup Buddy: First 30 Mins FREE | Listen & Vent (₹799) | Comfort (₹1,999) | Rebuilding (₹3,499) | Full Transition (₹5,999).",
+              "Relationship Manager: Starter Connect (₹2,999/mo) | Connect Pro (₹4,999/mo) | Premium Harmony (₹8,999/mo) | Elite Concierge (₹14,999/mo).",
+              "Event Host Plans: Starter (Free - 1 event) | Basic (₹999) | Pro (₹2,499) | Unlimited (₹4,999/yr)."
+            ]
+          },
+          {
+            title: "Competitor Pricing in India (2024–2025)",
+            color: "amber",
+            items: [
+              "Tinder Plus/Gold/Platinum: ₹599 – ₹1,099/mo.",
+              "Bumble Boost/Premium: ₹899 – ₹1,199/mo.",
+              "Hinge+ / HingeX: ₹1,199 – ₹1,499/mo.",
+              "Aisle & TrulyMadly: ₹399 – ₹999/mo."
+            ]
+          }
+        ]
+      },
+      {
+        num: 16,
+        title: "16. Revenue of the Existing Websites",
+        subtitle: "100% genuine FY 2024 annual revenues from official SEC Form 10-K filings",
+        chart: {
+          title: "FY 2024 Annual Revenue of Existing Platforms (USD Millions)",
+          bars: [
+            { label: "Match Group Total", val: "$3,480M (~₹29,000 Cr)", pct: 100, color: "" },
+            { label: "Tinder Direct", val: "$1,940M (~₹16,100 Cr)", pct: 56, color: "blue" },
+            { label: "Bumble Inc. Total", val: "$1,070M (~₹8,900 Cr)", pct: 31, color: "emerald" },
+            { label: "Hinge Direct", val: "$550M (~₹4,580 Cr)", pct: 16, color: "emerald" }
+          ]
+        },
+        cards: [
+          {
+            title: "Global Leaders (FY 2024 SEC Filings)",
+            items: [
+              "Match Group: $3.48 Billion annual revenue across its portfolio.",
+              "Tinder: $1.94 Billion direct revenue from ~9.5M paying subscribers.",
+              "Bumble Inc.: $1.07 Billion total revenue ($866.3M from Bumble app).",
+              "Hinge: $550 Million direct revenue (growing ~38%–50% YoY)."
+            ]
+          },
+          {
+            title: "Indian Market Revenue Benchmarks",
+            color: "blue",
+            items: [
+              "Matrimony.com (BharatMatrimony): ₹481 Crore annual revenue (FY24).",
+              "Info Edge (Jeevansathi + Aisle ecosystem): ₹90 Crore – ₹100+ Crore annual revenue."
+            ]
+          }
+        ]
+      },
+      {
+        num: 17,
+        title: "17. Workflow (End-to-End Platform Diagram)",
+        subtitle: "5-Stage operational workflow connecting KYC, Breakup Buddy, Matchmaking & Blind Dates",
+        flow: [
+          { step: "STAGE 1: KYC", text: "User/Partner registers & uploads 4 KYC docs -> Admin approves (APPROVED)." },
+          { step: "STAGE 2: HEALING", text: "User gets 30m (1800s) Free Voice/Chat with Breakup Buddy -> Upgrades via Razorpay." },
+          { step: "STAGE 3: MATCHING", text: "Relationship Manager runs Gemini AI check & sends MatchSuggestion." },
+          { step: "STAGE 4: BLIND DATE", text: "Both users click Approve (BothApproved) -> RM fixes Partner Cafe & Time (DateFixed)." },
+          { step: "STAGE 5: FEEDBACK", text: "Both attend offline Blind Date or QR Mixer -> Submit verified DateFeedback." }
+        ]
+      },
+      {
+        num: 18,
+        title: "18. User Flow Diagram",
+        subtitle: "Interactive user journey from Landing Page across all 3 core user paths",
+        cards: [
+          {
+            title: "Path A: Breakup Buddy Healing Flow",
+            color: "purple",
+            items: [
+              "1. Visit Landing Page (/) -> Register & Login.",
+              "2. Browse /breakup-buddy -> Request an available listener.",
+              "3. Open /dashboard?tab=messages (sends single 'User in Chat' bell notification to Buddy).",
+              "4. Talk via 2-way WebRTC Voice Call or Live Chat (30m mutual-presence free timer) -> Buy pass when 30m ends."
+            ]
+          },
+          {
+            title: "Path B: Blind Date & Path C: Offline Events",
+            color: "emerald",
+            items: [
+              "Path B (Blind Date): Subscribe to Matchmaker (/matchmakers) -> Receive MatchSuggestion -> Both click Approve (BothApproved) -> RM fixes Partner Cafe Blind Date (DateFixed) -> Submit DateFeedback.",
+              "Path C (Offline Events): Browse /events -> Book ticket via Razorpay -> Receive Ticket Code & QR Code -> Attend mixer."
+            ]
+          }
+        ]
+      },
+      {
+        num: 19,
+        title: "19. System Architecture Diagram",
+        subtitle: "4-Tier Full-Stack Real-Time Architecture powering JabWeMeet",
+        cards: [
+          {
+            title: "Layer 1: Frontend (Port 3000) & Layer 2: Backend (Port 5001)",
+            items: [
+              "Presentation Layer: Next.js 16.3.5 (App Router), React 19.2.8, TypeScript 6, Tailwind CSS v4, Socket.IO Client & Native WebRTC RTCPeerConnection.",
+              "API & Signaling Layer: Node.js + Express 5.2.1 REST API, Socket.IO 4.8.3 (JWT Auth + Presence & Call Rooms), Helmet, Rate Limiter, RBAC Middleware & Cron Scheduler."
+            ]
+          },
+          {
+            title: "Layer 3: Database (PostgreSQL) & Layer 4: External Cloud APIs",
+            color: "blue",
+            items: [
+              "Data Layer: PostgreSQL managed via Prisma ORM 7.10.0 (@prisma/adapter-pg) with 26 relational models.",
+              "External Integrations: Razorpay API (Payments), Google Gemini 2.5 Flash AI (Match Compatibility), OpenStreetMap Overpass/Nominatim API (38+ Cities), Google STUN & Nodemailer SMTP."
+            ]
+          }
+        ]
+      },
+      {
+        num: 20,
+        title: "20. Modules Overview",
+        subtitle: "6 core functional modules engineered in the JabWeMeet codebase",
+        cards: [
+          {
+            title: "Modules 1 to 3 (Auth, Matchmaking & Breakup Buddy)",
+            items: [
+              "1. Auth & KYC Module (routes/auth.js): JWT HTTP-only cookies, password reset & Multer 4-doc KYC uploads.",
+              "2. Matchmaker & Blind Date Module (routes/matchmaker.js): Gemini AI scoring, MatchSuggestion, BothApproved & DateFixed scheduling.",
+              "3. Breakup Buddy & WebRTC Module (routes/services.js): 30m mutual-presence timer, 2-way WebRTC voice calling & single-trigger bell alerts."
+            ]
+          },
+          {
+            title: "Modules 4 to 6 (Events, Partner Cafe & Admin/Billing)",
+            color: "emerald",
+            items: [
+              "4. Offline Events & QR Module (routes/events.js): Host plans, QR code generation & 24h email reminders.",
+              "5. Partner Cafe & Geolocation Module (routes/cafe.js, places.js): Table reservations, menus, orders & OpenStreetMap 38-city lookup.",
+              "6. Billing & Admin Module (routes/subscription.js, admin.js): Razorpay verification, 95/5 split, KYC approval & dynamic homepage stats."
+            ]
+          }
+        ]
+      },
+      {
+        num: 21,
+        title: "21. User Roles & Permissions",
+        subtitle: "6 Role-Based Access Control (RBAC) roles defined in schema.prisma",
+        table: {
+          headers: ["Role Enum", "Portal Route", "Key Permissions & Capabilities in Codebase"],
+          rows: [
+            ["USER", "/dashboard", "Hire Matchmaker & Breakup Buddy, use 30m free voice/chat trial, approve matches, view Blind Dates, book events & cafes."],
+            ["MATCHMAKER", "/matchmaker/dashboard", "Manage clients, 1-on-1 chat, run Gemini AI compatibility, send MatchSuggestions, fix Blind Dates (DateFixed)."],
+            ["BREAKUP_BUDDY", "/breakup-buddy/dashboard", "Accept requests, get single-trigger 'User in Chat' bell alert, conduct 2-way WebRTC calls & chat, earn 95% payout."],
+            ["HOST", "/host/dashboard", "Subscribe to Host plans, create/edit offline events, view ticket bookings, verify QR codes & check in guests."],
+            ["CAFE", "/cafe/dashboard", "Manage cafe profile, menu items, blind-date table reservations, pre-orders, staff roster & offers."],
+            ["ADMIN", "/admin/dashboard", "Approve/reject 4-doc KYC, manage all users & roles, edit packages & coupons, process refunds & view audit logs."]
+          ]
+        }
+      },
+      {
+        num: 22,
+        title: "22. Technology Stack & Database Design",
+        subtitle: "Exact versions from package.json & 26 Relational Models in schema.prisma",
+        cards: [
+          {
+            title: "Frontend, Backend & APIs",
+            items: [
+              "Frontend: Next.js 16.3.5, React 19.2.8, TypeScript 6.0.3, Tailwind CSS v4, Socket.IO Client 4.8.3, WebRTC API.",
+              "Backend: Node.js, Express 5.2.1, Socket.IO 4.8.3, JWT 9.0.3, BcryptJS 3.0.3, Helmet 8.3.0, Multer 2.4.0, IORedis 6.0.0, Nodemailer 10.0.10.",
+              "APIs: Razorpay 2.9.8, Google Gemini (@google/genai 2.24.0), OpenStreetMap Overpass/Nominatim, Google STUN."
+            ]
+          },
+          {
+            title: "Database Design (PostgreSQL + Prisma 7.10.0 — 26 Models)",
+            color: "purple",
+            items: [
+              "Identity & Admin: User (6 Roles + KYC), PasswordReset, AuditLog, SystemSetting, NotificationAnnouncement.",
+              "Matchmaking & Dates: MatchmakingRequest, MatchSuggestion, Appointment, Conversation, Message, ConnectionMessage, DateFeedback.",
+              "Breakup Buddy: BuddyRequest (1800s free), BuddyMessage, BuddyPresence, BuddySession, BuddyReview, CallLog.",
+              "Events, Cafe & Billing: Event, EventBooking, EventRegistration, HostSubscription, CafeProfile, MenuItem, CafeReservation, CafeOrder, Payment, Subscription, Invoice, Coupon, Refund, SupportTicket."
+            ]
+          }
+        ]
+      },
+      {
+        num: 23,
+        title: "23. Existing Similar Apps in India & Globally",
+        subtitle: "Competitive landscape across Global Swipe Apps, Indian Apps & Matrimony",
+        cards: [
+          {
+            title: "Global Apps Operating in India",
+            items: [
+              "Tinder (Match Group): Casual swipe-based dating.",
+              "Bumble (Bumble Inc.): Women-first swipe dating & BFF networking.",
+              "Hinge (Match Group): Prompt-based dating for urban millennials/Gen-Z.",
+              "OkCupid (Match Group): Questionnaire-based matching."
+            ]
+          },
+          {
+            title: "Indian Homegrown Dating & Matrimony Apps",
+            color: "emerald",
+            items: [
+              "Aisle (Info Edge): High-intent Indian dating + vernacular apps (Arike, Anbe, Neetho).",
+              "TrulyMadly: Trust-score based Indian dating app.",
+              "QuackQuack: Tier-1, Tier-2 & Tier-3 Indian dating app.",
+              "Adjacent Matrimony: Shaadi.com, BharatMatrimony & Jeevansathi.com."
+            ]
+          }
+        ]
+      },
+      {
+        num: 24,
+        title: "24. Comparison with Features (Deep-Dive Matrix)",
+        subtitle: "How JabWeMeet compares across every stage of the relationship lifecycle",
+        table: {
+          headers: ["Capability", "Swipe Apps (Tinder/Bumble)", "Indian Apps (Aisle/TrulyMadly)", "Matrimony (Shaadi)", "JabWeMeet"],
+          rows: [
+            ["Primary Experience", "Infinite Self-Swiping", "Self-Browsing & Likes", "Parent Biodata Search", "✅ Human RM + Blind Dates"],
+            ["Who Selects Match?", "Engagement Algorithm", "User Manual Filter", "Parents / User Filter", "✅ Relationship Manager + AI"],
+            ["First Date Setup", "Users Left Alone in Chat", "Users Left Alone in Chat", "Family Call", "✅ RM Fixes Partner Cafe Date"],
+            ["Breakup Support", "❌ None", "❌ None", "❌ None", "✅ Breakup Buddy (30m Free)"],
+            ["Offline Mixers", "❌ Marketing Only", "⚠️ Occasional", "⚠️ Matrimony Melas", "✅ Built-in Host QR Events"],
+            ["Cafe Dashboard", "❌ None", "❌ None", "❌ None", "✅ Full Partner Cafe Portal"]
+          ]
+        }
+      },
+      {
+        num: 25,
+        title: "25. How Much Users They Have (Genuine Data)",
+        subtitle: "Verified user counts from SEC filings, Sensor Tower & official company milestones",
+        chart: {
+          title: "Competitor User Base (in Millions)",
+          bars: [
+            { label: "Tinder (Global MAU)", val: "75M MAUs (~9.5M Paying)", pct: 100, color: "" },
+            { label: "Bumble (Global MAU)", val: "50M MAUs (~4.2M Paying)", pct: 67, color: "blue" },
+            { label: "Hinge (Global MAU)", val: "30M MAUs (~1.6M Paying)", pct: 40, color: "blue" },
+            { label: "QuackQuack (India)", val: "30M+ Registered Users", pct: 40, color: "emerald" },
+            { label: "Aisle (India)", val: "15M+ Registered Users", pct: 20, color: "emerald" },
+            { label: "TrulyMadly (India)", val: "12M+ Registered Users", pct: 16, color: "emerald" }
+          ]
+        },
+        cards: [
+          {
+            title: "Global Apps User Base",
+            items: [
+              "Tinder: ~50M–75M MAUs globally; ~15M–20M+ cumulative users in India.",
+              "Bumble: ~40M–50M MAUs globally; ~10M–15M+ users in India.",
+              "Hinge: ~23M–30M MAUs globally; India is Hinge's #2 market worldwide by downloads."
+            ]
+          },
+          {
+            title: "Indian Apps User Base",
+            color: "emerald",
+            items: [
+              "QuackQuack: 30 Million+ registered Indian users.",
+              "Aisle: 15 Million+ registered users across India & diaspora.",
+              "TrulyMadly: 12 Million+ registered users in India."
+            ]
+          }
+        ]
+      },
+      {
+        num: 26,
+        title: "26. How They Got Popular",
+        subtitle: "Their unique hooks and marketing strategies that drove mass adoption",
+        cards: [
+          {
+            title: "Tinder & Bumble Growth Strategies",
+            items: [
+              "Tinder (Gamification): Invented the 'Swipe Right / Swipe Left' game mechanic in 2012 and grew via college campus house parties.",
+              "Bumble (Women First): Empowered women to message first within 24h and used Priyanka Chopra as brand ambassador in India."
+            ]
+          },
+          {
+            title: "Hinge & Aisle Growth Strategies",
+            color: "blue",
+            items: [
+              "Hinge ('Designed to be Deleted'): Positioned against casual swiping using 3 mandatory personality/voice prompts.",
+              "Aisle (Cultural Localization): Positioned as the middle ground between Tinder and Shaadi.com, launching vernacular apps (Arike, Anbe)."
+            ]
+          }
+        ]
+      },
+      {
+        num: 27,
+        title: "27. What Mistakes They Did",
+        subtitle: "Strategic mistakes that caused user burnout and >60% stock decline from peak",
+        cards: [
+          {
+            title: "1. Paywall Greed & Screen Addiction",
+            items: [
+              "Over-Monetizing Basic Connection: Locked visibility behind ₹1,000+/mo tiers, Roses & Boosts, causing paying user growth to stall in 2024.",
+              "Optimizing for Swiping Instead of Offline Dates: Every couple that meets and deletes the app loses them 2 paying subscribers."
+            ]
+          },
+          {
+            title: "2. Ignoring Emotional Health & Safety",
+            color: "amber",
+            items: [
+              "Ignoring Heartbreak: Let emotionally unhealed users flood the dating pool, fueling ghosting and toxic rebounds.",
+              "Weak Verification: Optional photo selfies failed to stop married users, scammers, and catfishing."
+            ]
+          }
+        ]
+      },
+      {
+        num: 28,
+        title: "28. How We Can Do (JabWeMeet's Winning Strategy)",
+        subtitle: "How JabWeMeet captures the market by solving what swipe apps broke",
+        cards: [
+          {
+            title: "1. Heal First + Guarantee the Offline Date",
+            color: "emerald",
+            items: [
+              "Use the 30-Minute Free Breakup Buddy trial as a high-trust top-of-funnel acquisition hook.",
+              "Skip endless texting: Relationship Managers arrange real Blind Dates at Partner Cafes as soon as both users approve."
+            ]
+          },
+          {
+            title: "2. Hyper-Local Cafe & Event Flywheel",
+            color: "blue",
+            items: [
+              "Partner with popular local cafes across Indian cities (cafes get guaranteed tables; users get safe, vetted date venues).",
+              "Run weekend offline coffee mixers with QR ticketing to build organic city communities."
+            ]
+          }
+        ]
+      },
+      {
+        num: 29,
+        title: "29. What People Are Looking For? What's Lacking",
+        subtitle: "Understanding the exact gap in today's Indian relationship market",
+        cards: [
+          {
+            title: "What People Are Looking For",
+            color: "emerald",
+            items: [
+              "1. Real Face-to-Face Chemistry over a 45-minute coffee date instead of 3 weeks of dead-end texting.",
+              "2. Human Accountability: A Relationship Manager who vets profiles and checks in after the date.",
+              "3. Judgment-Free Emotional Venting: A friendly voice to talk to during breakup nights without ₹2,000 therapy fees."
+            ]
+          },
+          {
+            title: "What Was Lacking Until JabWeMeet",
+            items: [
+              "No platform combined Breakup Healing + Human Matchmaking + Automated Partner Cafe Blind Dates + Offline QR Mixers under one roof."
+            ]
+          }
+        ]
+      },
+      {
+        num: 30,
+        title: "30. How We Can Get a Solution",
+        subtitle: "Complete Problem-to-Solution architecture built in JabWeMeet",
+        table: {
+          headers: ["Market Problem", "JabWeMeet Solution (Implemented in Project)"],
+          rows: [
+            ["Endless Swiping & Burnout", "✅ Dedicated Human Relationship Managers + Gemini AI compatibility analysis."],
+            ["Ghosting Before Meeting", "✅ Dual-Approval Blind Date Engine (BothApproved -> DateFixed) locking in Date, Time & Cafe."],
+            ["Heartbreak & Rebound Stress", "✅ Breakup Buddy Portal with 2-way WebRTC Voice Calls, Chat & 30-Min Mutual-Presence Free Trial."],
+            ["Fake Profiles & Safety Fears", "✅ 4-Document KYC Verification (Gov ID, Address, Education, Work) + Admin Approval."],
+            ["Unsafe First Date Venues", "✅ Partner Cafe Portal + OpenStreetMap 38-city live cafe discovery & table booking."],
+            ["Lonely Digital Isolation", "✅ Curated Offline Events & Mixers with QR-code tickets & 24h email reminders."]
+          ]
+        }
+      },
+      {
+        num: 31,
+        title: "31. Project Execution Plan",
+        subtitle: "5-Phase engineering and market rollout roadmap",
+        flow: [
+          { step: "PHASE 1 (Done)", text: "PostgreSQL + 26 Prisma models, JWT RBAC auth & 4-doc KYC upload pipeline." },
+          { step: "PHASE 2 (Done)", text: "All 6 role dashboards, Socket.IO chat, 2-way WebRTC voice calls & 30m timer." },
+          { step: "PHASE 3 (Done)", text: "Razorpay checkout, 95/5 split, Gemini AI matching & 38-city OSM cafes." },
+          { step: "PHASE 4 (M1–M3)", text: "Pilot launch: Onboard 20 Partner Cafes, 15 Matchmakers, 25 Buddies & weekend mixers." },
+          { step: "PHASE 5 (M4–M12)", text: "Launch iOS/Android mobile apps, DigiLocker e-KYC & scale across 38+ cities." }
+        ]
+      },
+      {
+        num: 32,
+        title: "32. Team Needed for the Project",
+        subtitle: "Lean 8-member Engineering & Operations team required to scale JabWeMeet",
+        cards: [
+          {
+            title: "Technical & Engineering Team (4 Members)",
+            color: "blue",
+            items: [
+              "1 Full-Stack Lead Developer: Next.js 16, Express 5, Prisma ORM & PostgreSQL.",
+              "1 Real-Time & WebRTC Engineer: WebRTC voice/video pipelines, Socket.IO scaling & Redis queues.",
+              "1 UI/UX & Mobile Frontend Engineer: Responsive dashboards & mobile apps.",
+              "1 QA & DevOps Engineer: Automated testing, Razorpay security & cloud deployment."
+            ]
+          },
+          {
+            title: "Operations & Community Team (4 Members)",
+            color: "emerald",
+            items: [
+              "1 KYC & Trust Safety Officer: Verifying user/partner KYC documents in Admin portal.",
+              "1 Matchmaker & Breakup Buddy Coordinator: Onboarding & quality-auditing RMs and Buddies.",
+              "1 Cafe & Event Partnerships Manager: Onboarding Partner Cafes and city Event Hosts.",
+              "1 Digital Marketing & Community Lead: Social media reels, campus ambassadors & mixer marketing."
+            ]
+          }
+        ]
+      },
+      {
+        num: 33,
+        title: "33. How Will We Commercialize It & Make Money",
+        subtitle: "5 built-in revenue streams active in the JabWeMeet codebase",
+        chart: {
+          title: "JabWeMeet 5-Stream Revenue Mix (%)",
+          bars: [
+            { label: "RM Subscriptions", val: "45% Share (₹2,999 – ₹14,999/mo)", pct: 100, color: "" },
+            { label: "Event Ticket Sales", val: "20% Share (Paid Mixer Bookings)", pct: 45, color: "emerald" },
+            { label: "Host SaaS Plans", val: "15% Share (₹999 – ₹4,999 Plans)", pct: 34, color: "blue" },
+            { label: "Cafe Reservations", val: "10% Share (Tables & Pre-Orders)", pct: 23, color: "emerald" },
+            { label: "Buddy Commission", val: "10% Share (5% Fee on ₹799–₹5,999)", pct: 23, color: "blue" }
+          ]
+        },
+        cards: [
+          {
+            title: "1. Matchmaker, 2. Buddy & 3. Host SaaS Revenue",
+            items: [
+              "1. Relationship Manager Subscriptions: ₹2,999/mo, ₹4,999/mo, ₹8,999/mo & ₹14,999/mo paid via Razorpay.",
+              "2. Breakup Buddy Passes (95% / 5% Split): After 30m free, users buy passes (₹799 to ₹5,999); Platform keeps 5% fee, Buddy gets 95%.",
+              "3. Event Host SaaS Plans: Hosts pay ₹999 (Basic), ₹2,499 (Pro), or ₹4,999 (Unlimited) to publish events."
+            ]
+          },
+          {
+            title: "4. Event Tickets & 5. Partner Cafe Revenue",
+            color: "emerald",
+            items: [
+              "4. Offline Event Ticket Bookings (EventBooking): Ticket sales from curated singles mixers & workshops.",
+              "5. Partner Cafe Reservations & Pre-Orders (CafeReservation & CafeOrder): Table booking fees, pre-orders & featured cafe placement."
+            ]
+          }
+        ]
+      }
+    ];
+
+    function renderSlides() {
+      const container = document.getElementById("slidesContainer");
+      SLIDES_DATA.forEach((s) => {
+        const div = document.createElement("div");
+        div.className = "slide";
+        let inner = `
+          <div class="slide-header">
+            <div class="slide-badge">${s.num}</div>
+            <div>
+              <div class="slide-title">${s.title}</div>
+              <div class="slide-subtitle">${s.subtitle}</div>
+            </div>
+          </div>
+        `;
+
+        if (s.chart) {
+          inner += `<div class="chart-box" style="margin-bottom:16px;">
+            <div class="chart-title">📊 ${s.chart.title}</div>
+            ${s.chart.bars.map(b => `
+              <div class="bar-row">
+                <div class="bar-label">${b.label}</div>
+                <div class="bar-track">
+                  <div class="bar-fill ${b.color}" style="width:${b.pct}%">${b.val}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>`;
+        }
+
+        if (s.flow) {
+          inner += `<div class="grid-5" style="margin-top:12px;">
+            ${s.flow.map(f => `
+              <div class="flow-step">
+                <h4>${f.step}</h4>
+                <p>${f.text}</p>
+              </div>
+            `).join("")}
+          </div>`;
+        }
+
+        if (s.table) {
+          inner += `<table class="comp-table">
+            <thead>
+              <tr>
+                ${s.table.headers.map((h, i) => `<th class="${i === s.table.headers.length - 1 ? 'ours' : ''}">${h}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${s.table.rows.map(r => `
+                <tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>
+              `).join("")}
+            </tbody>
+          </table>`;
+        }
+
+        if (s.cards) {
+          inner += `<div class="grid-2">
+            ${s.cards.map(c => `
+              <div class="card">
+                <div class="card-head ${c.color || ''}">${c.title}</div>
+                <ul class="card-body">
+                  ${c.items.map(it => `<li>${it}</li>`).join("")}
+                </ul>
+              </div>
+            `).join("")}
+          </div>`;
+        }
+
+        inner += `<div class="slide-footer">JabWeMeet Project Blueprint  |  Slide ${s.num} of 33</div>`;
+        div.innerHTML = inner;
+        container.appendChild(div);
+      });
+    }
+
+    function downloadPPTX() {
+      const btn = document.getElementById("dlBtn");
+      btn.textContent = "⏳ Generating 33-Slide PPTX...";
+      try {
+        const pptx = new PptxGenJS();
+        pptx.layout = "LAYOUT_16x9";
+        pptx.author = "JabWeMeet Team";
+        pptx.company = "JabWeMeet";
+        pptx.title = "JabWeMeet Complete 33-Slide Project Blueprint";
+
+        const C = {
+          burgundy: "7E2248",
+          cream: "FDFBF9",
+          softRose: "FAF0F4",
+          roseBorder: "F3D8E3",
+          slateDark: "1E293B",
+          slateMuted: "475569",
+          emerald: "059669",
+          emeraldBg: "ECFDF5",
+          blue: "2563EB",
+          blueBg: "EFF6FF",
+          amber: "D97706",
+          amberBg: "FFFBEB",
+          purple: "7C3AED",
+          purpleBg: "F5F3FF",
+          white: "FFFFFF"
+        };
+
+        SLIDES_DATA.forEach((s) => {
+          const slide = pptx.addSlide();
+          slide.background = { color: C.cream };
+
+          // Top bar
+          slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 10.0, h: 0.1, fill: { color: C.burgundy } });
+          // Badge
+          slide.addShape(pptx.ShapeType.roundRect, { x: 0.4, y: 0.2, w: 0.55, h: 0.42, fill: { color: C.burgundy }, rectRadius: 0.08 });
+          slide.addText(String(s.num), { x: 0.4, y: 0.2, w: 0.55, h: 0.42, fontSize: 13, bold: true, color: C.white, align: "center", valign: "middle" });
+          // Title & Subtitle
+          slide.addText(s.title, { x: 1.05, y: 0.16, w: 8.5, h: 0.34, fontSize: 18, bold: true, color: C.burgundy, fontFace: "Georgia" });
+          slide.addText(s.subtitle, { x: 1.05, y: 0.48, w: 8.5, h: 0.24, fontSize: 10, color: C.slateMuted });
+
+          let contentY = 0.88;
+
+          if (s.chart) {
+            slide.addShape(pptx.ShapeType.roundRect, {
+              x: 0.4, y: contentY, w: 9.2, h: 1.65,
+              fill: { color: C.white }, line: { color: C.roseBorder, width: 1 }, rectRadius: 0.06
+            });
+            slide.addText("CHART: " + s.chart.title, {
+              x: 0.55, y: contentY + 0.06, w: 8.9, h: 0.26, fontSize: 11, bold: true, color: C.burgundy
+            });
+            s.chart.bars.forEach((b, idx) => {
+              const by = contentY + 0.36 + idx * 0.24;
+              slide.addText(b.label, { x: 0.55, y: by, w: 1.9, h: 0.2, fontSize: 9, bold: true, color: C.slateDark });
+              const barW = Math.max(1.2, (b.pct / 100) * 6.8);
+              slide.addShape(pptx.ShapeType.roundRect, {
+                x: 2.5, y: by + 0.02, w: barW, h: 0.18,
+                fill: { color: b.color === "emerald" ? C.emerald : b.color === "blue" ? C.blue : C.burgundy },
+                rectRadius: 0.04
+              });
+              slide.addText(b.val, { x: 2.58, y: by, w: barW + 1.5, h: 0.2, fontSize: 8.5, bold: true, color: C.white });
+            });
+            contentY += 1.78;
+          }
+
+          if (s.flow) {
+            s.flow.forEach((f, idx) => {
+              const fx = 0.4 + idx * 1.86;
+              slide.addShape(pptx.ShapeType.roundRect, {
+                x: fx, y: 1.15, w: 1.74, h: 3.6,
+                fill: { color: C.white }, line: { color: C.burgundy, width: 1.5 }, rectRadius: 0.08
+              });
+              slide.addShape(pptx.ShapeType.rect, {
+                x: fx, y: 1.15, w: 1.74, h: 0.42, fill: { color: C.burgundy }
+              });
+              slide.addText(f.step, {
+                x: fx, y: 1.15, w: 1.74, h: 0.42, fontSize: 9.5, bold: true, color: C.white, align: "center", valign: "middle"
+              });
+              slide.addText(f.text, {
+                x: fx + 0.08, y: 1.7, w: 1.58, h: 2.8, fontSize: 10, color: C.slateDark, align: "center", valign: "top"
+              });
+            });
+          }
+
+          if (s.table) {
+            const rows = [
+              s.table.headers.map((h, i) => ({
+                text: h,
+                options: { bold: true, color: C.white, fill: i === s.table.headers.length - 1 ? C.emerald : C.burgundy }
+              })),
+              ...s.table.rows
+            ];
+            slide.addTable(rows, {
+              x: 0.4, y: contentY, w: 9.2, rowH: 0.46, fontSize: 9.5,
+              border: { type: "solid", color: C.roseBorder, pt: 0.8 }, fill: { color: C.white }, valign: "middle"
+            });
+          }
+
+          if (s.cards) {
+            const cardH = 5.15 - contentY;
+            const isFour = s.cards.length === 4;
+            s.cards.forEach((c, idx) => {
+              const col = idx % 2;
+              const row = Math.floor(idx / 2);
+              const cw = 4.5;
+              const ch = isFour ? (cardH - 0.16) / 2 : cardH;
+              const cx = 0.4 + col * 4.7;
+              const cy = contentY + row * (ch + 0.16);
+
+              const hBg = c.color === "emerald" ? C.emeraldBg : c.color === "blue" ? C.blueBg : c.color === "amber" ? C.amberBg : c.color === "purple" ? C.purpleBg : C.softRose;
+              const hCol = c.color === "emerald" ? C.emerald : c.color === "blue" ? C.blue : c.color === "amber" ? C.amber : c.color === "purple" ? C.purple : C.burgundy;
+
+              slide.addShape(pptx.ShapeType.roundRect, {
+                x: cx, y: cy, w: cw, h: ch,
+                fill: { color: C.white }, line: { color: C.roseBorder, width: 1.1 }, rectRadius: 0.06
+              });
+              slide.addShape(pptx.ShapeType.rect, {
+                x: cx, y: cy, w: cw, h: 0.34, fill: { color: hBg }
+              });
+              slide.addText(c.title, {
+                x: cx + 0.1, y: cy + 0.03, w: cw - 0.2, h: 0.28, fontSize: 11, bold: true, color: hCol
+              });
+              const bullets = c.items.map((it, bIdx) => ({
+                text: it,
+                options: { bullet: true, breakLine: bIdx < c.items.length - 1 }
+              }));
+              slide.addText(bullets, {
+                x: cx + 0.1, y: cy + 0.38, w: cw - 0.2, h: ch - 0.42,
+                fontSize: s.chart ? 8.8 : 9.8, color: C.slateDark, valign: "top", lineSpacing: s.chart ? 12 : 14
+              });
+            });
+          }
+
+          slide.addText(`JabWeMeet Project Blueprint  |  Slide ${s.num} of 33`, {
+            x: 0.4, y: 5.32, w: 9.2, h: 0.2, fontSize: 8.5, color: C.slateMuted, align: "right"
+          });
+        });
+
+        pptx.writeFile({ fileName: "JabWeMeet_Complete_33_Slide_Presentation.pptx" }).then(() => {
+          btn.textContent = "✅ Downloaded JabWeMeet_Complete_33_Slide_Presentation.pptx!";
+          setTimeout(() => { btn.textContent = "⬇ Download PowerPoint (.PPTX)"; }, 4000);
+        });
+      } catch (err) {
+        console.error(err);
+        btn.textContent = "⬇ Download PowerPoint (.PPTX)";
+        alert("Could not generate PPTX: " + err.message);
+      }
+    }
+
+    renderSlides();
+  </script>
+</body>
+</html>

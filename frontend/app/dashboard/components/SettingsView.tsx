@@ -23,10 +23,48 @@ export default function SettingsView({ userEmail, onLogout }: SettingsViewProps)
   const [smsAlerts, setSmsAlerts] = useState(true);
   const [cityVisibility, setCityVisibility] = useState(true);
   const [savedNote, setSavedNote] = useState("");
+  const [errorNote, setErrorNote] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    setSavedNote("Preferences updated successfully!");
-    setTimeout(() => setSavedNote(""), 3000);
+  React.useEffect(() => {
+    let active = true;
+    fetch("/api/auth/profile", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data?.success && data.user) {
+          if (data.user.cityVisibility !== undefined) {
+            setCityVisibility(Boolean(data.user.cityVisibility));
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSave = async () => {
+    setErrorNote("");
+    setSavedNote("");
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cityVisibility }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || "Failed to save preferences.");
+      }
+      setSavedNote("Preferences updated successfully!");
+      setTimeout(() => setSavedNote(""), 3000);
+    } catch (err: any) {
+      setErrorNote(err.message || "Could not save preferences. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -48,6 +86,12 @@ export default function SettingsView({ userEmail, onLogout }: SettingsViewProps)
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 shadow-xs">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{savedNote}</span>
+        </div>
+      )}
+
+      {errorNote && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 shadow-xs">
+          <span>{errorNote}</span>
         </div>
       )}
 
