@@ -1942,15 +1942,33 @@ router.post('/connections/:id/feedback', authenticateToken, dateFeedbackLimiter,
     try {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Analyze the sentiment of this post-date feedback. Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL.\n\nFeedback: "${trimmedFeedback}"\nRating: ${numRating}/5`
-      });
-      const result = response.text.trim().toUpperCase();
-      if (result.includes('NEGATIVE')) sentiment = 'NEGATIVE';
-      else if (result.includes('POSITIVE')) sentiment = 'POSITIVE';
-      else if (result.includes('NEUTRAL')) sentiment = 'NEUTRAL';
-      else if (numRating <= 2) sentiment = 'NEGATIVE';
+      const modelsToTry = [
+        process.env.GEMINI_MODEL,
+        'gemini-3.8-flash',
+        'gemini-3.5-flash',
+        'gemini-3.1-flash-lite'
+      ].filter(Boolean);
+
+      let response = null;
+      for (const model of modelsToTry) {
+        try {
+          response = await ai.models.generateContent({
+            model,
+            contents: `Analyze the sentiment of this post-date feedback. Respond with ONLY ONE WORD: POSITIVE, NEGATIVE, or NEUTRAL.\n\nFeedback: "${trimmedFeedback}"\nRating: ${numRating}/5`
+          });
+          if (response && response.text) break;
+        } catch (err) {
+          console.warn(`Gemini sentiment model ${model} unavailable: ${err.message || err}`);
+        }
+      }
+
+      if (response && response.text) {
+        const result = response.text.trim().toUpperCase();
+        if (result.includes('NEGATIVE')) sentiment = 'NEGATIVE';
+        else if (result.includes('POSITIVE')) sentiment = 'POSITIVE';
+        else if (result.includes('NEUTRAL')) sentiment = 'NEUTRAL';
+      }
+      if (numRating <= 2) sentiment = 'NEGATIVE';
     } catch (aiErr) {
       console.error('AI Sentiment Analysis failed:', aiErr.message);
       if (numRating <= 2) sentiment = 'NEGATIVE';

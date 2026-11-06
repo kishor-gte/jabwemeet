@@ -766,25 +766,47 @@ ${candidates}
 Respond ONLY with valid JSON (an array of objects).
 `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              id: { type: "STRING" },
-              score: { type: "INTEGER" },
-              reason: { type: "STRING" }
-            },
-            required: ["id", "score", "reason"]
+    const modelsToTry = [
+      process.env.GEMINI_MODEL,
+      'gemini-3.8-flash',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite'
+    ].filter(Boolean);
+
+    let response = null;
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  id: { type: "STRING" },
+                  score: { type: "INTEGER" },
+                  reason: { type: "STRING" }
+                },
+                required: ["id", "score", "reason"]
+              }
+            }
           }
-        }
+        });
+        if (response && response.text) break;
+      } catch (err) {
+        lastError = err;
+        console.warn(`Gemini model ${model} unavailable, trying next candidate: ${err.message || err}`);
       }
-    });
+    }
+
+    if (!response || !response.text) {
+      throw lastError || new Error('All AI models failed to generate content');
+    }
 
     let rawText = (response.text || "").trim();
     if (rawText.startsWith("```")) {
